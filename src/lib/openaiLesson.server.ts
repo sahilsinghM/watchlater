@@ -69,6 +69,7 @@ export async function generateOpenAILesson(input: {
           }),
         },
       ],
+      max_tokens: 15000,
       response_format: { type: "json_object" },
     }),
   });
