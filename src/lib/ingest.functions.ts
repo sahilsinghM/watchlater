@@ -118,12 +118,13 @@ function extractBalancedJSON(html: string, key: string): unknown | null {
 // Fallback: parse caption track URLs directly from the YouTube watch page.
 // Used when InnerTube clients are blocked by YouTube on datacenter IPs (e.g.
 // Vercel), which return LOGIN_REQUIRED / UNPLAYABLE even for public videos.
+// Includes the CONSENT cookie so YouTube does not redirect to a consent gate.
 async function extractCaptionTracksFromWatchPage(
   youtubeId: string,
 ): Promise<Array<{ baseUrl: string; languageCode?: string; kind?: string }>> {
   try {
     const res = await fetch(
-      `https://www.youtube.com/watch?v=${youtubeId}&hl=en`,
+      `https://www.youtube.com/watch?v=${youtubeId}&hl=en&gl=US`,
       {
         headers: {
           "User-Agent":
@@ -131,19 +132,45 @@ async function extractCaptionTracksFromWatchPage(
           "Accept-Language": "en-US,en;q=0.9",
           Accept:
             "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+          // Bypass YouTube's GDPR consent gate and bot-redirect pages that
+          // datacenter IPs commonly receive instead of the real watch HTML.
+          Cookie: "CONSENT=YES+42; SOCS=CAISAiAD",
+          Referer: "https://www.google.com/",
         },
       },
     );
+    console.warn(
+      "[ingest] watch-page fallback HTTP:",
+      res.status,
+      res.url,
+    );
     if (!res.ok) return [];
     const html = await res.text();
+    const hasPlayerResponse = html.includes("ytInitialPlayerResponse");
+    console.warn(
+      "[ingest] watch-page HTML len:",
+      html.length,
+      "hasPlayerResponse:",
+      hasPlayerResponse,
+    );
     const pr = extractBalancedJSON(html, "ytInitialPlayerResponse") as any;
-    if (!pr) return [];
+    if (!pr) {
+      console.warn("[ingest] watch-page: ytInitialPlayerResponse parse failed");
+      return [];
+    }
+    const ps = pr?.playabilityStatus?.status;
     const tracks: unknown[] | undefined =
       pr?.captions?.playerCaptionsTracklistRenderer?.captionTracks;
+    console.warn(
+      "[ingest] watch-page ps:",
+      ps,
+      "tracks:",
+      tracks?.length ?? 0,
+    );
     if (!tracks || tracks.length === 0) return [];
     return tracks as Array<{ baseUrl: string; languageCode?: string; kind?: string }>;
   } catch (e) {
-    console.warn("[ingest] watch-page fallback failed:", e);
+    console.warn("[ingest] watch-page fallback exception:", e);
     return [];
   }
 }
