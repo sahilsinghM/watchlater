@@ -199,13 +199,13 @@ async function extractCaptionTracksViaBrowser(
     // Dynamic import so that local dev (where Chromium isn't installed) still
     // works without errors — playwright-core is only available at runtime.
     const [chromium, { chromium: pw }] = await Promise.all([
-      import("@sparticuz/chromium"),
+      import("chrome-aws-lambda"),
       import("playwright-core"),
     ]);
     browser = await pw.launch({
       args: chromium.default.args,
-      executablePath: await chromium.default.executablePath(),
-      headless: true,
+      executablePath: await chromium.default.executablePath,
+      headless: chromium.default.headless,
     });
     const page = await browser.newPage();
     // Block images/fonts/media to reduce load time — we only need the JS data.
