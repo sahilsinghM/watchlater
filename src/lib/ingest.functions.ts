@@ -187,6 +187,58 @@ async function extractCaptionTracksFromWatchPage(
   }
 }
 
+// Last-resort fallback: launch a real Chromium browser to load the YouTube
+// watch page. The browser solves the BotGuard PoToken challenge automatically,
+// so ytInitialPlayerResponse arrives with ps=OK and includes captionTracks.
+// Used only on cloud IPs where all HTTP-level approaches return LOGIN_REQUIRED.
+async function extractCaptionTracksViaBrowser(
+  youtubeId: string,
+): Promise<{ tracks: Array<{ baseUrl: string; languageCode?: string; kind?: string }>; diag: string }> {
+  let browser: import("playwright-core").Browser | null = null;
+  try {
+    // Dynamic import so that local dev (where Chromium isn't installed) still
+    // works without errors — playwright-core is only available at runtime.
+    const [chromium, { chromium: pw }] = await Promise.all([
+      import("@sparticuz/chromium"),
+      import("playwright-core"),
+    ]);
+    browser = await pw.launch({
+      args: chromium.default.args,
+      executablePath: await chromium.default.executablePath(),
+      headless: true,
+    });
+    const page = await browser.newPage();
+    // Block images/fonts/media to reduce load time — we only need the JS data.
+    await page.route("**/*", (route) => {
+      const type = route.request().resourceType();
+      if (["image", "media", "font", "stylesheet"].includes(type)) {
+        route.abort();
+      } else {
+        route.continue();
+      }
+    });
+    await page.goto(`https://www.youtube.com/watch?v=${youtubeId}&hl=en`, {
+      waitUntil: "domcontentloaded",
+      timeout: 25000,
+    });
+    const result = await page.evaluate(() => {
+      const pr = (window as any).ytInitialPlayerResponse;
+      const ps = pr?.playabilityStatus?.status ?? "?";
+      const tracks = pr?.captions?.playerCaptionsTracklistRenderer?.captionTracks ?? [];
+      return { ps, tracks };
+    });
+    const diag = `browser:ps=${result.ps},tracks=${result.tracks.length}`;
+    console.warn("[ingest] browser fallback:", diag);
+    return { tracks: result.tracks, diag };
+  } catch (e: any) {
+    const diag = `browser:err=${String(e?.message ?? e).slice(0, 80)}`;
+    console.warn("[ingest] browser fallback failed:", e);
+    return { tracks: [], diag };
+  } finally {
+    if (browser) await browser.close().catch(() => {});
+  }
+}
+
 async function fetchTranscript(youtubeId: string): Promise<{ cues: Cue[]; languageCode: string }> {
   let captionTracks: Array<{ baseUrl: string; languageCode?: string; kind?: string }> = [];
 
@@ -249,6 +301,20 @@ async function fetchTranscript(youtubeId: string): Promise<{ cues: Cue[]; langua
         (t) => t.languageCode === "en" && !t.kind,
       );
       captionTracks = en ? [en] : [fallbackTracks[0]];
+    }
+  }
+
+  // Last resort: launch a real browser so YouTube's PoToken challenge is solved
+  // natively. This path is slow (~20-30s) but reliable from any IP.
+  if (captionTracks.length === 0) {
+    console.warn("[ingest] watch-page blocked, trying headless browser fallback");
+    const { tracks: browserTracks, diag } = await extractCaptionTracksViaBrowser(youtubeId);
+    watchPageDiag = diag;
+    if (browserTracks.length > 0) {
+      const en = browserTracks.find(
+        (t) => t.languageCode === "en" && !t.kind,
+      );
+      captionTracks = en ? [en] : [browserTracks[0]];
     }
   }
 
