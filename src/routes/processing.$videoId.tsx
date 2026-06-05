@@ -17,7 +17,7 @@ const STEPS = [
   { label: "Fetching video details", quip: "Saying hi to YouTube." },
   { label: "Reading the transcript", quip: "Watching the boring parts so you don't have to." },
   { label: "Finding the key moments", quip: "Finding where the creator finally gets to the point." },
-  { label: "Capturing important visuals", quip: "Grabbing the bits worth seeing." },
+  { label: "Analyzing key moments", quip: "Finding the timestamps worth jumping to." },
   { label: "Building your interactive lesson", quip: "Stacking cards. Tuning the deck." },
   { label: "Preparing your quiz", quip: "Making sure it's earned, not gifted." },
 ];

@@ -153,7 +153,7 @@ export function createSupabaseStore(): MvpStore {
       const { data } = await supabase
         .from("quiz_results")
         .insert({
-          lesson_id: input.lessonId,
+          lesson_id: null,               // UUID FK — we don't expose the DB UUID; lesson_video_id is the lookup key
           lesson_video_id: input.lessonId,
           session_id: input.sessionId,
           answers: input.answers,
@@ -178,7 +178,7 @@ export function createSupabaseStore(): MvpStore {
       const { data } = await supabase
         .from("feedback")
         .insert({
-          lesson_id: input.lessonId,
+          lesson_id: null,               // UUID FK — lesson_video_id is the lookup key
           lesson_video_id: input.lessonId,
           session_id: input.sessionId,
           useful: input.useful,
