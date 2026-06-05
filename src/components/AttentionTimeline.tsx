@@ -1,12 +1,41 @@
+import { motion, useReducedMotion } from "motion/react";
 import type { Segment } from "@/lib/lessonSchema";
 import { fmtRange } from "@/lib/lessonSchema";
 
-const kindStyles: Record<Segment["kind"], { bg: string; label: string; dot: string }> = {
-  skip: { bg: "bg-muted text-muted-foreground", label: "Skip", dot: "bg-muted-foreground" },
-  watch: { bg: "bg-primary/15 text-primary", label: "Watch", dot: "bg-primary" },
-  core: { bg: "bg-secondary/25 text-foreground", label: "Core", dot: "bg-secondary" },
-  demo: { bg: "bg-accent/20 text-foreground", label: "Demo", dot: "bg-accent" },
+const kindStyles: Record<
+  Segment["kind"],
+  { bar: string; chip: string; dot: string; label: string }
+> = {
+  watch: {
+    bar: "bg-primary/20",
+    chip: "bg-primary/15 text-primary border-primary/50",
+    dot: "bg-primary",
+    label: "Watch",
+  },
+  core: {
+    bar: "bg-secondary/35",
+    chip: "bg-secondary/30 text-foreground border-secondary",
+    dot: "bg-secondary",
+    label: "Core",
+  },
+  demo: {
+    bar: "bg-accent/25",
+    chip: "bg-accent/20 text-foreground border-accent",
+    dot: "bg-accent",
+    label: "Demo",
+  },
+  skip: {
+    bar: "bg-muted",
+    chip: "bg-muted text-muted-foreground border-foreground/20",
+    dot: "bg-muted-foreground",
+    label: "Skip",
+  },
 };
+
+// Legend order mirrors importance, brightest first.
+const legendOrder: Segment["kind"][] = ["watch", "core", "demo", "skip"];
+
+const spring = { type: "spring", stiffness: 420, damping: 30 } as const;
 
 type Props = {
   segments: Segment[];
@@ -15,52 +44,110 @@ type Props = {
 };
 
 export function AttentionTimeline({ segments, totalDuration, onSeek }: Props) {
+  const total = Math.max(totalDuration, 1);
+  // Respect reduced-motion: skip entrance transforms so nothing animates in
+  // (and nothing renders mid-animation) for users who opt out.
+  const reduce = useReducedMotion();
+  // Cap the stagger so a dense timeline (20+ segments) doesn't take seconds
+  // to finish revealing.
+  const staggerAt = (i: number) => Math.min(i, 8);
+
   return (
-    <div className="space-y-4">
-      <div className="flex h-6 w-full overflow-hidden rounded-full brutal-border bg-card">
-        {segments.map((seg, i) => {
-          const pct = ((seg.end - seg.start) / totalDuration) * 100;
-          const s = kindStyles[seg.kind];
+    <div className="space-y-5">
+      {/* Legend — so the colors in the bar are decodable at a glance. */}
+      <div className="flex flex-wrap items-center gap-x-5 gap-y-2">
+        {legendOrder.map((kind) => {
+          const s = kindStyles[kind];
           return (
-            <button
-              key={i}
-              type="button"
-              onClick={() => onSeek?.(seg.start)}
-              title={`${s.label} · ${fmtRange(seg.start, seg.end)} · ${seg.title}`}
-              className={`${s.bg} h-full border-r-[3px] border-foreground last:border-r-0 hover:brightness-95 transition`}
-              style={{ width: `${pct}%` }}
-              aria-label={`Jump to ${seg.title}`}
-            />
+            <span key={kind} className="inline-flex items-center gap-2">
+              <span
+                className={`inline-block h-3.5 w-3.5 rounded-[5px] border-2 border-foreground ${s.dot}`}
+              />
+              <span className="font-mono text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
+                {s.label}
+              </span>
+            </span>
           );
         })}
       </div>
-      <ul className="grid gap-3 sm:grid-cols-2">
+
+      {/* The bar — heavy border + hard shadow, on-brand. Segments paint in.
+          No overflow-hidden: the hover chips need to escape the bar. End
+          segments round their outer corners so the frame still looks clean. */}
+      <div className="flex h-10 w-full rounded-2xl brutal-border bg-card brutal-shadow-sm">
+        {segments.map((seg, i) => {
+          const pct = ((seg.end - seg.start) / total) * 100;
+          const s = kindStyles[seg.kind];
+          return (
+            <motion.button
+              key={i}
+              type="button"
+              onClick={() => onSeek?.(seg.start)}
+              initial={reduce ? false : { scaleX: 0 }}
+              animate={{ scaleX: 1 }}
+              transition={{ ...spring, delay: staggerAt(i) * 0.045 }}
+              style={{ width: `${pct}%`, transformOrigin: "left" }}
+              title={`${s.label} · ${fmtRange(seg.start, seg.end)} · ${seg.title}`}
+              aria-label={`Jump to ${seg.title}`}
+              className={`group/seg relative h-full border-r-[3px] border-foreground last:border-r-0 ${
+                i === 0 ? "rounded-l-2xl" : ""
+              } ${i === segments.length - 1 ? "rounded-r-2xl" : ""} ${s.bar} transition-[filter] hover:brightness-105`}
+            >
+              {/* Inline label when the segment is wide enough to read. */}
+              {pct > 11 && (
+                <span className="pointer-events-none absolute inset-0 grid place-items-center px-1 font-mono text-[9px] font-bold uppercase tracking-widest text-foreground/80">
+                  {s.label}
+                </span>
+              )}
+              {/* Floating tooltip chip on hover. */}
+              <span
+                className={`pointer-events-none absolute -top-11 left-1/2 z-10 -translate-x-1/2 whitespace-nowrap rounded-xl border-2 px-2.5 py-1 font-mono text-[10px] font-bold uppercase tracking-widest opacity-0 shadow-[3px_3px_0_0_var(--foreground)] transition-opacity duration-150 group-hover/seg:opacity-100 group-focus-visible/seg:opacity-100 ${s.chip}`}
+              >
+                {s.label} · {fmtRange(seg.start, seg.end)}
+              </span>
+            </motion.button>
+          );
+        })}
+      </div>
+
+      {/* Segment cards — full brutal treatment + a satisfying lift on hover. */}
+      <ul className="grid gap-4 sm:grid-cols-2">
         {segments.map((seg, i) => {
           const s = kindStyles[seg.kind];
           return (
-            <li key={i}>
+            <motion.li
+              key={i}
+              initial={reduce ? false : { opacity: 0, y: 18, rotate: -1 }}
+              whileInView={{ opacity: 1, y: 0, rotate: 0 }}
+              viewport={{ once: true, margin: "-40px" }}
+              transition={{ ...spring, delay: staggerAt(i) * 0.05 }}
+            >
               <button
                 type="button"
                 onClick={() => onSeek?.(seg.start)}
-                className="group flex w-full items-start gap-3 rounded-2xl border-2 border-foreground/10 bg-card p-3 text-left transition hover:border-foreground hover:-translate-y-0.5"
+                className="group flex w-full items-start gap-3 rounded-3xl brutal-border bg-card p-4 text-left shadow-[4px_4px_0_0_var(--foreground)] transition-all duration-150 ease-[var(--ease-spring)] hover:-translate-x-1 hover:-translate-y-1 hover:shadow-[7px_7px_0_0_var(--foreground)] active:translate-x-0 active:translate-y-0 active:shadow-[2px_2px_0_0_var(--foreground)]"
               >
-                <span className={`mt-1 inline-flex h-3 w-3 shrink-0 rounded-full ${s.dot}`} />
+                <span
+                  className={`mt-0.5 inline-flex h-5 w-5 shrink-0 items-center justify-center rounded-lg border-2 border-foreground ${s.dot} transition-transform group-hover:rotate-6`}
+                />
                 <div className="min-w-0 flex-1">
-                  <div className="flex items-baseline justify-between gap-2">
-                    <span className="font-display text-sm font-bold leading-tight">
+                  <div className="flex min-w-0 items-baseline justify-between gap-2">
+                    <span className="min-w-0 truncate font-display text-sm font-extrabold leading-tight">
                       {seg.title}
                     </span>
-                    <span className="font-mono text-[10px] uppercase tracking-wider text-muted-foreground">
+                    <span className="shrink-0 font-mono text-[10px] uppercase tracking-wider text-muted-foreground">
                       {fmtRange(seg.start, seg.end)}
                     </span>
                   </div>
                   <p className="mt-1 text-xs text-muted-foreground line-clamp-2">{seg.blurb}</p>
-                  <span className={`mt-2 inline-block rounded-md px-2 py-0.5 text-[10px] font-bold uppercase tracking-tighter ${s.bg}`}>
+                  <span
+                    className={`mt-2 inline-block rounded-md border px-2 py-0.5 text-[10px] font-bold uppercase tracking-tighter ${s.chip}`}
+                  >
                     {s.label}
                   </span>
                 </div>
               </button>
-            </li>
+            </motion.li>
           );
         })}
       </ul>
