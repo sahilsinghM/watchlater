@@ -101,6 +101,7 @@ export function buildLesson(meta: Meta, cues: Cue[]): Lesson {
     .map((c) => ({ timestamp: c.timestamp!, caption: c.title }));
 
   const watchScore = Math.round((6 + Math.min(4, cues.length / 200)) * 10) / 10;
+  // scoreReason explains this is a density estimate, not an AI quality judgment.
 
   // Quiz — templated against real card titles.
   const distractors = [
@@ -126,7 +127,7 @@ export function buildLesson(meta: Meta, cues: Cue[]): Lesson {
   const reallyAbout =
     `This video by ${meta.channel} runs ${Math.floor(duration / 60)} minutes. ` +
     `The core argument lives in ${fmtRange(core.start, core.end)} — the rest is setup and recap. ` +
-    `(Lesson generated from the transcript; AI summarisation is coming next.)`;
+    `(Density-based lesson — AI analysis pending.)`;
 
   const lesson: Lesson = {
     video: {
@@ -139,7 +140,7 @@ export function buildLesson(meta: Meta, cues: Cue[]): Lesson {
       thumbnail: meta.thumbnail,
     },
     watchScore,
-    scoreReason: `Based on ${cues.length} transcript cues over ${Math.floor(duration / 60)} minutes.`,
+    scoreReason: `Density estimate: ${cues.length} transcript cues over ${Math.floor(duration / 60)} minutes. AI analysis pending.`,
     difficulty: cues.length > 800 ? "Advanced" : cues.length > 300 ? "Intermediate" : "Beginner",
     reallyAbout,
     bestPart: { start: core.start, end: core.end, why: "Where the speaker stops setting up and makes the actual point." },

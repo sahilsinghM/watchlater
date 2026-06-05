@@ -58,6 +58,22 @@ describe("MVP flow", () => {
     expect(quality.code).toBe("TRANSCRIPT_TOO_SPARSE");
   });
 
+  // H1: NON_ENGLISH detection — the quality function supports it, ingest must pass the real language
+  test("rejects non-English transcript when actual language code is passed", () => {
+    const denseCues = Array.from({ length: 30 }, (_, i) => ({
+      start: i * 60,
+      dur: 55,
+      text: `이것은 한국어 자막입니다 번호 ${i}`,
+    }));
+    const quality = assessTranscriptQuality({
+      durationSeconds: 30 * 60,
+      language: "ko",
+      cues: denseCues,
+    });
+    expect(quality.ok).toBe(false);
+    expect(quality.code).toBe("NON_ENGLISH");
+  });
+
   test("persists minimal key frames and records degraded visual context", async () => {
     const store = createMemoryMvpStore();
     const frames = await persistKeyFrames(store, {
