@@ -194,27 +194,30 @@ async function extractCaptionTracksFromWatchPage(
 async function extractCaptionTracksViaBrowser(
   youtubeId: string,
 ): Promise<{ tracks: Array<{ baseUrl: string; languageCode?: string; kind?: string }>; diag: string }> {
-  let browser: import("playwright-core").Browser | null = null;
+  let browser: import("puppeteer-core").Browser | null = null;
   try {
     // Dynamic import so that local dev (where Chromium isn't installed) still
     // works without errors — playwright-core is only available at runtime.
-    const [chromium, { chromium: pw }] = await Promise.all([
+    const [chromium, puppeteer] = await Promise.all([
       import("chrome-aws-lambda"),
-      import("playwright-core"),
+      import("puppeteer-core"),
     ]);
-    browser = await pw.launch({
+    const executablePath = await chromium.default.executablePath;
+    browser = await puppeteer.default.launch({
       args: chromium.default.args,
-      executablePath: await chromium.default.executablePath,
+      executablePath,
       headless: chromium.default.headless,
+      defaultViewport: chromium.default.defaultViewport,
     });
     const page = await browser.newPage();
-    // Block images/fonts/media to reduce load time — we only need the JS data.
-    await page.route("**/*", (route) => {
-      const type = route.request().resourceType();
+    // Intercept requests — block binary resources to keep page load fast.
+    await page.setRequestInterception(true);
+    page.on("request", (req) => {
+      const type = req.resourceType();
       if (["image", "media", "font", "stylesheet"].includes(type)) {
-        route.abort();
+        req.abort();
       } else {
-        route.continue();
+        req.continue();
       }
     });
     await page.goto(`https://www.youtube.com/watch?v=${youtubeId}&hl=en`, {
