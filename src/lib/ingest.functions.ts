@@ -1,5 +1,6 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
+import { YoutubeTranscript } from "youtube-transcript";
 import { buildLesson, type Cue, type Meta } from "./buildLesson";
 import { sampleLesson } from "@/data/sampleLesson";
 import type { Lesson } from "./lessonSchema";
@@ -75,170 +76,25 @@ async function fetchOEmbed(youtubeId: string): Promise<{ title: string; channel:
   };
 }
 
-function extractPlayerResponse(html: string): unknown | null {
-  const marker = "ytInitialPlayerResponse";
-  const idx = html.indexOf(marker);
-  if (idx === -1) return null;
-  const braceStart = html.indexOf("{", idx);
-  if (braceStart === -1) return null;
-  let depth = 0;
-  let inStr = false;
-  let esc = false;
-  for (let i = braceStart; i < html.length; i++) {
-    const ch = html[i];
-    if (inStr) {
-      if (esc) esc = false;
-      else if (ch === "\\") esc = true;
-      else if (ch === '"') inStr = false;
-      continue;
-    }
-    if (ch === '"') inStr = true;
-    else if (ch === "{") depth++;
-    else if (ch === "}") {
-      depth--;
-      if (depth === 0) {
-        const json = html.slice(braceStart, i + 1);
-        try {
-          return JSON.parse(json);
-        } catch {
-          return null;
-        }
-      }
-    }
-  }
-  return null;
-}
-
-type CaptionTrack = { baseUrl: string; languageCode?: string; kind?: string };
-
-function pickCaptionTrack(pr: any): CaptionTrack | null {
-  const tracks: CaptionTrack[] | undefined =
-    pr?.captions?.playerCaptionsTracklistRenderer?.captionTracks;
-  if (!tracks || tracks.length === 0) return null;
-  const en = tracks.find((t) => t.languageCode === "en" && !t.kind);
-  if (en) return en;
-  const enAsr = tracks.find((t) => t.languageCode === "en");
-  if (enAsr) return enAsr;
-  return tracks[0];
-}
-
-function parseJson3(payload: any): Cue[] {
-  const events: any[] = payload?.events ?? [];
-  const cues: Cue[] = [];
-  for (const ev of events) {
-    if (!ev?.segs) continue;
-    const text = (ev.segs as Array<{ utf8?: string }>)
-      .map((s) => s.utf8 ?? "")
-      .join("")
-      .replace(/\n/g, " ")
-      .trim();
-    if (!text) continue;
-    cues.push({
-      start: (ev.tStartMs ?? 0) / 1000,
-      dur: (ev.dDurationMs ?? 0) / 1000,
-      text,
-    });
-  }
-  return cues;
-}
-
-function parseXml(xml: string): Cue[] {
-  const cues: Cue[] = [];
-  const re = /<text\s+start="([\d.]+)"(?:\s+dur="([\d.]+)")?[^>]*>([\s\S]*?)<\/text>/g;
-  let m: RegExpExecArray | null;
-  while ((m = re.exec(xml))) {
-    const text = m[3]
-      .replace(/<[^>]+>/g, "")
-      .replace(/&amp;/g, "&")
-      .replace(/&#39;/g, "'")
-      .replace(/&quot;/g, '"')
-      .replace(/&lt;/g, "<")
-      .replace(/&gt;/g, ">")
-      .replace(/\s+/g, " ")
-      .trim();
-    if (!text) continue;
-    cues.push({ start: parseFloat(m[1]), dur: parseFloat(m[2] ?? "0"), text });
-  }
-  return cues;
-}
-
 async function fetchTranscript(youtubeId: string): Promise<Cue[]> {
-  // Strategy 1: try the public timedtext endpoint directly (works for many
-  // videos with English captions without scraping the watch page, which
-  // YouTube often blocks from datacenter IPs).
-  for (const params of [
-    `lang=en&v=${youtubeId}&fmt=json3`,
-    `lang=en&v=${youtubeId}&kind=asr&fmt=json3`,
-    `lang=en-US&v=${youtubeId}&fmt=json3`,
-  ]) {
-    try {
-      const r = await fetch(`https://www.youtube.com/api/timedtext?${params}`, {
-        headers: { "user-agent": UA, "accept-language": "en-US,en;q=0.9" },
-      });
-      if (r.ok) {
-        const text = await r.text();
-        if (text.trim()) {
-          try {
-            const cues = parseJson3(JSON.parse(text));
-            if (cues.length > 0) return cues;
-          } catch {
-            /* not json */
-          }
-        }
-      }
-    } catch {
-      /* try next */
+  try {
+    const items = await YoutubeTranscript.fetchTranscript(youtubeId, { lang: "en" });
+    if (!items || items.length === 0) {
+      throw new IngestError("NO_CAPTIONS", "This video has no captions");
     }
-  }
-
-  // Strategy 2: scrape the watch page for the caption track URL.
-  const watchRes = await fetch(`https://www.youtube.com/watch?v=${youtubeId}&hl=en`, {
-    headers: {
-      "user-agent": UA,
-      "accept-language": "en-US,en;q=0.9",
-      cookie: "CONSENT=YES+1",
-    },
-  });
-  if (!watchRes.ok) {
-    throw new IngestError(
-      watchRes.status === 404 ? "NOT_FOUND" : "UNKNOWN",
-      `watch page failed: ${watchRes.status}`,
-    );
-  }
-  const html = await watchRes.text();
-  const pr = extractPlayerResponse(html);
-  if (!pr) {
-    console.error("[ingest] no ytInitialPlayerResponse, html length", html.length);
-    throw new IngestError("UNKNOWN", "Could not read video metadata");
-  }
-  const status = (pr as { playabilityStatus?: { status?: string } }).playabilityStatus?.status;
-  if (status && status !== "OK" && status !== "LIVE_STREAM_OFFLINE") {
-    console.warn("[ingest] playability status:", status, "for", youtubeId, "- continuing anyway");
-  }
-  const track = pickCaptionTrack(pr);
-  if (!track) {
-    console.error("[ingest] no caption tracks for", youtubeId);
-    throw new IngestError("NO_CAPTIONS", "This video has no captions");
-  }
-
-  const jsonUrl = track.baseUrl.includes("fmt=") ? track.baseUrl : `${track.baseUrl}&fmt=json3`;
-  const jsonRes = await fetch(jsonUrl, { headers: { "user-agent": UA } });
-  if (jsonRes.ok) {
-    try {
-      const payload = await jsonRes.json();
-      const cues = parseJson3(payload);
-      if (cues.length > 0) return cues;
-    } catch {
-      /* fall through to xml */
+    return items.map((item) => ({
+      start: item.offset / 1000,
+      dur: item.duration / 1000,
+      text: item.text,
+    }));
+  } catch (e) {
+    if (e instanceof IngestError) throw e;
+    const msg = String(e);
+    if (msg.includes("disabled") || msg.includes("no captions")) {
+      throw new IngestError("NO_CAPTIONS", "This video has no captions");
     }
+    throw new IngestError("UNKNOWN", `Transcript fetch failed: ${msg}`);
   }
-
-  const xmlRes = await fetch(track.baseUrl, { headers: { "user-agent": UA } });
-  if (!xmlRes.ok) throw new IngestError("NO_CAPTIONS", "Could not download captions");
-  const xml = await xmlRes.text();
-  const cues = parseXml(xml);
-  if (cues.length === 0) throw new IngestError("NO_CAPTIONS", "Captions were empty");
-  return cues;
 }
 
 export const getLessonByYoutubeId = createServerFn({ method: "POST" })
