@@ -94,7 +94,7 @@ const INNERTUBE_CLIENTS = [
   },
 ];
 
-async function fetchTranscript(youtubeId: string): Promise<Cue[]> {
+async function fetchTranscript(youtubeId: string): Promise<{ cues: Cue[]; languageCode: string }> {
   let captionTracks: Array<{ baseUrl: string; languageCode?: string; kind?: string }> = [];
 
   for (const client of INNERTUBE_CLIENTS) {
@@ -209,7 +209,7 @@ async function fetchTranscript(youtubeId: string): Promise<Cue[]> {
   if (cues.length === 0) {
     throw new IngestError("NO_CAPTIONS", "Captions were empty");
   }
-  return cues;
+  return { cues, languageCode: track.languageCode ?? "en" };
 }
 
 async function fetchCaptionXml(
@@ -254,6 +254,8 @@ export const getLessonByYoutubeId = createServerFn({ method: "POST" })
     const store = getMvpStore();
     const cached = await store.getLessonByYoutubeId(youtubeId);
     if (cached) return cached;
+    // H2: declare job outside try so the outer catch can mark it failed
+    let jobId: string | undefined;
     try {
       const session = await ensureAnonymousSession(store, "server-anonymous-session");
       const job = await store.createProcessingJob({
@@ -261,6 +263,7 @@ export const getLessonByYoutubeId = createServerFn({ method: "POST" })
         youtubeId,
         rawInput: `https://www.youtube.com/watch?v=${youtubeId}`,
       });
+      jobId = job.id;
       await store.updateProcessingJob(job.id, {
         status: "fetching_metadata",
         currentStep: "fetching_metadata",
@@ -269,15 +272,8 @@ export const getLessonByYoutubeId = createServerFn({ method: "POST" })
       try {
         meta = await fetchOEmbed(youtubeId);
       } catch (e) {
-        const err = e as IngestError;
-        await store.updateProcessingJob(job.id, {
-          status: "failed",
-          currentStep: "failed",
-          errorCode: err?.code ?? "UNKNOWN",
-          errorDetail: err?.message ?? "Metadata fetch failed",
-        });
-        console.warn("[ingest] oEmbed failed:", err?.message);
-        throw e;
+        console.warn("[ingest] oEmbed failed:", (e as IngestError)?.message);
+        throw e; // outer catch marks job failed
       }
       const fullMeta: Meta = { youtubeId, ...meta };
       await store.updateProcessingJob(job.id, {
@@ -285,13 +281,15 @@ export const getLessonByYoutubeId = createServerFn({ method: "POST" })
         currentStep: "reading_transcript",
       });
       let cues: Cue[];
-      let usingSyntheticCues = false;
+      let languageCode = "en";
       try {
-        cues = await fetchTranscript(youtubeId);
+        const transcript = await fetchTranscript(youtubeId);
+        cues = transcript.cues;
+        languageCode = transcript.languageCode;
       } catch (e) {
-        console.warn("[ingest] transcript fetch failed for", youtubeId, ":", e, "- using synthetic cues");
-        cues = syntheticCues(meta.title, meta.channel);
-        usingSyntheticCues = true;
+        // C1: fail closed — never fabricate a lesson from synthetic cues; outer catch marks job failed
+        console.warn("[ingest] transcript fetch failed for", youtubeId, ":", e);
+        throw e;
       }
       const duration = cues.length
         ? Math.max(60, Math.ceil(cues[cues.length - 1].start + (cues[cues.length - 1].dur || 4)))
@@ -302,18 +300,14 @@ export const getLessonByYoutubeId = createServerFn({ method: "POST" })
       if (duration > 90 * 60) {
         throw new IngestError("TOO_LONG", "Video is longer than the 90 minute MVP maximum");
       }
+      // H1: pass actual language code from the caption track, not hardcoded "en"
       const quality = assessTranscriptQuality({
         durationSeconds: duration,
-        language: "en",
+        language: languageCode,
         cues,
       });
       if (!quality.ok) {
-        await store.updateProcessingJob(job.id, {
-          status: "failed",
-          currentStep: "failed",
-          errorCode: quality.code,
-          errorDetail: quality.detail,
-        });
+        // outer catch marks job failed with quality.code
         throw new IngestError(quality.code as IngestErrorCode, quality.detail);
       }
       await store.updateProcessingJob(job.id, {
@@ -321,15 +315,14 @@ export const getLessonByYoutubeId = createServerFn({ method: "POST" })
         currentStep: "generating_lesson",
       });
       const config = getServerConfig();
-      const lesson =
-        config.openaiApiKey && !usingSyntheticCues
-          ? await generateOpenAILesson({
-              apiKey: config.openaiApiKey,
-              model: config.openaiModel,
-              meta: fullMeta,
-              cues,
-            })
-          : buildLesson(fullMeta, cues);
+      const lesson = config.openaiApiKey
+        ? await generateOpenAILesson({
+            apiKey: config.openaiApiKey,
+            model: config.openaiModel,
+            meta: fullMeta,
+            cues,
+          })
+        : buildLesson(fullMeta, cues);
       await store.saveLesson({ youtubeId, lesson });
       await store.updateProcessingJob(job.id, {
         status: "ready",
@@ -340,6 +333,19 @@ export const getLessonByYoutubeId = createServerFn({ method: "POST" })
       const err = e as IngestError;
       const code: IngestErrorCode =
         err && typeof err === "object" && "code" in err ? err.code : "UNKNOWN";
+      // H2: mark job failed for all error paths (TOO_SHORT, TOO_LONG, generation errors, etc.)
+      if (jobId) {
+        try {
+          await store.updateProcessingJob(jobId, {
+            status: "failed",
+            currentStep: "failed",
+            errorCode: code,
+            errorDetail: err?.message ?? "Ingest failed",
+          });
+        } catch {
+          // ignore — don't mask the original error
+        }
+      }
       throw new Error(`INGEST:${code}:${err?.message ?? "Failed to load video"}`);
     }
   });
