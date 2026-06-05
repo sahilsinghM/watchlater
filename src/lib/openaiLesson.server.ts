@@ -83,5 +83,10 @@ export async function generateOpenAILesson(input: {
   const text = payload.choices?.[0]?.message?.content ?? "";
   if (!text) throw new Error("OpenAI returned empty response");
   const parsed = JSON.parse(text);
-  return LessonSchema.parse(parsed);
+  try {
+    return LessonSchema.parse(parsed);
+  } catch (e) {
+    console.error("[openai] schema validation failed, response text:", text.substring(0, 2000));
+    throw e;
+  }
 }

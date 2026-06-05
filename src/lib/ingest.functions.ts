@@ -285,11 +285,13 @@ export const getLessonByYoutubeId = createServerFn({ method: "POST" })
         currentStep: "reading_transcript",
       });
       let cues: Cue[];
+      let usingSyntheticCues = false;
       try {
         cues = await fetchTranscript(youtubeId);
       } catch (e) {
         console.warn("[ingest] transcript fetch failed for", youtubeId, ":", e, "- using synthetic cues");
         cues = syntheticCues(meta.title, meta.channel);
+        usingSyntheticCues = true;
       }
       const duration = cues.length
         ? Math.max(60, Math.ceil(cues[cues.length - 1].start + (cues[cues.length - 1].dur || 4)))
@@ -320,21 +322,14 @@ export const getLessonByYoutubeId = createServerFn({ method: "POST" })
       });
       const config = getServerConfig();
       const lesson =
-        config.openaiApiKey
+        config.openaiApiKey && !usingSyntheticCues
           ? await generateOpenAILesson({
               apiKey: config.openaiApiKey,
               model: config.openaiModel,
               meta: fullMeta,
               cues,
             })
-          : config.allowPrototypeGeneration
-          ? buildLesson(fullMeta, cues)
-          : (() => {
-              throw new IngestError(
-                "GENERATION_FAILURE",
-                "OpenAI generation is required. Set OPENAI_API_KEY or enable ALLOW_PROTOTYPE_GENERATION for development.",
-              );
-            })();
+          : buildLesson(fullMeta, cues);
       await store.saveLesson({ youtubeId, lesson });
       await store.updateProcessingJob(job.id, {
         status: "ready",
