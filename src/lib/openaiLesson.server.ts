@@ -1,24 +1,6 @@
 import { Lesson as LessonSchema, type Lesson } from "./lessonSchema";
 import type { Cue, Meta } from "./buildLesson";
 
-type OpenAIResponse = {
-  output_text?: string;
-  output?: Array<{
-    content?: Array<{ text?: string; type?: string }>;
-  }>;
-};
-
-function outputText(payload: OpenAIResponse): string {
-  if (payload.output_text) return payload.output_text;
-  return (
-    payload.output
-      ?.flatMap((item) => item.content ?? [])
-      .map((content) => content.text ?? "")
-      .join("\n")
-      .trim() ?? ""
-  );
-}
-
 function transcriptExcerpt(cues: Cue[]): string {
   const maxChars = 45_000;
   let out = "";
@@ -37,15 +19,17 @@ export async function generateOpenAILesson(input: {
   cues: Cue[];
 }): Promise<Lesson> {
   const model = input.model ?? "gpt-4.1-mini";
-  const response = await fetch("https://api.openai.com/v1/responses", {
+  const response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
     method: "POST",
     headers: {
       authorization: `Bearer ${input.apiKey}`,
       "content-type": "application/json",
+      "http-referer": "https://watchlater-sigma.vercel.app",
+      "x-title": "VideoSense",
     },
     body: JSON.stringify({
       model,
-      input: [
+      messages: [
         {
           role: "system",
           content:
@@ -85,16 +69,18 @@ export async function generateOpenAILesson(input: {
           }),
         },
       ],
-      text: { format: { type: "json_object" } },
+      response_format: { type: "json_object" },
     }),
   });
 
   if (!response.ok) {
-    throw new Error(`OpenAI generation failed: ${response.status}`);
+    const body = await response.text().catch(() => "");
+    throw new Error(`OpenAI generation failed: ${response.status} ${body}`);
   }
 
-  const payload = (await response.json()) as OpenAIResponse;
-  const text = outputText(payload);
+  const payload = await response.json();
+  const text = payload.choices?.[0]?.message?.content ?? "";
+  if (!text) throw new Error("OpenAI returned empty response");
   const parsed = JSON.parse(text);
   return LessonSchema.parse(parsed);
 }
