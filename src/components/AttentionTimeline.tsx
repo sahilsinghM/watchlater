@@ -1,4 +1,4 @@
-import { motion } from "motion/react";
+import { motion, useReducedMotion } from "motion/react";
 import type { Segment } from "@/lib/lessonSchema";
 import { fmtRange } from "@/lib/lessonSchema";
 
@@ -45,6 +45,12 @@ type Props = {
 
 export function AttentionTimeline({ segments, totalDuration, onSeek }: Props) {
   const total = Math.max(totalDuration, 1);
+  // Respect reduced-motion: skip entrance transforms so nothing animates in
+  // (and nothing renders mid-animation) for users who opt out.
+  const reduce = useReducedMotion();
+  // Cap the stagger so a dense timeline (20+ segments) doesn't take seconds
+  // to finish revealing.
+  const staggerAt = (i: number) => Math.min(i, 8);
 
   return (
     <div className="space-y-5">
@@ -65,8 +71,10 @@ export function AttentionTimeline({ segments, totalDuration, onSeek }: Props) {
         })}
       </div>
 
-      {/* The bar — heavy border + hard shadow, on-brand. Segments paint in. */}
-      <div className="flex h-10 w-full overflow-hidden rounded-2xl brutal-border bg-card brutal-shadow-sm">
+      {/* The bar — heavy border + hard shadow, on-brand. Segments paint in.
+          No overflow-hidden: the hover chips need to escape the bar. End
+          segments round their outer corners so the frame still looks clean. */}
+      <div className="flex h-10 w-full rounded-2xl brutal-border bg-card brutal-shadow-sm">
         {segments.map((seg, i) => {
           const pct = ((seg.end - seg.start) / total) * 100;
           const s = kindStyles[seg.kind];
@@ -75,23 +83,25 @@ export function AttentionTimeline({ segments, totalDuration, onSeek }: Props) {
               key={i}
               type="button"
               onClick={() => onSeek?.(seg.start)}
-              initial={{ scaleX: 0 }}
+              initial={reduce ? false : { scaleX: 0 }}
               animate={{ scaleX: 1 }}
-              transition={{ ...spring, delay: i * 0.045 }}
+              transition={{ ...spring, delay: staggerAt(i) * 0.045 }}
               style={{ width: `${pct}%`, transformOrigin: "left" }}
               title={`${s.label} · ${fmtRange(seg.start, seg.end)} · ${seg.title}`}
               aria-label={`Jump to ${seg.title}`}
-              className={`group/seg relative h-full border-r-[3px] border-foreground last:border-r-0 ${s.bar} transition-[filter] hover:brightness-105`}
+              className={`group/seg relative h-full border-r-[3px] border-foreground last:border-r-0 ${
+                i === 0 ? "rounded-l-2xl" : ""
+              } ${i === segments.length - 1 ? "rounded-r-2xl" : ""} ${s.bar} transition-[filter] hover:brightness-105`}
             >
               {/* Inline label when the segment is wide enough to read. */}
               {pct > 11 && (
-                <span className="pointer-events-none absolute inset-0 grid place-items-center px-1 font-mono text-[9px] font-bold uppercase tracking-widest text-foreground/70">
+                <span className="pointer-events-none absolute inset-0 grid place-items-center px-1 font-mono text-[9px] font-bold uppercase tracking-widest text-foreground/80">
                   {s.label}
                 </span>
               )}
               {/* Floating tooltip chip on hover. */}
               <span
-                className={`pointer-events-none absolute -top-11 left-1/2 z-10 -translate-x-1/2 whitespace-nowrap rounded-xl border-2 px-2.5 py-1 font-mono text-[10px] font-bold uppercase tracking-widest opacity-0 shadow-[3px_3px_0_0_var(--foreground)] transition-opacity duration-150 group-hover/seg:opacity-100 ${s.chip}`}
+                className={`pointer-events-none absolute -top-11 left-1/2 z-10 -translate-x-1/2 whitespace-nowrap rounded-xl border-2 px-2.5 py-1 font-mono text-[10px] font-bold uppercase tracking-widest opacity-0 shadow-[3px_3px_0_0_var(--foreground)] transition-opacity duration-150 group-hover/seg:opacity-100 group-focus-visible/seg:opacity-100 ${s.chip}`}
               >
                 {s.label} · {fmtRange(seg.start, seg.end)}
               </span>
@@ -107,10 +117,10 @@ export function AttentionTimeline({ segments, totalDuration, onSeek }: Props) {
           return (
             <motion.li
               key={i}
-              initial={{ opacity: 0, y: 18, rotate: -1 }}
+              initial={reduce ? false : { opacity: 0, y: 18, rotate: -1 }}
               whileInView={{ opacity: 1, y: 0, rotate: 0 }}
               viewport={{ once: true, margin: "-40px" }}
-              transition={{ ...spring, delay: i * 0.05 }}
+              transition={{ ...spring, delay: staggerAt(i) * 0.05 }}
             >
               <button
                 type="button"
@@ -121,8 +131,8 @@ export function AttentionTimeline({ segments, totalDuration, onSeek }: Props) {
                   className={`mt-0.5 inline-flex h-5 w-5 shrink-0 items-center justify-center rounded-lg border-2 border-foreground ${s.dot} transition-transform group-hover:rotate-6`}
                 />
                 <div className="min-w-0 flex-1">
-                  <div className="flex items-baseline justify-between gap-2">
-                    <span className="font-display text-sm font-extrabold leading-tight">
+                  <div className="flex min-w-0 items-baseline justify-between gap-2">
+                    <span className="min-w-0 truncate font-display text-sm font-extrabold leading-tight">
                       {seg.title}
                     </span>
                     <span className="shrink-0 font-mono text-[10px] uppercase tracking-wider text-muted-foreground">
