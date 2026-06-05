@@ -1,6 +1,5 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
-import { YoutubeTranscript } from "youtube-transcript";
 import { buildLesson, type Cue, type Meta } from "./buildLesson";
 import { sampleLesson } from "@/data/sampleLesson";
 import type { Lesson } from "./lessonSchema";
@@ -76,25 +75,134 @@ async function fetchOEmbed(youtubeId: string): Promise<{ title: string; channel:
   };
 }
 
+const INNERTUBE_URL = "https://www.youtube.com/youtubei/v1/player?prettyPrint=false";
+
 async function fetchTranscript(youtubeId: string): Promise<Cue[]> {
+  let captionTracks: Array<{ baseUrl: string; languageCode?: string; kind?: string }> = [];
+
+  // Try InnerTube API with Android client context (works from server IPs).
   try {
-    const items = await YoutubeTranscript.fetchTranscript(youtubeId, { lang: "en" });
-    if (!items || items.length === 0) {
-      throw new IngestError("NO_CAPTIONS", "This video has no captions");
+    const res = await fetch(INNERTUBE_URL, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "User-Agent":
+          "com.google.android.youtube/20.10.38 (Linux; U; Android 14)",
+      },
+      body: JSON.stringify({
+        context: {
+          client: { clientName: "ANDROID", clientVersion: "20.10.38" },
+        },
+        videoId: youtubeId,
+      }),
+    });
+    if (res.ok) {
+      const data = await res.json();
+      const ps = data?.playabilityStatus;
+      if (ps?.status === "UNPLAYABLE" || ps?.status === "LOGIN_REQUIRED") {
+        throw new IngestError(
+          "PRIVATE_OR_BLOCKED",
+          ps.reason ?? "This video isn't playable",
+        );
+      }
+      const tracks: unknown[] | undefined =
+        data?.captions?.playerCaptionsTracklistRenderer?.captionTracks;
+      if (tracks) {
+        const en = tracks.find(
+          (t: any) => t.languageCode === "en" && !t.kind,
+        );
+        captionTracks = en ? [en] : tracks;
+      }
     }
-    return items.map((item) => ({
-      start: item.offset / 1000,
-      dur: item.duration / 1000,
-      text: item.text,
-    }));
   } catch (e) {
     if (e instanceof IngestError) throw e;
-    const msg = String(e);
-    if (msg.includes("disabled") || msg.includes("no captions")) {
-      throw new IngestError("NO_CAPTIONS", "This video has no captions");
-    }
-    throw new IngestError("UNKNOWN", `Transcript fetch failed: ${msg}`);
+    console.warn("[ingest] InnerTube API failed for", youtubeId, ":", e);
   }
+
+  if (captionTracks.length === 0) {
+    throw new IngestError("NO_CAPTIONS", "This video has no captions");
+  }
+
+  const track = captionTracks[0];
+  const url = track.baseUrl;
+
+  const xmlRes = await fetch(url, {
+    headers: {
+      "User-Agent":
+        "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_4) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/85.0.4183.83 Safari/537.36,gzip(gfe)",
+    },
+  });
+  if (!xmlRes.ok) {
+    throw new IngestError("NO_CAPTIONS", "Could not download captions");
+  }
+  const xml = await xmlRes.text();
+  if (!xml.trim()) {
+    throw new IngestError("NO_CAPTIONS", "Captions were empty");
+  }
+
+  const cues: Cue[] = [];
+  // Try srv3 format first: <p t="ms" d="ms"><s>word</s>...</p>
+  const pRegex = /<p\s+t="(\d+)"\s+d="(\d+)"[^>]*>([\s\S]*?)<\/p>/g;
+  let m: RegExpExecArray | null;
+  while ((m = pRegex.exec(xml))) {
+    const startMs = parseInt(m[1], 10);
+    const durMs = parseInt(m[2], 10);
+    const inner = m[3];
+    let text = "";
+    const sRegex = /<s[^>]*>([^<]*)<\/s>/g;
+    let sm: RegExpExecArray | null;
+    while ((sm = sRegex.exec(inner))) {
+      text += sm[1];
+    }
+    if (!text) {
+      text = inner.replace(/<[^>]+>/g, "");
+    }
+    text = text
+      .replace(/&amp;/g, "&")
+      .replace(/&lt;/g, "<")
+      .replace(/&gt;/g, ">")
+      .replace(/&quot;/g, '"')
+      .replace(/&#39;/g, "'")
+      .replace(/&#x([0-9a-fA-F]+);/g, (_, h) =>
+        String.fromCodePoint(parseInt(h, 16)),
+      )
+      .replace(/&#(\d+);/g, (_, d) => String.fromCodePoint(parseInt(d, 10)))
+      .trim();
+    if (text) {
+      cues.push({
+        start: startMs / 1000,
+        dur: durMs / 1000,
+        text,
+      });
+    }
+  }
+
+  if (cues.length === 0) {
+    // Fall back to classic format: <text start="s" dur="s">content</text>
+    const classicRe = /<text start="([^"]*)" dur="([^"]*)">([^<]*)<\/text>/g;
+    while ((m = classicRe.exec(xml))) {
+      const text = m[3]
+        .replace(/&amp;/g, "&")
+        .replace(/&lt;/g, "<")
+        .replace(/&gt;/g, ">")
+        .replace(/&quot;/g, '"')
+        .replace(/&#39;/g, "'")
+        .replace(/\s+/g, " ")
+        .trim();
+      if (text) {
+        cues.push({
+          start: parseFloat(m[1]),
+          dur: parseFloat(m[2] ?? "0"),
+          text,
+        });
+      }
+    }
+  }
+
+  if (cues.length === 0) {
+    throw new IngestError("NO_CAPTIONS", "Captions were empty");
+  }
+  return cues;
 }
 
 export const getLessonByYoutubeId = createServerFn({ method: "POST" })
