@@ -194,20 +194,24 @@ async function extractCaptionTracksFromWatchPage(
 async function extractCaptionTracksViaBrowser(
   youtubeId: string,
 ): Promise<{ tracks: Array<{ baseUrl: string; languageCode?: string; kind?: string }>; diag: string }> {
-  let browser: import("puppeteer-core").Browser | null = null;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  let browser: any = null;
   try {
     // Dynamic import so that local dev (where Chromium isn't installed) still
     // works without errors — playwright-core is only available at runtime.
-    const [chromium, puppeteer] = await Promise.all([
-      import("chrome-aws-lambda"),
-      import("puppeteer-core"),
-    ]);
-    const executablePath = await chromium.default.executablePath;
-    browser = await puppeteer.default.launch({
-      args: chromium.default.args,
+    // Use createRequire so Rollup/Nitro skips static CJS-to-ESM conversion
+    // for chrome-aws-lambda and puppeteer-core (both are CJS and their
+    // transitive deps like `debug` break when Rollup tries to inline them).
+    const { createRequire } = await import("node:module");
+    const req = createRequire(import.meta.url);
+    const chromium = req("chrome-aws-lambda");
+    const puppeteer = req("puppeteer-core");
+    const executablePath = await chromium.executablePath;
+    browser = await puppeteer.launch({
+      args: chromium.args,
       executablePath,
-      headless: chromium.default.headless,
-      defaultViewport: chromium.default.defaultViewport,
+      headless: chromium.headless,
+      defaultViewport: chromium.defaultViewport,
     });
     const page = await browser.newPage();
     // Intercept requests — block binary resources to keep page load fast.
