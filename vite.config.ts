@@ -19,5 +19,10 @@ export default defineConfig({
       serverDir: ".vercel/output/functions/__server.func",
       publicDir: ".vercel/output/static",
     },
+    // Keep Chromium-related packages out of the Nitro bundle so the binary
+    // files (.br) are deployed to node_modules and loaded at runtime.
+    externals: {
+      inline: ["chrome-aws-lambda", "playwright-core", "puppeteer-core"],
+    },
   },
 });
