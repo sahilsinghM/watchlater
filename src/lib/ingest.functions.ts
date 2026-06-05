@@ -213,7 +213,7 @@ async function fetchTranscript(youtubeId: string): Promise<Cue[]> {
   }
   const status = (pr as { playabilityStatus?: { status?: string } }).playabilityStatus?.status;
   if (status && status !== "OK" && status !== "LIVE_STREAM_OFFLINE") {
-    throw new IngestError("PRIVATE_OR_BLOCKED", "This video isn't playable");
+    console.warn("[ingest] playability status:", status, "for", youtubeId, "- continuing anyway");
   }
   const track = pickCaptionTrack(pr);
   if (!track) {
