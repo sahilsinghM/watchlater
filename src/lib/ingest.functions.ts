@@ -94,6 +94,60 @@ const INNERTUBE_CLIENTS = [
   },
 ];
 
+// Walk a JSON string from a known `{` offset and return the slice for the
+// matching `}`, handling nested objects. Returns null if the braces are
+// unbalanced (e.g. the page was truncated mid-stream).
+function extractBalancedJSON(html: string, key: string): unknown | null {
+  const keyIdx = html.indexOf(`${key} = `);
+  if (keyIdx === -1) return null;
+  const start = html.indexOf("{", keyIdx);
+  if (start === -1) return null;
+  let depth = 0;
+  for (let i = start; i < html.length; i++) {
+    if (html[i] === "{") depth++;
+    else if (html[i] === "}") {
+      depth--;
+      if (depth === 0) {
+        try { return JSON.parse(html.slice(start, i + 1)); } catch { return null; }
+      }
+    }
+  }
+  return null;
+}
+
+// Fallback: parse caption track URLs directly from the YouTube watch page.
+// Used when InnerTube clients are blocked by YouTube on datacenter IPs (e.g.
+// Vercel), which return LOGIN_REQUIRED / UNPLAYABLE even for public videos.
+async function extractCaptionTracksFromWatchPage(
+  youtubeId: string,
+): Promise<Array<{ baseUrl: string; languageCode?: string; kind?: string }>> {
+  try {
+    const res = await fetch(
+      `https://www.youtube.com/watch?v=${youtubeId}&hl=en`,
+      {
+        headers: {
+          "User-Agent":
+            "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
+          "Accept-Language": "en-US,en;q=0.9",
+          Accept:
+            "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+        },
+      },
+    );
+    if (!res.ok) return [];
+    const html = await res.text();
+    const pr = extractBalancedJSON(html, "ytInitialPlayerResponse") as any;
+    if (!pr) return [];
+    const tracks: unknown[] | undefined =
+      pr?.captions?.playerCaptionsTracklistRenderer?.captionTracks;
+    if (!tracks || tracks.length === 0) return [];
+    return tracks as Array<{ baseUrl: string; languageCode?: string; kind?: string }>;
+  } catch (e) {
+    console.warn("[ingest] watch-page fallback failed:", e);
+    return [];
+  }
+}
+
 async function fetchTranscript(youtubeId: string): Promise<{ cues: Cue[]; languageCode: string }> {
   let captionTracks: Array<{ baseUrl: string; languageCode?: string; kind?: string }> = [];
 
@@ -141,6 +195,19 @@ async function fetchTranscript(youtubeId: string): Promise<{ cues: Cue[]; langua
       }
     } catch (e) {
       console.warn("[ingest] InnerTube", client.name, "failed:", e);
+    }
+  }
+
+  // If all InnerTube clients were blocked (common on datacenter IPs like
+  // Vercel), fall back to parsing the public watch page HTML.
+  if (captionTracks.length === 0) {
+    console.warn("[ingest] all InnerTube clients blocked, trying watch-page fallback");
+    const fallbackTracks = await extractCaptionTracksFromWatchPage(youtubeId);
+    if (fallbackTracks.length > 0) {
+      const en = fallbackTracks.find(
+        (t) => t.languageCode === "en" && !t.kind,
+      );
+      captionTracks = en ? [en] : [fallbackTracks[0]];
     }
   }
 
