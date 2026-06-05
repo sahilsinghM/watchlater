@@ -121,7 +121,7 @@ function extractBalancedJSON(html: string, key: string): unknown | null {
 // Includes the CONSENT cookie so YouTube does not redirect to a consent gate.
 async function extractCaptionTracksFromWatchPage(
   youtubeId: string,
-): Promise<Array<{ baseUrl: string; languageCode?: string; kind?: string }>> {
+): Promise<{ tracks: Array<{ baseUrl: string; languageCode?: string; kind?: string }>; diag: string }> {
   try {
     const res = await fetch(
       `https://www.youtube.com/watch?v=${youtubeId}&hl=en&gl=US&persist_hl=1&persist_gl=1`,
@@ -156,34 +156,24 @@ async function extractCaptionTracksFromWatchPage(
       res.status,
       res.url,
     );
-    if (!res.ok) return [];
+    const diag0 = `wp:http=${res.status}`;
+    if (!res.ok) return { tracks: [], diag: diag0 };
     const html = await res.text();
     const hasPlayerResponse = html.includes("ytInitialPlayerResponse");
-    console.warn(
-      "[ingest] watch-page HTML len:",
-      html.length,
-      "hasPlayerResponse:",
-      hasPlayerResponse,
-    );
+    const diag1 = `${diag0},len=${html.length},hasPR=${hasPlayerResponse}`;
+    console.warn("[ingest] watch-page:", diag1);
     const pr = extractBalancedJSON(html, "ytInitialPlayerResponse") as any;
-    if (!pr) {
-      console.warn("[ingest] watch-page: ytInitialPlayerResponse parse failed");
-      return [];
-    }
-    const ps = pr?.playabilityStatus?.status;
+    if (!pr) return { tracks: [], diag: `${diag1},parse=fail` };
+    const ps = pr?.playabilityStatus?.status ?? "?";
     const tracks: unknown[] | undefined =
       pr?.captions?.playerCaptionsTracklistRenderer?.captionTracks;
-    console.warn(
-      "[ingest] watch-page ps:",
-      ps,
-      "tracks:",
-      tracks?.length ?? 0,
-    );
-    if (!tracks || tracks.length === 0) return [];
-    return tracks as Array<{ baseUrl: string; languageCode?: string; kind?: string }>;
-  } catch (e) {
+    const diag2 = `${diag1},ps=${ps},tracks=${tracks?.length ?? 0}`;
+    console.warn("[ingest] watch-page:", diag2);
+    if (!tracks || tracks.length === 0) return { tracks: [], diag: diag2 };
+    return { tracks: tracks as Array<{ baseUrl: string; languageCode?: string; kind?: string }>, diag: diag2 };
+  } catch (e: any) {
     console.warn("[ingest] watch-page fallback exception:", e);
-    return [];
+    return { tracks: [], diag: `wp:exception=${String(e?.message ?? e).slice(0, 80)}` };
   }
 }
 
@@ -239,9 +229,11 @@ async function fetchTranscript(youtubeId: string): Promise<{ cues: Cue[]; langua
 
   // If all InnerTube clients were blocked (common on datacenter IPs like
   // Vercel), fall back to parsing the public watch page HTML.
+  let watchPageDiag = "";
   if (captionTracks.length === 0) {
     console.warn("[ingest] all InnerTube clients blocked, trying watch-page fallback");
-    const fallbackTracks = await extractCaptionTracksFromWatchPage(youtubeId);
+    const { tracks: fallbackTracks, diag } = await extractCaptionTracksFromWatchPage(youtubeId);
+    watchPageDiag = diag;
     if (fallbackTracks.length > 0) {
       const en = fallbackTracks.find(
         (t) => t.languageCode === "en" && !t.kind,
@@ -251,7 +243,7 @@ async function fetchTranscript(youtubeId: string): Promise<{ cues: Cue[]; langua
   }
 
   if (captionTracks.length === 0) {
-    throw new IngestError("NO_CAPTIONS", "This video has no captions");
+    throw new IngestError("NO_CAPTIONS", `This video has no captions [${watchPageDiag}]`);
   }
 
   const track = captionTracks[0];
