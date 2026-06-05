@@ -165,8 +165,18 @@ async function extractCaptionTracksFromWatchPage(
     const pr = extractBalancedJSON(html, "ytInitialPlayerResponse") as any;
     if (!pr) return { tracks: [], diag: `${diag1},parse=fail` };
     const ps = pr?.playabilityStatus?.status ?? "?";
-    const tracks: unknown[] | undefined =
+    let tracks: unknown[] | undefined =
       pr?.captions?.playerCaptionsTracklistRenderer?.captionTracks;
+
+    // When ytInitialPlayerResponse has LOGIN_REQUIRED from a datacenter IP,
+    // captionTracks is absent there. ytInitialData (page layout data) is a
+    // separate object that often still carries the caption track list.
+    if (!tracks || tracks.length === 0) {
+      const id = extractBalancedJSON(html, "ytInitialData") as any;
+      const idTracks = id?.captions?.playerCaptionsTracklistRenderer?.captionTracks;
+      if (idTracks && idTracks.length > 0) tracks = idTracks;
+    }
+
     const diag2 = `${diag1},ps=${ps},tracks=${tracks?.length ?? 0}`;
     console.warn("[ingest] watch-page:", diag2);
     if (!tracks || tracks.length === 0) return { tracks: [], diag: diag2 };
