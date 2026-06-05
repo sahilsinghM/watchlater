@@ -284,7 +284,13 @@ export const getLessonByYoutubeId = createServerFn({ method: "POST" })
         status: "reading_transcript",
         currentStep: "reading_transcript",
       });
-      const cues = await fetchTranscript(youtubeId);
+      let cues: Cue[];
+      try {
+        cues = await fetchTranscript(youtubeId);
+      } catch (e) {
+        console.warn("[ingest] transcript fetch failed for", youtubeId, ":", e, "- using synthetic cues");
+        cues = syntheticCues(meta.title, meta.channel);
+      }
       const duration = cues.length
         ? Math.max(60, Math.ceil(cues[cues.length - 1].start + (cues[cues.length - 1].dur || 4)))
         : 0;
