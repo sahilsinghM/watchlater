@@ -19,10 +19,18 @@ export default defineConfig({
       serverDir: ".vercel/output/functions/__server.func",
       publicDir: ".vercel/output/static",
     },
-    // Keep Chromium-related packages out of the Nitro bundle so the binary
-    // files (.br) are deployed to node_modules and loaded at runtime.
+    // Keep Chromium + puppeteer packages as runtime node_modules, not bundled.
+    // Nitro bundles server code as ESM; chrome-aws-lambda and puppeteer-core
+    // have CJS sub-dependencies (debug, mitt, etc.) that break when bundled.
     externals: {
-      inline: ["chrome-aws-lambda", "playwright-core", "puppeteer-core"],
+      external: [
+        "chrome-aws-lambda",
+        "puppeteer-core",
+        "debug",
+        "mitt",
+        "ws",
+        "got",
+      ],
     },
   },
 });
