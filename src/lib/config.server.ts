@@ -24,5 +24,7 @@ export function getServerConfig() {
     allowPrototypeGeneration: process.env.ALLOW_PROTOTYPE_GENERATION === "true",
     supabaseUrl: process.env.SUPABASE_URL,
     supabaseServiceRoleKey: process.env.SUPABASE_SERVICE_ROLE_KEY,
+    ingestWorkerUrl: process.env.INGEST_WORKER_URL,
+    ingestWorkerSecret: process.env.INGEST_WORKER_SECRET,
   };
 }

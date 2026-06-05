@@ -113,6 +113,7 @@ export type MvpStore = {
     rawInput: string;
   }): Promise<ProcessingJob>;
   getProcessingJob(id: string): Promise<ProcessingJob | null>;
+  getActiveJobByYoutubeId(youtubeId: string): Promise<ProcessingJob | null>;
   updateProcessingJob(id: string, patch: Partial<ProcessingJob>): Promise<ProcessingJob>;
   saveKeyFrames(frames: KeyFrame[]): Promise<KeyFrame[]>;
   saveLesson(input: { youtubeId: string; lesson: Lesson }): Promise<Lesson>;
@@ -178,6 +179,12 @@ export function createMemoryMvpStore(): MvpStore {
     },
     async getProcessingJob(jobId) {
       return jobs.get(jobId) ?? null;
+    },
+    async getActiveJobByYoutubeId(youtubeId) {
+      for (const job of jobs.values()) {
+        if (job.youtubeId === youtubeId && job.status !== "failed") return job;
+      }
+      return null;
     },
     async updateProcessingJob(jobId, patch) {
       const existing = jobs.get(jobId);

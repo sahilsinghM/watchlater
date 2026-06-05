@@ -1,10 +1,9 @@
 import { createFileRoute, useNavigate, Link } from "@tanstack/react-router";
-import { useEffect, useState } from "react";
+import { useEffect, useRef } from "react";
 import { motion } from "motion/react";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useMutation } from "@tanstack/react-query";
 import { mascot } from "@/components/Brand";
-import { lessonQueryOptions } from "@/lib/lessonQuery";
-import { parseIngestError, type IngestErrorCode } from "@/lib/ingest.functions";
+import { requestLesson, getIngestStatus, parseIngestError, type IngestErrorCode } from "@/lib/ingest.functions";
 
 export const Route = createFileRoute("/processing/$videoId")({
   head: () => ({
@@ -14,43 +13,74 @@ export const Route = createFileRoute("/processing/$videoId")({
 });
 
 const STEPS = [
-  { label: "Fetching video details", quip: "Saying hi to YouTube." },
-  { label: "Reading the transcript", quip: "Watching the boring parts so you don't have to." },
-  { label: "Finding the key moments", quip: "Finding where the creator finally gets to the point." },
-  { label: "Analyzing key moments", quip: "Finding the timestamps worth jumping to." },
-  { label: "Building your interactive lesson", quip: "Stacking cards. Tuning the deck." },
-  { label: "Preparing your quiz", quip: "Making sure it's earned, not gifted." },
+  { key: "queued",             label: "Fetching video details",           quip: "Saying hi to YouTube." },
+  { key: "fetching_metadata",  label: "Fetching video details",           quip: "Saying hi to YouTube." },
+  { key: "reading_transcript", label: "Reading the transcript",           quip: "Watching the boring parts so you don't have to." },
+  { key: "reading_transcript", label: "Finding the key moments",          quip: "Finding where the creator finally gets to the point." },
+  { key: "generating_lesson",  label: "Analyzing key moments",            quip: "Finding the timestamps worth jumping to." },
+  { key: "generating_lesson",  label: "Building your interactive lesson", quip: "Stacking cards. Tuning the deck." },
+  { key: "ready",              label: "Preparing your quiz",              quip: "Making sure it's earned, not gifted." },
 ];
+
+function stepIndex(step: string): number {
+  const i = STEPS.findIndex((s) => s.key === step);
+  return i === -1 ? 0 : i;
+}
 
 function Processing() {
   const navigate = useNavigate();
   const { videoId } = Route.useParams();
-  const [step, setStep] = useState(0);
-  const query = useQuery(lessonQueryOptions(videoId));
+  const dispatched = useRef(false);
+
+  // Kick off the ingest job once — idempotent (server checks for existing jobs)
+  const dispatch = useMutation({
+    mutationFn: () => requestLesson({ data: { youtubeId: videoId } }),
+  });
 
   useEffect(() => {
-    if (step >= STEPS.length - 1) return;
-    const t = setTimeout(() => setStep((s) => s + 1), 650);
-    return () => clearTimeout(t);
-  }, [step]);
+    if (dispatched.current) return;
+    dispatched.current = true;
+    dispatch.mutate();
+  }, []);
 
+  // Poll Supabase job status every 2 s until ready or failed
+  const statusQuery = useQuery({
+    queryKey: ["ingest-status", videoId],
+    queryFn: () => getIngestStatus({ data: { youtubeId: videoId } }),
+    refetchInterval: (q) => {
+      const phase = q.state.data?.phase;
+      if (phase === "ready" || phase === "failed") return false;
+      return 2000;
+    },
+    enabled: dispatch.isSuccess || dispatch.isError,
+    retry: false,
+  });
+
+  // Navigate as soon as lesson is ready
   useEffect(() => {
-    if (query.isSuccess && step >= STEPS.length - 1) {
+    if (statusQuery.data?.phase === "ready") {
       const t = setTimeout(
         () => navigate({ to: "/lesson/$videoId", params: { videoId } }),
         400,
       );
       return () => clearTimeout(t);
     }
-  }, [query.isSuccess, step, navigate, videoId]);
+  }, [statusQuery.data?.phase, navigate, videoId]);
 
-  if (query.isError) {
-    const { code, detail } = parseIngestError((query.error as Error).message);
+  // Show error state
+  if (statusQuery.data?.phase === "failed") {
+    const { code, detail } = statusQuery.data;
+    return <ErrorState code={code} detail={detail} />;
+  }
+  if (statusQuery.isError) {
+    const { code, detail } = parseIngestError((statusQuery.error as Error).message);
     return <ErrorState code={code} detail={detail} />;
   }
 
-  const visibleStep = query.isSuccess ? STEPS.length : step + 1;
-  const pct = Math.min(100, (visibleStep / STEPS.length) * 100);
+  const currentStep = statusQuery.data?.phase === "processing" ? statusQuery.data.step : "queued";
+  const isReady = statusQuery.data?.phase === "ready";
+  const activeIdx = isReady ? STEPS.length : stepIndex(currentStep);
+  const pct = Math.min(100, ((isReady ? STEPS.length : activeIdx + 1) / STEPS.length) * 100);
 
   return (
     <div className="min-h-screen bg-background grid place-items-center px-6 py-12">
@@ -82,11 +112,11 @@ function Processing() {
 
         <ul className="space-y-2">
           {STEPS.map((s, i) => {
-            const done = query.isSuccess || i < step;
-            const active = !query.isSuccess && i === step;
+            const done = isReady || i < activeIdx;
+            const active = !isReady && i === activeIdx;
             return (
               <li
-                key={s.label}
+                key={`${s.key}-${i}`}
                 className={
                   "flex items-start gap-3 rounded-2xl border-2 px-4 py-3 transition " +
                   (done

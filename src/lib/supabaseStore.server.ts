@@ -79,6 +79,19 @@ export function createSupabaseStore(): MvpStore {
       return data ? parseProcessingJob(data) : null;
     },
 
+    async getActiveJobByYoutubeId(youtubeId) {
+      const supabase = getSupabaseAdmin();
+      const { data } = await supabase
+        .from("processing_jobs")
+        .select("*")
+        .eq("youtube_id", youtubeId)
+        .neq("status", "failed")
+        .order("created_at", { ascending: false })
+        .limit(1)
+        .maybeSingle();
+      return data ? parseProcessingJob(data) : null;
+    },
+
     async updateProcessingJob(id, patch) {
       const supabase = getSupabaseAdmin();
       const updates: Record<string, any> = { updated_at: new Date().toISOString() };
