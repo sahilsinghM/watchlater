@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<link rel="stylesheet" href="../colors_and_type.css">
+<style>
+  html,body { margin:0; }
+  body { background: var(--bg1); font-family: var(--font-body); color: var(--fg1); padding: 22px 26px 28px; }
+  .cap { font-family: var(--font-mono); font-size:10px; letter-spacing:0.15em; text-transform:uppercase; color:var(--fg2); margin-bottom:6px; }
+  .sub { font-size:12px; color:var(--fg2); margin:0 0 22px; }
+  .lab { font-family:var(--font-mono); font-size:9px; letter-spacing:0.12em; text-transform:uppercase; color:var(--fg2); margin:0 0 10px; }
+  .group { margin-bottom:24px; }
+  .tag { font-family:var(--font-mono); font-size:9px; letter-spacing:0.1em; text-transform:uppercase; color:var(--fg3); margin-top:8px; display:block; }
+
+  /* ---- lesson progress bar: fills in steps with spring ease ---- */
+  .track { height:14px; width:100%; max-width:520px; background:color-mix(in oklab, var(--foreground) 6%, transparent); border:3px solid var(--foreground); border-radius:9999px; overflow:hidden; }
+  .fill { height:100%; border-radius:9999px; }
+  .fill.blue { background:var(--primary); animation: fill-steps 4.5s var(--ease-spring) infinite; }
+  .fill.amber { background:var(--secondary); animation: fill-quiz 4.5s var(--ease-spring) infinite; }
+  @keyframes fill-steps {
+    0%,8%    { width:17%; }
+    20%,28%  { width:33%; }
+    40%,48%  { width:50%; }
+    60%,68%  { width:67%; }
+    80%,88%  { width:83%; }
+    96%,100% { width:100%; }
+  }
+  @keyframes fill-quiz {
+    0%,12%   { width:0%; }
+    33%,45%  { width:33%; }
+    66%,78%  { width:67%; }
+    96%,100% { width:100%; }
+  }
+
+  /* ---- segmented stepper (processing screen) ---- */
+  .steps { display:flex; gap:8px; max-width:520px; }
+  .dot { flex:1; height:8px; border-radius:9999px; background:color-mix(in oklab, var(--foreground) 12%, transparent); overflow:hidden; position:relative; }
+  .dot::after { content:""; position:absolute; inset:0; background:var(--accent); transform-origin:left; transform:scaleX(0); }
+  .dot.d1::after { animation: step 4.8s steps(1) infinite; animation-delay:0s; }
+  .dot.d2::after { animation: step 4.8s steps(1) infinite; animation-delay:.8s; }
+  .dot.d3::after { animation: step 4.8s steps(1) infinite; animation-delay:1.6s; }
+  .dot.d4::after { animation: step 4.8s steps(1) infinite; animation-delay:2.4s; }
+  .dot.d5::after { animation: step 4.8s steps(1) infinite; animation-delay:3.2s; }
+  .dot.d6::after { animation: step 4.8s steps(1) infinite; animation-delay:4.0s; }
+  @keyframes step { 0%,14% { transform:scaleX(0); } 15%,100% { transform:scaleX(1); } }
+
+  /* ---- watch score dial sweep ---- */
+  .dialwrap { display:flex; align-items:center; gap:18px; }
+  .dial circle.bar { animation: dial-sweep 4s var(--ease-spring) infinite; }
+  @keyframes dial-sweep {
+    0%,10%   { stroke-dashoffset:276.5; }              /* 0 */
+    50%,90%  { stroke-dashoffset:74.7; }               /* ~7.3 */
+    100%     { stroke-dashoffset:276.5; }
+  }
+  .dialnum { font-family:var(--font-display); font-weight:800; font-size:26px; line-height:1; }
+  .dialden { font-family:var(--font-mono); font-size:8px; letter-spacing:0.15em; text-transform:uppercase; color:var(--fg2); }
+
+  /* ---- attention timeline assembling segment-by-segment ---- */
+  .bar { display:flex; height:22px; width:100%; max-width:520px; overflow:hidden; border-radius:9999px; border:3px solid var(--foreground); background:var(--card); }
+  .seg { height:100%; border-right:3px solid var(--foreground); transform-origin:left; transform:scaleX(0); }
+  .seg:last-child { border-right:0; }
+  .s1 { background:var(--muted);                                         animation: seg-in 4s steps(1) infinite; animation-delay:.1s; }
+  .s2 { background:color-mix(in oklab, var(--primary) 30%, transparent); animation: seg-in 4s steps(1) infinite; animation-delay:.5s; }
+  .s3 { background:var(--secondary);                                     animation: seg-in 4s steps(1) infinite; animation-delay:.9s; }
+  .s4 { background:var(--accent);                                        animation: seg-in 4s steps(1) infinite; animation-delay:1.3s; }
+  .s5 { background:var(--muted);                                         animation: seg-in 4s steps(1) infinite; animation-delay:1.7s; }
+  @keyframes seg-in { 0%,8% { transform:scaleX(0); } 12%,100% { transform:scaleX(1); } }
+</style>
+</head>
+<body>
+  <div class="cap">Progress &amp; fill family</div>
+  <p class="sub">Fills sweep with the spring ease (~500–900ms); steppers and the timeline assemble piece by piece. All loop here.</p>
+
+  <div class="group">
+    <div class="lab">Lesson progress · card N of 6</div>
+    <div class="track"><div class="fill blue"></div></div>
+    <span class="tag">blue · spring ease per advance</span>
+  </div>
+
+  <div class="group">
+    <div class="lab">Quiz progress · amber variant</div>
+    <div class="track"><div class="fill amber"></div></div>
+    <span class="tag">secondary · 3 questions</span>
+  </div>
+
+  <div class="group">
+    <div class="lab">Processing stepper · 6 steps</div>
+    <div class="steps">
+      <span class="dot d1"></span><span class="dot d2"></span><span class="dot d3"></span>
+      <span class="dot d4"></span><span class="dot d5"></span><span class="dot d6"></span>
+    </div>
+    <span class="tag">green fill · sequential</span>
+  </div>
+
+  <div class="group" style="display:flex; gap:48px; align-items:flex-start; flex-wrap:wrap; margin-bottom:0;">
+    <div>
+      <div class="lab">Watch Score dial · ring sweep</div>
+      <div class="dialwrap">
+        <div style="position:relative; display:grid; place-items:center;">
+          <svg class="dial" width="86" height="86" viewBox="0 0 120 120" style="transform:rotate(-90deg);">
+            <circle cx="60" cy="60" r="44" stroke="color-mix(in oklab, var(--foreground) 10%, transparent)" stroke-width="10" fill="none"></circle>
+            <circle class="bar" cx="60" cy="60" r="44" stroke="var(--primary)" stroke-width="10" fill="none" stroke-linecap="round" stroke-dasharray="276.5" stroke-dashoffset="276.5"></circle>
+          </svg>
+          <div style="position:absolute; text-align:center;"><div class="dialnum">7.3</div><div class="dialden">/ 10</div></div>
+        </div>
+        <span class="tag" style="margin:0;">stroke-dashoffset · spring</span>
+      </div>
+    </div>
+    <div style="flex:1; min-width:240px;">
+      <div class="lab">Attention map · segments assemble</div>
+      <div class="bar">
+        <div class="seg s1" style="width:18%;"></div>
+        <div class="seg s2" style="width:22%;"></div>
+        <div class="seg s3" style="width:32%;"></div>
+        <div class="seg s4" style="width:16%;"></div>
+        <div class="seg s5" style="width:12%;"></div>
+      </div>
+      <span class="tag">left-to-right scaleX reveal</span>
+    </div>
+  </div>
+</body>
+</html>

@@ -1,0 +1,88 @@
+/* VideoSense UI kit — component styles built on the design-system tokens.
+   Mirrors the Tailwind v4 utility look from the watchlater codebase. */
+
+* { box-sizing: border-box; }
+html, body { margin: 0; }
+body {
+  background: var(--bg1);
+  color: var(--fg1);
+  font-family: var(--font-body);
+  -webkit-font-smoothing: antialiased;
+}
+button { font-family: inherit; cursor: pointer; }
+
+/* ---- shell / layout --------------------------------------------------- */
+.vs-app { min-height: 100%; }
+.vs-wrap { margin: 0 auto; padding: 0 24px; }
+.vs-max-2xl { max-width: 672px; }
+.vs-max-3xl { max-width: 768px; }
+.vs-max-4xl { max-width: 896px; }
+.vs-max-5xl { max-width: 1024px; }
+.vs-max-6xl { max-width: 1152px; }
+.vs-header { display:flex; align-items:center; justify-content:space-between; gap:16px; flex-wrap:wrap; padding-top:24px; }
+
+/* ---- brand ------------------------------------------------------------ */
+.vs-brand { display:inline-flex; align-items:center; gap:10px; text-decoration:none; color:inherit; }
+.vs-brand img { object-fit:contain; transition: transform .2s var(--ease-out); }
+.vs-brand:hover img { transform: rotate(-6deg); }
+.vs-brand .word { font-family:var(--font-display); font-weight:800; font-size:20px; letter-spacing:-0.02em; }
+
+/* ---- eyebrow / labels ------------------------------------------------- */
+.vs-eyebrow { font-family:var(--font-mono); font-size:10px; font-weight:700; letter-spacing:0.15em; text-transform:uppercase; color:var(--fg2); }
+.vs-eyebrow.primary { color:var(--primary); }
+.vs-eyebrow.accent { color:var(--accent); }
+
+/* ---- buttons ---------------------------------------------------------- */
+.vs-btn { display:inline-flex; align-items:center; justify-content:center; gap:8px; font-family:var(--font-display); font-weight:700; border:3px solid var(--foreground); border-radius:16px; transition: transform .18s var(--ease-out), box-shadow .18s var(--ease-out), background .15s, color .15s; }
+.vs-btn:active { transform: translateY(2px); }
+.vs-btn.lg { font-size:18px; padding:14px 24px; }
+.vs-btn.md { font-size:15px; padding:12px 20px; }
+.vs-btn.sm { font-size:13px; padding:9px 16px; border-width:2px; }
+.vs-btn.primary { background:var(--primary); color:var(--primary-foreground); box-shadow:var(--shadow-brutal); }
+.vs-btn.primary:hover { transform:translate(-2px,-2px); box-shadow:var(--shadow-brutal-lg); filter:brightness(1.06); }
+.vs-btn.primary:active { transform:translateY(2px); box-shadow:var(--shadow-brutal-sm); }
+.vs-btn.ink { background:var(--foreground); color:var(--background); box-shadow:var(--shadow-brutal-sm); }
+.vs-btn.ink:hover { transform:translate(-1px,-1px); }
+.vs-btn.outline { background:var(--card); color:var(--foreground); }
+.vs-btn.outline:hover { background:var(--foreground); color:var(--background); }
+.vs-btn:disabled { opacity:.4; cursor:not-allowed; transform:none; box-shadow:var(--shadow-brutal-sm); }
+.vs-quiet { font-family:var(--font-mono); font-size:10px; font-weight:700; letter-spacing:0.15em; text-transform:uppercase; color:var(--fg2); background:none; border:0; padding:6px 2px; transition:color .15s; }
+.vs-quiet:hover { color:var(--fg1); }
+.vs-quiet.primary { color:var(--primary); }
+.vs-quiet:disabled { opacity:.3; cursor:not-allowed; }
+
+/* ---- cards ------------------------------------------------------------ */
+.vs-card { background:var(--card); border:3px solid var(--foreground); border-radius:32px; }
+.vs-card.sm-shadow { box-shadow:var(--shadow-brutal-sm); }
+.vs-card.shadow { box-shadow:var(--shadow-brutal); }
+.vs-pad { padding:24px; }
+.vs-pad-lg { padding:32px; }
+.vs-soft { border:2px solid var(--line-soft); border-radius:16px; background:var(--card); }
+.vs-dashed { border:2px dashed color-mix(in oklab, var(--foreground) 22%, transparent); border-radius:16px; background:var(--background); }
+
+/* ---- chips / badges --------------------------------------------------- */
+.vs-chip { display:inline-block; border:1px solid; border-radius:8px; padding:5px 10px; font-size:10px; font-weight:700; text-transform:uppercase; letter-spacing:-0.01em; }
+.vs-chip.concept { background:color-mix(in oklab, var(--secondary) 25%, transparent); color:var(--foreground); border-color:var(--secondary); }
+.vs-chip.analogy, .vs-chip.insight { background:color-mix(in oklab, var(--primary) 15%, transparent); color:var(--primary); border-color:color-mix(in oklab, var(--primary) 50%, transparent); }
+.vs-chip.quote { background:color-mix(in oklab, var(--accent) 20%, transparent); color:var(--foreground); border-color:var(--accent); }
+.vs-chip.recap { background:color-mix(in oklab, var(--secondary) 25%, transparent); color:var(--foreground); border-color:var(--secondary); }
+.vs-pill { display:inline-flex; align-items:center; gap:6px; border:1px solid color-mix(in oklab, var(--foreground) 20%, transparent); border-radius:9999px; padding:5px 11px; font-size:11px; font-weight:500; color:var(--fg2); background:none; transition: all .15s; }
+.vs-pill:hover { background:var(--foreground); color:var(--background); }
+
+/* ---- progress --------------------------------------------------------- */
+.vs-track { height:12px; width:100%; background:color-mix(in oklab, var(--foreground) 5%, transparent); border:3px solid var(--foreground); border-radius:9999px; overflow:hidden; }
+.vs-track .fill { height:100%; background:var(--primary); transition: width .6s var(--ease-spring); }
+.vs-track .fill.amber { background:var(--secondary); }
+
+/* ---- tone toggle ------------------------------------------------------ */
+.vs-toggle { display:inline-flex; align-items:center; gap:4px; border:2px solid var(--foreground); border-radius:18px; background:var(--card); padding:5px; box-shadow:var(--shadow-brutal-sm); }
+.vs-seg { border:0; border-radius:13px; padding:7px 12px; font-size:12px; font-weight:700; font-family:var(--font-display); letter-spacing:-0.01em; text-transform:uppercase; color:var(--fg2); background:none; transition: all .15s; }
+.vs-seg.active { background:var(--foreground); color:var(--background); }
+
+/* ---- misc ------------------------------------------------------------- */
+.vs-input-shell { display:flex; align-items:center; gap:8px; background:var(--card); border:3px solid var(--foreground); border-radius:28px; box-shadow:var(--shadow-brutal); padding:8px; transition: transform .2s var(--ease-out), box-shadow .2s var(--ease-out); }
+.vs-input-shell:hover { transform:translate(-2px,-2px); box-shadow:var(--shadow-brutal-lg); }
+.vs-input-shell input { flex:1; border:0; outline:0; background:transparent; font-family:var(--font-body); font-size:17px; padding:10px 16px; color:var(--fg1); }
+.vs-input-shell input::placeholder { color:var(--fg2); }
+[data-lucide] { width:1em; height:1em; }
+.vs-aspect { position:relative; aspect-ratio:16/9; border:3px solid var(--foreground); border-radius:20px; overflow:hidden; background:#000; }
