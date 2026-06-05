@@ -75,48 +75,73 @@ async function fetchOEmbed(youtubeId: string): Promise<{ title: string; channel:
   };
 }
 
-const INNERTUBE_URL = "https://www.youtube.com/youtubei/v1/player?prettyPrint=false";
+const INNERTUBE_CLIENTS = [
+  {
+    name: "ANDROID",
+    ver: "20.10.38",
+    ua: "com.google.android.youtube/20.10.38 (Linux; U; Android 14)",
+  },
+  {
+    name: "IOS",
+    ver: "20.10.38",
+    ua: "com.google.ios.youtube/20.10.38 (iPhone; U; CPU OS 17_0)",
+  },
+  {
+    name: "TVHTML5_SIMPLY",
+    ver: "7.20250105.00.00",
+    ua:
+      "Mozilla/5.0 (ChromiumStyle; Linux) AppleWebKit/537.36 (KHTML, like Gecko) FreeBSD/13.2",
+  },
+];
 
 async function fetchTranscript(youtubeId: string): Promise<Cue[]> {
   let captionTracks: Array<{ baseUrl: string; languageCode?: string; kind?: string }> = [];
 
-  // Try InnerTube API with Android client context (works from server IPs).
-  try {
-    const res = await fetch(INNERTUBE_URL, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "User-Agent":
-          "com.google.android.youtube/20.10.38 (Linux; U; Android 14)",
-      },
-      body: JSON.stringify({
-        context: {
-          client: { clientName: "ANDROID", clientVersion: "20.10.38" },
+  for (const client of INNERTUBE_CLIENTS) {
+    try {
+      const res = await fetch(
+        "https://www.youtube.com/youtubei/v1/player?prettyPrint=false",
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "User-Agent": client.ua,
+          },
+          body: JSON.stringify({
+            context: {
+              client: {
+                clientName: client.name,
+                clientVersion: client.ver,
+              },
+            },
+            videoId: youtubeId,
+          }),
         },
-        videoId: youtubeId,
-      }),
-    });
-    if (res.ok) {
+      );
+      if (!res.ok) continue;
       const data = await res.json();
-      const ps = data?.playabilityStatus;
-      if (ps?.status === "UNPLAYABLE" || ps?.status === "LOGIN_REQUIRED") {
-        throw new IngestError(
-          "PRIVATE_OR_BLOCKED",
-          ps.reason ?? "This video isn't playable",
-        );
-      }
       const tracks: unknown[] | undefined =
         data?.captions?.playerCaptionsTracklistRenderer?.captionTracks;
-      if (tracks) {
+      if (tracks && tracks.length > 0) {
         const en = tracks.find(
           (t: any) => t.languageCode === "en" && !t.kind,
         );
-        captionTracks = en ? [en] : tracks;
+        captionTracks = en ? [en] : [tracks[0]];
+        break; // got tracks, stop trying clients
       }
+      const ps = data?.playabilityStatus?.status;
+      if (ps === "LOGIN_REQUIRED" || ps === "UNPLAYABLE") {
+        console.warn(
+          "[ingest]",
+          client.name,
+          "playability:",
+          ps,
+          data?.playabilityStatus?.reason,
+        );
+      }
+    } catch (e) {
+      console.warn("[ingest] InnerTube", client.name, "failed:", e);
     }
-  } catch (e) {
-    if (e instanceof IngestError) throw e;
-    console.warn("[ingest] InnerTube API failed for", youtubeId, ":", e);
   }
 
   if (captionTracks.length === 0) {
@@ -124,24 +149,13 @@ async function fetchTranscript(youtubeId: string): Promise<Cue[]> {
   }
 
   const track = captionTracks[0];
-  const url = track.baseUrl;
 
-  const xmlRes = await fetch(url, {
-    headers: {
-      "User-Agent":
-        "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_4) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/85.0.4183.83 Safari/537.36,gzip(gfe)",
-    },
-  });
-  if (!xmlRes.ok) {
+  const xml = await fetchCaptionXml(track.baseUrl, youtubeId);
+  if (!xml) {
     throw new IngestError("NO_CAPTIONS", "Could not download captions");
-  }
-  const xml = await xmlRes.text();
-  if (!xml.trim()) {
-    throw new IngestError("NO_CAPTIONS", "Captions were empty");
   }
 
   const cues: Cue[] = [];
-  // Try srv3 format first: <p t="ms" d="ms"><s>word</s>...</p>
   const pRegex = /<p\s+t="(\d+)"\s+d="(\d+)"[^>]*>([\s\S]*?)<\/p>/g;
   let m: RegExpExecArray | null;
   while ((m = pRegex.exec(xml))) {
@@ -154,9 +168,7 @@ async function fetchTranscript(youtubeId: string): Promise<Cue[]> {
     while ((sm = sRegex.exec(inner))) {
       text += sm[1];
     }
-    if (!text) {
-      text = inner.replace(/<[^>]+>/g, "");
-    }
+    if (!text) text = inner.replace(/<[^>]+>/g, "");
     text = text
       .replace(/&amp;/g, "&")
       .replace(/&lt;/g, "<")
@@ -169,16 +181,11 @@ async function fetchTranscript(youtubeId: string): Promise<Cue[]> {
       .replace(/&#(\d+);/g, (_, d) => String.fromCodePoint(parseInt(d, 10)))
       .trim();
     if (text) {
-      cues.push({
-        start: startMs / 1000,
-        dur: durMs / 1000,
-        text,
-      });
+      cues.push({ start: startMs / 1000, dur: durMs / 1000, text });
     }
   }
 
   if (cues.length === 0) {
-    // Fall back to classic format: <text start="s" dur="s">content</text>
     const classicRe = /<text start="([^"]*)" dur="([^"]*)">([^<]*)<\/text>/g;
     while ((m = classicRe.exec(xml))) {
       const text = m[3]
@@ -203,6 +210,32 @@ async function fetchTranscript(youtubeId: string): Promise<Cue[]> {
     throw new IngestError("NO_CAPTIONS", "Captions were empty");
   }
   return cues;
+}
+
+async function fetchCaptionXml(
+  baseUrl: string,
+  youtubeId: string,
+): Promise<string | null> {
+  // Try the transcript baseUrl from the player response.
+  for (const ua of [
+    "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_4) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/85.0.4183.83 Safari/537.36,gzip(gfe)",
+    "com.google.android.youtube/20.10.38 (Linux; U; Android 14)",
+    "com.google.ios.youtube/20.10.38 (iPhone; U; CPU OS 17_0)",
+  ]) {
+    try {
+      const res = await fetch(baseUrl, {
+        headers: { "User-Agent": ua },
+      });
+      if (res.ok) {
+        const body = await res.text();
+        if (body.trim()) return body;
+      }
+    } catch {
+      // try next ua
+    }
+  }
+
+  return null;
 }
 
 export const getLessonByYoutubeId = createServerFn({ method: "POST" })
