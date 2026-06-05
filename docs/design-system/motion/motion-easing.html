@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<link rel="stylesheet" href="../colors_and_type.css">
+<style>
+  html,body { margin:0; }
+  body { background: var(--bg1); font-family: var(--font-body); color: var(--fg1); padding: 22px 26px; }
+  .cap { font-family: var(--font-mono); font-size:10px; letter-spacing:0.15em; text-transform:uppercase; color:var(--fg2); margin-bottom:18px; }
+  .row { display:flex; gap:40px; align-items:center; flex-wrap:wrap; }
+  .col { display:flex; flex-direction:column; gap:10px; }
+  .name { font-family:var(--font-display); font-weight:800; font-size:13px; }
+  .curve { font-family:var(--font-mono); font-size:10px; color:var(--fg2); }
+  .runner { width:240px; height:46px; border:3px solid var(--foreground); border-radius:9999px; background:var(--card); position:relative; overflow:hidden; }
+  .ball { position:absolute; top:50%; left:8px; width:30px; height:30px; margin-top:-15px; border-radius:9999px; border:3px solid var(--foreground); }
+  .spring { background:var(--primary); animation: run-spring 2.4s cubic-bezier(0.34,1.56,0.64,1) infinite; }
+  .out { background:var(--accent); animation: run-out 2.4s cubic-bezier(0.16,1,0.3,1) infinite; }
+  @keyframes run-spring { 0% { left:8px; } 45% { left:198px; } 55% { left:198px; } 100% { left:8px; } }
+  @keyframes run-out { 0% { left:8px; } 45% { left:198px; } 55% { left:198px; } 100% { left:8px; } }
+  .press { font-family:var(--font-display); font-weight:700; font-size:14px; color:#fff; background:var(--primary); border:3px solid var(--foreground); border-radius:14px; padding:11px 20px; box-shadow:var(--shadow-brutal); animation: press-loop 1.8s infinite; }
+  @keyframes press-loop { 0%,60%,100% { transform:translate(0,0); box-shadow:var(--shadow-brutal); } 72%,86% { transform:translate(-2px,-2px); box-shadow:var(--shadow-brutal-lg); } }
+</style>
+</head>
+<body>
+  <div class="cap">Motion · easing curves &amp; the hover lift</div>
+  <div class="row">
+    <div class="col">
+      <span class="name">ease-spring</span>
+      <div class="runner"><div class="ball spring"></div></div>
+      <span class="curve">cubic-bezier(0.34, 1.56, 0.64, 1) · the brand feel</span>
+    </div>
+    <div class="col">
+      <span class="name">ease-out</span>
+      <div class="runner"><div class="ball out"></div></div>
+      <span class="curve">cubic-bezier(0.16, 1, 0.3, 1) · settles, no overshoot</span>
+    </div>
+    <div class="col" style="align-items:flex-start;">
+      <span class="name">hover lift</span>
+      <button class="press">Generate lesson →</button>
+      <span class="curve">translate −2,−2 + shadow grows</span>
+    </div>
+  </div>
+</body>
+</html>

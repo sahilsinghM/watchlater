@@ -1,0 +1,123 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<link rel="stylesheet" href="../colors_and_type.css">
+<style>
+  html,body { margin:0; }
+  body { background: var(--bg1); font-family: var(--font-body); color: var(--fg1); padding: 22px 26px 28px; }
+  .cap { font-family: var(--font-mono); font-size:10px; letter-spacing:0.15em; text-transform:uppercase; color:var(--fg2); margin-bottom:6px; }
+  .sub { font-size:12px; color:var(--fg2); margin:0 0 20px; }
+  .lab { font-family:var(--font-mono); font-size:9px; letter-spacing:0.12em; text-transform:uppercase; color:var(--fg2); margin:0 0 12px; }
+  .group { margin-bottom:24px; }
+  .row { display:flex; gap:18px; align-items:center; flex-wrap:wrap; }
+  .stage { display:flex; flex-direction:column; align-items:flex-start; gap:8px; }
+  .tag { font-family:var(--font-mono); font-size:9px; letter-spacing:0.1em; text-transform:uppercase; color:var(--fg3); }
+
+  /* ---- buttons that cycle rest -> hover-lift -> press-sink ---- */
+  .btn { font-family:var(--font-display); font-weight:700; font-size:15px; border:3px solid var(--foreground); border-radius:16px; padding:13px 22px; display:inline-flex; align-items:center; gap:8px; }
+  .primary { background:var(--primary); color:#fff; }
+  .ink { background:var(--foreground); color:var(--background); }
+  .outline { background:var(--card); color:var(--foreground); }
+
+  /* primary: rest(shadow8) -> lift(shadow12,-2,-2,brighten) -> press(shadow4,+2,+2) */
+  .primary.cycle { animation: press-primary 3s var(--ease-out) infinite; }
+  @keyframes press-primary {
+    0%,38%   { transform:translate(0,0); box-shadow:var(--shadow-brutal); filter:none; }
+    50%,62%  { transform:translate(-2px,-2px); box-shadow:var(--shadow-brutal-lg); filter:brightness(1.06); }
+    74%,84%  { transform:translate(2px,2px); box-shadow:var(--shadow-brutal-sm); filter:none; }
+    96%,100% { transform:translate(0,0); box-shadow:var(--shadow-brutal); filter:none; }
+  }
+  /* ink: invert is its hover; press sinks */
+  .ink.cycle { box-shadow:var(--shadow-brutal-sm); animation: press-ink 3s var(--ease-out) infinite; }
+  @keyframes press-ink {
+    0%,40%   { transform:translate(0,0); }
+    52%,64%  { transform:translate(-1px,-1px); }
+    76%,86%  { transform:translate(2px,2px); box-shadow:none; }
+    98%,100% { transform:translate(0,0); box-shadow:var(--shadow-brutal-sm); }
+  }
+  /* outline: hover inverts to ink, press sinks */
+  .outline.cycle { animation: press-outline 3s var(--ease-out) infinite; }
+  @keyframes press-outline {
+    0%,40%   { transform:translate(0,0); background:var(--card); color:var(--foreground); }
+    52%,66%  { transform:translate(0,0); background:var(--foreground); color:var(--background); }
+    78%,88%  { transform:translate(2px,2px); background:var(--foreground); color:var(--background); }
+    98%,100% { transform:translate(0,0); background:var(--card); color:var(--foreground); }
+  }
+
+  /* ---- reaction tile press ---- */
+  .react { width:120px; border:3px solid var(--foreground); border-radius:16px; padding:14px; display:flex; flex-direction:column; align-items:center; gap:6px; background:var(--accent); color:#fff; box-shadow:var(--shadow-brutal-sm); }
+  .react.cycle { animation: press-tile 2.4s var(--ease-out) infinite; }
+  @keyframes press-tile {
+    0%,45%   { transform:translate(0,0); box-shadow:var(--shadow-brutal-sm); }
+    58%,70%  { transform:translate(-1px,-1px); box-shadow:var(--shadow-brutal); }
+    82%,90%  { transform:translate(2px,2px); box-shadow:none; }
+    100%     { transform:translate(0,0); box-shadow:var(--shadow-brutal-sm); }
+  }
+  .react .em { font-size:22px; }
+  .react .t { font-size:10px; font-weight:700; text-transform:uppercase; }
+
+  /* ---- segmented toggle: selection slides ---- */
+  .toggle { position:relative; display:inline-flex; gap:4px; border:2px solid var(--foreground); border-radius:18px; background:var(--card); padding:5px; box-shadow:var(--shadow-brutal-sm); white-space:nowrap; }
+  .seg { position:relative; z-index:1; flex-shrink:0; white-space:nowrap; border-radius:13px; padding:8px 14px; font-size:12px; font-weight:700; font-family:var(--font-display); text-transform:uppercase; color:var(--fg2); }
+  .seg.lit { color:var(--background); transition:color .2s; }
+  .thumb { position:absolute; top:5px; left:5px; height:calc(100% - 10px); border-radius:13px; background:var(--foreground); z-index:0; animation: seg-slide 4s var(--ease-spring) infinite; }
+  @keyframes seg-slide {
+    0%,18%   { left:5px;   width:74px; }   /* Clear */
+    25%,43%  { left:79px;  width:92px; }    /* Friendly */
+    50%,68%  { left:171px; width:80px; }    /* Funny */
+    75%,93%  { left:251px; width:78px; }    /* Strict */
+    100%     { left:5px;   width:74px; }
+  }
+
+  /* ---- input focus ring ---- */
+  .field { display:flex; align-items:center; gap:8px; width:320px; background:var(--card); border:3px solid color-mix(in oklab, var(--foreground) 35%, transparent); border-radius:24px; padding:8px; box-shadow:var(--shadow-brutal-sm); animation: focus-cycle 3s var(--ease-out) infinite; }
+  @keyframes focus-cycle {
+    0%,40%   { border-color:color-mix(in oklab, var(--foreground) 35%, transparent); transform:translate(0,0); box-shadow:var(--shadow-brutal-sm); }
+    55%,100% { border-color:var(--foreground); transform:translate(-2px,-2px); box-shadow:var(--shadow-brutal); }
+  }
+  .field input { flex:1; border:0; outline:0; background:transparent; font-size:14px; font-family:var(--font-body); padding:6px 10px; color:var(--fg1); }
+  .field .mini { font-family:var(--font-display); font-weight:700; font-size:12px; background:var(--primary); color:#fff; border-radius:12px; padding:7px 12px; }
+</style>
+</head>
+<body>
+  <div class="cap">Press &amp; interaction states</div>
+  <p class="sub">Every control is physical: hover lifts up-left and grows the shadow, the press sinks it down-right and shrinks it. Watch each loop.</p>
+
+  <div class="group">
+    <div class="lab">Buttons · rest → hover lift → press sink</div>
+    <div class="row">
+      <div class="stage"><button class="btn primary cycle">Generate lesson →</button><span class="tag">primary · brighten on hover</span></div>
+      <div class="stage"><button class="btn ink cycle">Start the lesson</button><span class="tag">ink · sink on press</span></div>
+      <div class="stage"><button class="btn outline cycle">▶ Best part</button><span class="tag">outline · invert on hover</span></div>
+    </div>
+  </div>
+
+  <div class="group">
+    <div class="lab">Reaction tile &amp; segmented selection</div>
+    <div class="row" style="gap:32px;">
+      <div class="stage">
+        <div class="react cycle"><span class="em">✅</span><span class="t">Got it</span></div>
+        <span class="tag">tile · press sink</span>
+      </div>
+      <div class="stage">
+        <div class="toggle">
+          <span class="thumb"></span>
+          <span class="seg lit">💡 Clear</span><span class="seg">🤝 Friendly</span><span class="seg">😄 Funny</span><span class="seg">🧐 Strict</span>
+        </div>
+        <span class="tag">tone toggle · thumb slides, spring</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="group" style="margin-bottom:0;">
+    <div class="lab">Input · focus-within darkens border &amp; lifts</div>
+    <div class="row">
+      <div class="stage">
+        <div class="field"><input value="youtube.com/watch?v=…" readonly><span class="mini">Go →</span></div>
+        <span class="tag">2px → full ink + lift on focus</span>
+      </div>
+    </div>
+  </div>
+</body>
+</html>

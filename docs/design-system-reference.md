@@ -1,210 +1,286 @@
-# Tactile Field Guide Design System Reference
+# VideoSense — "Tactile Field Guide" Design System Reference
 
-The VideoSense design system is **Tactile Field Guide**. It is already implemented in `src/styles.css` and the current route/component files. MVP work must preserve this style exactly.
+This is the **authoritative** design-system reference for VideoSense (repo name:
+`watchlater`). It is the source of truth that **all current and future design
+work must adhere to 100%**.
 
-## Canonical Files
+The neo-brutalist **Tactile Field Guide** look is: _heavy near-black borders,
+hard offset shadows, warm cream paper, white cards, primary blue, a friendly
+round mascot_. It feels like a well-made printed field manual — tactile,
+confident, lightly playful, never timid and never generic.
 
-- Tokens and utilities: `src/styles.css`
-- Brand and mascot: `src/components/Brand.tsx`
-- Landing shell and paste form: `src/routes/index.tsx`
-- Lesson hero layout: `src/routes/lesson.$videoId.tsx`
-- Player card treatment: `src/components/LessonCard.tsx`
-- Timeline: `src/components/AttentionTimeline.tsx`
-- Watch Score: `src/components/WatchScoreDial.tsx`
-- Tutor: `src/components/TutorPanel.tsx`
-- YouTube embed frame: `src/components/YouTubeEmbed.tsx`
+## Canonical files
 
-## Identity
+The complete, framework-agnostic handoff bundle lives in
+[`docs/design-system/`](./design-system/) and is the canonical spec:
 
-- Name: Tactile Field Guide.
-- Feel: playful, practical, physical, high-contrast, compact.
-- Required signals: cream paper-like page, white cards, heavy dark outlines, hard offset shadows, mascot-led brand, bold display typography, bright blue/yellow/green accents.
+- [`design-system/colors_and_type.css`](./design-system/colors_and_type.css) — **every token** (colour, type, radii, shadow/border, motion, semantic classes, keyframes) in importable oklch form. This is mirrored 1:1 by `src/styles.css`.
+- [`design-system/DESIGN_SYSTEM.md`](./design-system/DESIGN_SYSTEM.md) — full product context, content voice, visual foundations, iconography.
+- [`design-system/README.md`](./design-system/README.md) — the implementation handoff and checklist.
+- [`design-system/ui_kit/`](./design-system/ui_kit/) — runnable click-through (`index.html`), component classes (`kit.css`), React reference components (`components.jsx`), the six screens (`app.jsx`), and the lesson data shape (`data.jsx`). **`index.html` is the behavioural source of truth.**
+- [`design-system/motion/`](./design-system/motion/) — runnable motion specimens (keyframes, easing, press, progress).
 
-## Fonts
+The live implementation of these tokens:
 
-Defined in `src/styles.css`:
+- Tokens + utilities: `src/styles.css` (Tailwind v4 `@theme`, oklch).
+- Brand + mascot: `src/components/Brand.tsx`, `src/assets/mascot.png`.
+- Signature components: `LessonCard.tsx`, `AttentionTimeline.tsx`, `WatchScoreDial.tsx`, `ToneToggle.tsx`, `TutorPanel.tsx`, `YouTubeEmbed.tsx`.
+- Screens: `src/routes/index.tsx`, `processing.$videoId.tsx`, `lesson.$videoId.tsx`, `…player.tsx`, `…quiz.tsx`, `…done.tsx`.
 
-- Display: `Plus Jakarta Sans`, used for headings, logo, CTAs, important labels.
-- Body: `Inter`, used for normal reading text.
-- Metadata: `JetBrains Mono`, used for timestamps, small uppercase labels, progress metadata, and technical details.
+When `src/styles.css` and `design-system/colors_and_type.css` ever disagree,
+the latter is correct and `src/styles.css` must be brought back in line.
 
-Rules:
+---
 
-- Headings use display font and heavy weight.
-- Body copy remains readable and compact.
-- Metadata uses small uppercase mono with wide tracking.
-- Do not replace the type system with a generic system font stack.
+## Colour
 
-## Core Tokens
+Authored in **oklch** for consistent lightness. Light theme is default; a
+branded `.dark` theme ships in both files (cooler navy-charcoal paper, the four
+accents stay at full strength).
 
-Current light theme tokens from `src/styles.css`:
+### Foundation
 
-- `--radius: 1.25rem`
-- `--background: oklch(0.984 0.013 95)` - cream background.
-- `--foreground: oklch(0.21 0.025 260)` - dark ink foreground.
-- `--card: oklch(1 0 0)` - white cards.
-- `--primary: oklch(0.62 0.19 256)` - primary blue.
-- `--primary-foreground: oklch(1 0 0)` - white text on blue.
-- `--secondary: oklch(0.74 0.17 50)` - yellow/orange.
-- `--secondary-foreground: oklch(0.21 0.025 260)` - dark text on yellow/orange.
-- `--muted: oklch(0.95 0.012 95)` - warm muted surface.
-- `--muted-foreground: oklch(0.5 0.02 260)` - muted ink.
-- `--accent: oklch(0.66 0.14 155)` - green.
-- `--accent-foreground: oklch(1 0 0)` - white text on green.
-- `--destructive: oklch(0.6 0.22 25)` - red/orange failure.
+| Token | oklch | Role |
+|---|---|---|
+| `--background` / `--bg1` | `oklch(0.984 0.013 95)` | Warm cream page / paper |
+| `--foreground` / `--fg1` / `--line` | `oklch(0.21 0.025 260)` | Near-black cool ink — **all text & all borders** |
+| `--card` / `--bg2` | `oklch(1 0 0)` | Pure white raised surface |
+| `--muted` / `--bg3` | `oklch(0.95 0.012 95)` | Faint cream inset / track fill |
+| `--muted-foreground` / `--fg2` | `oklch(0.5 0.02 260)` | Slate caption text |
+| `--fg3` | ink @ 45% | Tertiary / disabled ink |
+| `--line-soft` | ink @ 12% | Hairline dividers |
 
-Keep these tokens as the MVP baseline. Adding tokens is allowed only when a new component cannot be expressed with the current system, and the new token must fit this palette.
+### The four signal accents (they do all the work)
 
-## Borders And Shadows
+| Token | oklch | Meaning |
+|---|---|---|
+| `--primary` | `oklch(0.62 0.19 256)` | **Blue** — watch / active / brand (matches mascot) |
+| `--secondary` | `oklch(0.74 0.17 50)` | **Amber** — "core" segment |
+| `--accent` | `oklch(0.66 0.14 155)` | **Green** — correct / demo / success |
+| `--destructive` | `oklch(0.6 0.22 25)` | **Red** — wrong / error |
 
-Utilities from `src/styles.css`:
+Accents appear at **full strength** on fills and as **low-alpha tints**
+(`/10`–`/30`, e.g. `color-mix(in oklab, var(--accent) 15%, transparent)`) for
+soft backgrounds behind chips & status rows. **Never introduce a fifth accent
+hue** — these four carry all signalling.
 
-- `.brutal-border`: `border: 3px solid var(--foreground)`
-- `.brutal-shadow`: `box-shadow: 8px 8px 0 0 var(--foreground)`
-- `.brutal-shadow-sm`: `box-shadow: 4px 4px 0 0 var(--foreground)`
-- `--shadow-brutal-lg`: `12px 12px 0 0 var(--foreground)` available for larger moments.
+These map to the product's colour language: `skip`→muted, `watch`→primary,
+`core`→secondary (amber), `demo`/`correct`→accent (green), `wrong`/`error`→destructive.
 
-Rules:
+---
 
-- Primary cards, input shells, CTAs, embeds, progress bars, and important panels should use heavy foreground borders.
-- Hard offset shadows are part of the product identity.
-- Avoid soft drop-shadow-heavy UI except for the existing subtle mascot image shadow.
-- Do not flatten important surfaces into borderless gray cards.
+## Typography
 
-## Radius Scale
+Three families, loaded from Google Fonts (already `@import`ed in both files).
+**Do not replace the type system with a generic system-font stack.**
 
-Current radius language:
+| Family token | Stack | Use |
+|---|---|---|
+| `--font-display` | **Plus Jakarta Sans**, system-ui | Headings, brand wordmark, CTAs. Weights 500/700/**800**. |
+| `--font-body` | **Inter**, system-ui | Body & UI. 400/500/600/700. |
+| `--font-mono` | **JetBrains Mono**, ui-monospace | Uppercase eyebrow labels & timecodes. 500/700. |
 
-- Base token: `1.25rem`.
-- Cards commonly use `rounded-3xl` or `rounded-[32px]`.
-- Inputs use large rounded shells, for example `rounded-[28px]`.
-- Buttons use `rounded-2xl`.
-- Small badges use `rounded-lg`, `rounded-md`, or `rounded-full` depending on purpose.
+### Semantic type scale
 
-Rules:
+Available as CSS vars (`--h1-*` …) and as ready-made classes
+(`.vs-h1`/`.vs-h2`/`.vs-h3`/`.vs-body`/`.vs-small`/`.vs-label`/`.vs-code`).
 
-- Keep the current rounded card/input language.
-- Do not switch to sharp enterprise rectangles.
-- Do not make nested card stacks overly soft or pill-shaped beyond current examples.
+| Style | Family | Size | Weight | Tracking | Leading |
+|---|---|---|---|---|---|
+| h1 | display | `clamp(2.75rem, 6vw, 4.5rem)` | 800 | −0.02em | 1.05 |
+| h2 | display | `clamp(1.75rem, 3vw, 2.25rem)` | 800 | −0.02em | 1.1 |
+| h3 | display | 1.25rem | 800 | −0.01em | 1.2 |
+| body | body | 1.125rem | 400 | — | 1.6 |
+| small | body | 0.875rem | 500 | — | — |
+| label (eyebrow) | mono | 0.625rem | 700 | **0.15em** | uppercase |
+
+The **mono uppercase eyebrow label** (`THIS VIDEO IN 30 SECONDS`,
+`CARD 03 / 06`, `04:12–06:30`) is a **signature** — use `.vs-label` for all
+section eyebrows, timecodes, and status labels. Headlines & body are sentence
+case; eyebrows & timecodes are UPPERCASE mono.
+
+---
+
+## Borders, shadows & radii
+
+The defining motifs. **Hard offset shadows with zero blur, foreground ink.**
+Never use soft/blurred shadows on hero chrome.
+
+| Token | Value | Utility |
+|---|---|---|
+| `--border-brutal` | `3px solid var(--foreground)` | `.brutal-border` |
+| `--shadow-brutal-sm` | `4px 4px 0 0 var(--foreground)` | `.brutal-shadow-sm` |
+| `--shadow-brutal` | `8px 8px 0 0 var(--foreground)` | `.brutal-shadow` |
+| `--shadow-brutal-lg` | `12px 12px 0 0 var(--foreground)` | `.brutal-shadow-lg` |
+| `--shadow-brutal-hover` | `10px 10px 0 0 var(--foreground)` | — (on lift) |
+
+- Dividers use `--line-soft` (ink @ 12%); "secondary info" insets (analogy box, best/skip callouts) use a **2px dashed** border.
+- The only blur in the system is the tutor-modal scrim (`bg-foreground/40 backdrop-blur-sm`) and the subtle focus glow behind the hero input. No glassmorphism, no neumorphism.
+
+### Radius scale (base `--radius: 1.25rem` = 20px)
+
+`sm` 16 · `md` 18 · `lg/base` 20 · `xl` 24 · `2xl` 28 · `3xl` 32 · `4xl` 36 ·
+`pill` 9999px. **Cards use 28–32px.** The contrast of big radii against the
+square-cornered hard shadow is what makes it friendly-brutalist rather than
+harsh. Buttons use `rounded-2xl`/16px; chips `rounded-lg`; status dots & pills
+are fully round. Do not switch to sharp enterprise rectangles.
+
+---
 
 ## Motion
 
-Current animations in `src/styles.css`:
+Spring-y and tactile. Transitions are quick (~0.15–0.4s). Gate entrance
+animations behind `@media (prefers-reduced-motion: no-preference)` and fall
+back to the visible end-state.
 
-- `float`: slow mascot float with slight rotation.
-- `card-in`: card enters with translate/rotate and opacity.
-- `pop-in`: completion/celebration pop.
-- Motion easing: `--ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1)`.
+| Token | Value | Feel |
+|---|---|---|
+| `--ease-spring` | `cubic-bezier(0.34, 1.56, 0.64, 1)` | Overshoots then settles — the brand feel. Fills, dials, card-in, toggle thumb. |
+| `--ease-out` | `cubic-bezier(0.16, 1, 0.3, 1)` | Settles without overshoot — utility transitions. |
 
-Component motion:
+Three named keyframes (`.animate-float` / `.animate-card-in` / `.animate-pop-in`):
 
-- Processing progress bar uses spring-like width animation.
-- Lesson card transitions use horizontal movement, slight rotation, and spring easing.
+- **float** — `translateY(0→-10px)` + `rotate(-1deg→1deg)`, **6s** loop. The mascot.
+- **card-in** — rise + rotate-in (`40px/rotate(2deg)/opacity 0` → `0/rotate(-1deg)/opacity 1`), **0.55s** spring. Player/quiz card entrance.
+- **pop-in** — `scale(0.6→1.08→1)` + fade, **0.5s** spring. The done-screen celebration.
 
-Rules:
+### Interaction physics (apply everywhere — this is the brand)
 
-- Use current float, card-in, pop-in, and spring card transitions only.
-- Do not add unrelated animation styles, decorative particle systems, gradient morphing, or scroll spectacle.
-- Motion should help state changes feel tactile, not distract from learning.
+- **Hover:** `translate(-2px, -2px)` and the shadow grows (`--shadow-brutal` → `--shadow-brutal-lg`). Primary button adds `brightness(1.06)`. Outline/secondary buttons & chips **invert to ink** (`bg-foreground text-background`). List items darken their border.
+- **Press/active:** `translateY(1–2px)` down and the shadow shrinks to `--shadow-brutal-sm`. The CTA visibly sinks.
+- **Focus:** input border darkens to full ink and the shell lifts `-2,-2`; the brand glow fades in behind the hero input.
+- **Progress fills / dial sweeps:** animate width / `stroke-dashoffset` over ~500–900ms with `--ease-spring`.
+
+Do not add decorative particle systems, gradient morphing, or scroll spectacle.
+
+---
 
 ## Components
 
-### Brand
+Component classes are in [`design-system/ui_kit/kit.css`](./design-system/ui_kit/kit.css);
+React references in [`components.jsx`](./design-system/ui_kit/components.jsx).
+Live implementations are under `src/components/`.
 
-Source: `src/components/Brand.tsx`
+### Button (`.vs-btn`)
+`font-display` 700, `3px solid foreground`, radius 16, `active:translateY(2px)`.
+Sizes `lg` 18px/14×24 · `md` 15px/12×20 · `sm` 13px/9×16/2px border.
+Variants: **primary** (blue fill, white text, `--shadow-brutal`, hover lift +
+brightness, active sink), **ink** (foreground fill, bg-coloured text,
+`--shadow-brutal-sm`), **outline** (card bg, ink text, hover inverts to ink),
+**quiet** (`.vs-quiet`, mono uppercase 10px label-button, no border, muted →
+foreground on hover — used for Previous / Next / Exit). CTAs carry a trailing
+arrow: `Generate lesson →`, `Start 5-minute lesson →`, `Quiz time →`.
 
-- Mascot image plus bold `VideoSense` wordmark.
-- Mascot rotates slightly on hover.
-- Small and medium sizes are supported.
-- Brand must remain visible on primary screens.
+### Card (`.vs-card`)
+White fill, 3px border, radius **32px**, optional `.shadow`/`.sm-shadow`,
+padding `.vs-pad` 24 / `.vs-pad-lg` 32. Soft variant `.vs-soft` (2px line-soft,
+radius 16). Dashed inset `.vs-dashed` (2px dashed ink@22%, cream bg).
 
-### Input Shell
+### Lesson card (signature — `LessonCard.tsx`)
+A white card (3px border, radius 32, pad 32) with **two coloured cards peeking
+out behind it**, slightly rotated, so the stack looks physically dealt: back
+card `translate(12px,12px) rotate(2deg)` amber; mid card `translate(6px,6px)
+rotate(-1deg)` green; face card `rotate(-1deg)`, entrance via `card-in`. Inside:
+a kind chip (top-left) + mono timecode jump-link `@ 12:48 ↗` (top-right), a
+display-800 32px title, 18px/1.6 body, optional dashed "analogy" box or a
+`4px solid primary` left-border blockquote for "The Quote".
 
-Source: `src/routes/index.tsx`
+### Kind chips (`.vs-chip`)
+10px uppercase 700 pills, 1px border, radius 8. Map: `concept`→amber tint,
+`analogy`/`insight`→blue tint, `quote`→green tint, `recap`→amber tint. Labels:
+Key Concept / Analogy / The Quote / Insight / Remember This.
 
-- White card surface.
-- `brutal-border`.
-- Large rounded shell.
-- Hard offset shadow.
-- Blue CTA button inside the shell.
-- On mobile, input and CTA stack.
+### Tone toggle (`ToneToggle.tsx`, `.vs-toggle` + `.vs-seg`)
+Segmented control, 2px border, radius 18, `--shadow-brutal-sm`. Active segment =
+ink fill, bg text. Four options with **fixed functional emoji**: `💡 Clear`,
+`🤝 Friendly`, `😄 Funny`, `🧐 Strict`. These rewrite the lead-in copy on
+concept/recap cards live — brand voice as a control.
 
-### Brutal Buttons
+### Watch Score dial (`WatchScoreDial.tsx`)
+SVG ring, r=44, 10px stroke. Track = ink@10%, fill = primary, round linecap,
+rotated −90deg. `stroke-dashoffset` animates over **900ms** spring on mount.
+Centre: display-800 28px score + mono `/ 10`.
 
-Patterns:
+### Attention timeline (`AttentionTimeline.tsx`)
+24px-tall pill bar, 3px border, segments split by 3px ink dividers. Segment
+colours: `skip`→muted, `watch`→primary@30%, `core`→secondary, `demo`→accent.
+Click to seek. Below: a 2-up grid of soft cards (dot, title, timecode, blurb);
+hover lifts `-2px` + border darkens.
 
-- Primary CTA: blue background, white text, heavy border, hard shadow.
-- Secondary CTA: white card background, heavy border, hover inversion or subtle translate.
-- Dark CTA: foreground background with cream/white text.
+### Progress bar (`.vs-track` + `.fill`)
+12px tall, 3px border, pill. Fill = primary (`.amber` variant = secondary),
+`transition: width 0.6s var(--ease-spring)`.
 
-Rules:
+### Input shell (`.vs-input-shell`)
+Flex shell, 3px border, radius 28, `--shadow-brutal`; hover lifts `-2,-2` +
+shadow grows. Borderless input inside; trailing primary button (hero URL field)
+or a 2px-line textarea for feedback.
 
-- Buttons should feel physical and pressable.
-- Use hover translate and shadow changes consistently.
-- Keep text short.
+### Tutor panel (`TutorPanel.tsx`)
+Fixed launcher pinned `bottom-6 right-6`: ink pill, `💬 Ask the tutor`. Opens a
+modal — the scrim is the only blur (`bg-foreground/40 backdrop-blur-sm`). Card:
+3px border, radius 28, `--shadow-brutal`. User bubbles = primary fill
+right-aligned; tutor bubbles = cream/line-soft. Seed-question pills (`.vs-pill`,
+hover inverts to ink). The tutor **only answers from the transcript** — fallback
+is exactly `"I cannot tell from this video."`
 
-### WatchScoreDial
+### Brand lockup (`Brand.tsx`)
+Mascot PNG + "VideoSense" wordmark (display-800, −0.02em), side by side. Hover
+rotates the mascot `-6deg`. Sometimes paired with a rotated speech bubble
+(`rotate(6deg)`, 3px border, `--shadow-brutal-sm`, "I'm ready!").
 
-Source: `src/components/WatchScoreDial.tsx`
+---
 
-- Circular SVG progress dial.
-- Blue stroke for score.
-- Large display score in center.
-- Mono `/ 10` label.
+## Content voice
 
-### AttentionTimeline
+Copy is load-bearing brand. A sharp, friendly study buddy who respects your
+time. Confident, concrete, lightly funny. Never corporate, never hype-y.
 
-Source: `src/components/AttentionTimeline.tsx`
+- **Person:** talks to **"you"**; the product is **"we"** ("We'll watch the boring parts so you don't have to"). First person singular only from the **mascot** ("I'm ready!", "I cannot tell from this video.").
+- **Casing:** headlines & body in **sentence case** (ending periods on headlines are intentional — "Lesson complete.", "in 5 minutes."); eyebrows & timecodes in **UPPERCASE** mono. Buttons in sentence case, usually with a trailing arrow. Numerals always as digits.
+- **Tone is a feature:** Clear 💡 (no lead-in), Friendly 🤝 ("Okay — here's the gist: …"), Funny 😄 ("Brace yourself, hot take incoming: …"), Strict 🧐 ("Pay attention.").
+- **Verdicts are blunt and kind:** "Skip it", "Watch the core section", "Worth your time"; result labels "Mastered" (≥80%) / "Solid grasp" (≥50%) / "Worth a re-read". Error copy is calm: "Something went sideways."
 
-- Segmented horizontal bar with black dividers.
-- Segment list with dots, title, timestamp, blurb, and badge.
-- Uses skip/watch/core/demo color language.
+---
 
-### LessonCard
+## Iconography & assets
 
-Source: `src/components/LessonCard.tsx`
+- **Lucide is the official icon set** (`lucide-react`) — thin, rounded, 2px stroke. **Always use Lucide**; do not hand-draw raw-SVG icons when a Lucide glyph exists.
+- **Unicode arrows as text** are idiomatic: trailing `→` on CTAs, `↗` on jump links, `←` on back links, `✓`/`✗` on quiz states, `▶` on watch buttons. Treat them as type, not icons.
+- **Functional emoji only** on named controls (tone toggle 💡🤝😄🧐, player reactions 🤔✅🥱, tutor 💬). **Never decorative**; headlines and body copy never contain emoji.
+- **The mascot** (`src/assets/mascot.png`) is the brand's hero image — use it for empty / loading / celebration states (grayscale on errors). **Do not recolour or redraw it.** There is no separate logo mark beyond the mascot + "VideoSense" wordmark.
 
-- Stacked offset layers behind main card.
-- Main card is white, rounded `[32px]`, heavy border, generous padding.
-- Kind badge uses a tint and border.
-- Title is large display type.
-- Optional analogy card uses dashed border.
-- Optional quote uses strong blue left border.
+---
 
-### TutorPanel
+## Layout
 
-Source: `src/components/TutorPanel.tsx`
+Centred, max-width columns (`max-w-4xl` hero, `max-w-6xl` lesson, `max-w-2xl`
+reading views), generous vertical rhythm (`space-y-6`–`space-y-10`), `px-6`
+gutters. The lesson hero uses an asymmetric **3/2 grid**; reading screens are
+single-column. Backgrounds are **flat cream — no gradients, photos, textures, or
+patterns** behind content (the one exception is the subtle focus glow behind the
+URL input). Fixed: the tutor launcher at `bottom-6 right-6`.
 
-- Fixed bottom-right launcher.
-- Bordered modal panel with hard shadow.
-- Simple chat rows with primary user bubbles and bordered tutor bubbles.
-- Suggested question pills.
+---
 
-### YouTubeEmbed
+## Adherence checklist (every new surface must pass)
 
-Source: `src/components/YouTubeEmbed.tsx`
+1. Tokens only — pull colour/type/radius/shadow/motion from `src/styles.css`. Never hardcode hex/px shadows; never add a fifth accent hue.
+2. Type system intact — Plus Jakarta Sans display, Inter body, JetBrains Mono eyebrows. Use `.vs-label` for eyebrows/timecodes.
+3. Heavy 3px ink borders + hard offset shadows on cards, inputs, CTAs, embeds, panels. Dashed 2px for secondary-info insets, `--line-soft` for dividers.
+4. Big radii (28–32px cards), full-round pills/dots. No sharp rectangles.
+5. Interaction physics — hover lift `-2,-2` + shadow grow; press sink; focus border-darken; spring fills. Invert-to-ink on secondary controls.
+6. Motion limited to float / card-in / pop-in / spring transitions; respect reduced-motion.
+7. Lucide icons; unicode arrows as text; emoji only as control glyphs.
+8. Mascot-led warmth on empty/loading/celebration. Never recolour the mascot.
+9. Copy is time-respecting, sentence-case, "you"/"we"/mascot-"I".
 
-- `aspect-video`.
-- Black background.
-- Rounded `2xl`.
-- `brutal-border`.
-- Must remain visually integrated with hero and timestamp card contexts.
+## Prohibited
 
-## Layout Rules
-
-- Use centered max-width page shells already present in routes.
-- Prefer compact cards and dense-but-readable sections.
-- Do not put UI cards inside other decorative cards unless matching the existing stacked lesson-card pattern.
-- Hero surfaces should reveal the product identity and the next meaningful section, not become a marketing splash.
-- Preserve current two-column lesson hero on desktop and single-column collapse on smaller screens.
-
-## Prohibited Changes
-
-- No generic SaaS dashboard styling.
-- No minimal gray UI.
-- No purple gradient, orb, bokeh, or abstract decorative background aesthetic.
-- No replacing the mascot-led identity.
-- No replacing the current fonts without an explicit design decision.
-- No soft neumorphism or glassmorphism.
-- No large unrelated illustrations.
-- No visual redesign that weakens the cream, black-border, hard-shadow, blue/yellow/green identity.
+- Generic SaaS dashboard styling, minimal gray UI, or sharp enterprise rectangles.
+- Purple gradient / orb / bokeh / abstract decorative backgrounds; any gradient, photo, texture, or pattern behind content.
+- Soft / blurred shadows on hero chrome; glassmorphism or neumorphism.
+- Replacing the mascot-led identity or the three-font type system.
+- A fifth accent hue, or recolouring the four signal accents.
+- Decorative emoji in prose; hand-drawn SVG icons where Lucide exists.
+- Any redesign that weakens the cream / black-border / hard-shadow / blue-amber-green identity.

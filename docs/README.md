@@ -8,6 +8,7 @@ This folder is the implementation reference for the VideoSense MVP. It records t
 - MVP scope and acceptance criteria: [mvp-spec.md](./mvp-spec.md)
 - Screen behavior and UX: [design-document.md](./design-document.md)
 - Visual system and component rules: [design-system-reference.md](./design-system-reference.md)
+- Canonical design-system bundle (tokens, UI kit, motion specimens): [design-system/](./design-system/)
 - Build sequence: [implementation-roadmap.md](./implementation-roadmap.md)
 
 ## Current App State
@@ -26,6 +27,20 @@ The implementation is not yet MVP-complete. It still uses an in-memory lesson ca
 
 ## Design Lock
 
-The current Pixel Perfect View design is the required direction. The design system is named **Tactile Field Guide**. Preserve the cream background, heavy black borders, hard offset shadows, playful mascot identity, bold display type, compact rounded cards, and blue/yellow/green accents.
+The **Tactile Field Guide** design system is the required direction and is a
+hard guardrail for all current and future work. Its full, authoritative spec is
+[design-system-reference.md](./design-system-reference.md), backed by the
+canonical bundle in [design-system/](./design-system/). The tokens are
+implemented in `src/styles.css` and mirror
+[design-system/colors_and_type.css](./design-system/colors_and_type.css) 1:1
+(including a branded `.dark` theme — blue/amber/green accents, not slate).
 
-Do not restyle the MVP into a generic SaaS dashboard, gray minimalist interface, purple gradient/orb aesthetic, or mascot-free productivity tool.
+Preserve the cream background, heavy black borders, hard offset shadows, playful
+mascot identity, bold display type, compact rounded cards, and the four signal
+accents (blue / amber / green / red). Every new surface must pass the adherence
+checklist in the reference doc.
+
+Do not restyle the MVP into a generic SaaS dashboard, gray minimalist interface,
+purple gradient/orb aesthetic, or mascot-free productivity tool. See
+[`CLAUDE.md`](../CLAUDE.md) for the enforced design rules applied to all work in
+this repo.

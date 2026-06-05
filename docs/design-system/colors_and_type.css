@@ -1,0 +1,158 @@
+/* ============================================================================
+   VideoSense — "Tactile Field Guide" design system
+   Colors + Type foundations, extracted from the watchlater codebase (src/styles.css).
+   Heavy black borders, hard offset shadows, cream background, primary blue.
+   Source of truth: oklch tokens from the live Tailwind v4 @theme.
+   ============================================================================ */
+
+@import url("https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Plus+Jakarta+Sans:wght@500;700;800&family=JetBrains+Mono:wght@500;700&display=swap");
+
+:root {
+  /* ---- Core palette (light / default theme) ----------------------------- */
+  --background: oklch(0.984 0.013 95);     /* warm cream paper */
+  --foreground: oklch(0.21 0.025 260);     /* near-black ink (cool navy-black) */
+  --card: oklch(1 0 0);                    /* pure white card */
+  --card-foreground: oklch(0.21 0.025 260);
+  --popover: oklch(1 0 0);
+  --popover-foreground: oklch(0.21 0.025 260);
+
+  --primary: oklch(0.62 0.19 256);         /* signal blue (matches mascot) */
+  --primary-foreground: oklch(1 0 0);
+  --secondary: oklch(0.74 0.17 50);        /* warm amber / orange */
+  --secondary-foreground: oklch(0.21 0.025 260);
+  --accent: oklch(0.66 0.14 155);          /* fresh green */
+  --accent-foreground: oklch(1 0 0);
+  --destructive: oklch(0.6 0.22 25);       /* alarm red */
+  --destructive-foreground: oklch(1 0 0);
+
+  --muted: oklch(0.95 0.012 95);           /* faint cream fill */
+  --muted-foreground: oklch(0.5 0.02 260); /* slate caption text */
+
+  --border: oklch(0.21 0.025 260 / 0.12);  /* hairline ink @ 12% */
+  --input: oklch(0.21 0.025 260 / 0.12);
+  --ring: oklch(0.62 0.19 256);            /* = primary */
+
+  /* ---- Brand convenience aliases (fg/bg scale) -------------------------- */
+  --fg1: var(--foreground);                /* primary ink */
+  --fg2: var(--muted-foreground);          /* secondary / caption ink */
+  --fg3: oklch(0.21 0.025 260 / 0.45);     /* tertiary / disabled ink */
+  --bg1: var(--background);                /* page paper */
+  --bg2: var(--card);                      /* raised surface */
+  --bg3: var(--muted);                     /* inset / track fill */
+  --line: var(--foreground);               /* the heavy structural border color */
+  --line-soft: oklch(0.21 0.025 260 / 0.12);
+
+  /* ---- Charts ----------------------------------------------------------- */
+  --chart-1: oklch(0.646 0.222 41.116);
+  --chart-2: oklch(0.6 0.118 184.704);
+  --chart-3: oklch(0.398 0.07 227.392);
+  --chart-4: oklch(0.828 0.189 84.429);
+  --chart-5: oklch(0.769 0.188 70.08);
+
+  /* ---- Typography families --------------------------------------------- */
+  --font-display: "Plus Jakarta Sans", system-ui, sans-serif; /* headings, brand */
+  --font-body: "Inter", system-ui, sans-serif;                /* body, UI */
+  --font-mono: "JetBrains Mono", ui-monospace, monospace;     /* labels, timecodes */
+
+  /* ---- Radius scale (base 1.25rem = 20px) ------------------------------- */
+  --radius: 1.25rem;
+  --radius-sm: calc(var(--radius) - 4px);  /* 16px */
+  --radius-md: calc(var(--radius) - 2px);  /* 18px */
+  --radius-lg: var(--radius);              /* 20px */
+  --radius-xl: calc(var(--radius) + 4px);  /* 24px */
+  --radius-2xl: calc(var(--radius) + 8px); /* 28px */
+  --radius-3xl: calc(var(--radius) + 12px);/* 32px */
+  --radius-4xl: calc(var(--radius) + 16px);/* 36px */
+  --radius-pill: 9999px;
+
+  /* ---- The signature "brutal" hard-offset shadow system ----------------- */
+  --shadow-brutal-sm: 4px 4px 0 0 var(--foreground);
+  --shadow-brutal: 8px 8px 0 0 var(--foreground);
+  --shadow-brutal-lg: 12px 12px 0 0 var(--foreground);
+  --shadow-brutal-hover: 10px 10px 0 0 var(--foreground); /* on lift */
+  --border-brutal: 3px solid var(--foreground);           /* the heavy frame */
+
+  /* ---- Motion ----------------------------------------------------------- */
+  --ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1); /* overshoot, the brand feel */
+  --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+
+  /* ---- Semantic type scale (font / size / weight / spacing) ------------- */
+  --h1-font: var(--font-display); --h1-size: clamp(2.75rem, 6vw, 4.5rem);  --h1-weight: 800; --h1-tracking: -0.02em; --h1-leading: 1.05;
+  --h2-font: var(--font-display); --h2-size: clamp(1.75rem, 3vw, 2.25rem); --h2-weight: 800; --h2-tracking: -0.02em; --h2-leading: 1.1;
+  --h3-font: var(--font-display); --h3-size: 1.25rem;  --h3-weight: 800; --h3-tracking: -0.01em; --h3-leading: 1.2;
+  --body-font: var(--font-body);  --body-size: 1.125rem; --body-weight: 400; --body-leading: 1.6;
+  --small-font: var(--font-body); --small-size: 0.875rem; --small-weight: 500;
+  --label-font: var(--font-mono); --label-size: 0.625rem; --label-weight: 700; --label-tracking: 0.15em; /* uppercase eyebrow */
+}
+
+/* ============================================================================
+   Dark theme — applied via .dark on a parent. Cooler, navy-charcoal paper.
+   ============================================================================ */
+.dark {
+  --background: oklch(0.129 0.042 264.695);
+  --foreground: oklch(0.984 0.003 247.858);
+  --card: oklch(0.208 0.042 265.755);
+  --card-foreground: oklch(0.984 0.003 247.858);
+  --popover: oklch(0.208 0.042 265.755);
+  --popover-foreground: oklch(0.984 0.003 247.858);
+  --primary: oklch(0.62 0.19 256);
+  --primary-foreground: oklch(1 0 0);
+  --secondary: oklch(0.74 0.17 50);
+  --secondary-foreground: oklch(0.129 0.042 264.695);
+  --accent: oklch(0.66 0.14 155);
+  --accent-foreground: oklch(1 0 0);
+  --destructive: oklch(0.704 0.191 22.216);
+  --destructive-foreground: oklch(0.984 0.003 247.858);
+  --muted: oklch(0.279 0.041 260.031);
+  --muted-foreground: oklch(0.704 0.04 256.788);
+  --border: oklch(1 0 0 / 0.14);
+  --input: oklch(1 0 0 / 0.15);
+  --ring: oklch(0.62 0.19 256);
+  --line: var(--foreground);
+  --fg3: oklch(0.984 0.003 247.858 / 0.45);
+}
+
+/* ============================================================================
+   Semantic element styles — opt in by wrapping content in .vs-prose,
+   or copy these rules into your own stylesheet.
+   ============================================================================ */
+.vs-prose h1, .vs-h1 {
+  font-family: var(--h1-font); font-size: var(--h1-size); font-weight: var(--h1-weight);
+  letter-spacing: var(--h1-tracking); line-height: var(--h1-leading); color: var(--fg1);
+}
+.vs-prose h2, .vs-h2 {
+  font-family: var(--h2-font); font-size: var(--h2-size); font-weight: var(--h2-weight);
+  letter-spacing: var(--h2-tracking); line-height: var(--h2-leading); color: var(--fg1);
+}
+.vs-prose h3, .vs-h3 {
+  font-family: var(--h3-font); font-size: var(--h3-size); font-weight: var(--h3-weight);
+  letter-spacing: var(--h3-tracking); line-height: var(--h3-leading); color: var(--fg1);
+}
+.vs-prose p, .vs-body {
+  font-family: var(--body-font); font-size: var(--body-size); font-weight: var(--body-weight);
+  line-height: var(--body-leading); color: var(--fg1);
+}
+.vs-small { font-family: var(--small-font); font-size: var(--small-size); font-weight: var(--small-weight); color: var(--fg2); }
+
+/* The mono eyebrow / timecode label — appears everywhere in the product */
+.vs-label {
+  font-family: var(--label-font); font-size: var(--label-size); font-weight: var(--label-weight);
+  letter-spacing: var(--label-tracking); text-transform: uppercase; color: var(--fg2);
+}
+.vs-code { font-family: var(--font-mono); font-weight: 500; }
+
+/* ============================================================================
+   Signature utilities — the three motifs that define the look.
+   ============================================================================ */
+.brutal-border  { border: var(--border-brutal); }
+.brutal-shadow      { box-shadow: var(--shadow-brutal); }
+.brutal-shadow-sm   { box-shadow: var(--shadow-brutal-sm); }
+.brutal-shadow-lg   { box-shadow: var(--shadow-brutal-lg); }
+
+/* Keyframes used across the product */
+@keyframes vs-float    { 0%,100% { transform: translateY(0) rotate(-1deg); } 50% { transform: translateY(-10px) rotate(1deg); } }
+@keyframes vs-card-in  { from { transform: translateY(40px) rotate(2deg); opacity: 0; } to { transform: translateY(0) rotate(-1deg); opacity: 1; } }
+@keyframes vs-pop-in   { 0% { transform: scale(0.6); opacity: 0; } 60% { transform: scale(1.08); opacity: 1; } 100% { transform: scale(1); } }
+.animate-float   { animation: vs-float 6s ease-in-out infinite; }
+.animate-card-in { animation: vs-card-in 0.55s var(--ease-spring) both; }
+.animate-pop-in  { animation: vs-pop-in 0.5s var(--ease-spring) both; }

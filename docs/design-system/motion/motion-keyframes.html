@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<link rel="stylesheet" href="../colors_and_type.css">
+<style>
+  html,body { margin:0; }
+  body { background: var(--bg1); font-family: var(--font-body); color: var(--fg1); padding: 22px 26px; }
+  .cap { font-family: var(--font-mono); font-size:10px; letter-spacing:0.15em; text-transform:uppercase; color:var(--fg2); margin-bottom:18px; }
+  .grid { display:grid; grid-template-columns: repeat(3, 1fr); gap:18px; }
+  .cell { border:3px solid var(--foreground); border-radius:20px; background:var(--card); height:150px; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:14px; overflow:hidden; position:relative; }
+  .demo { width:54px; height:54px; border-radius:14px; border:3px solid var(--foreground); display:grid; place-items:center; font-family:var(--font-display); font-weight:800; font-size:18px; color:#fff; }
+  .name { font-family:var(--font-display); font-weight:800; font-size:13px; }
+  .sub { position:absolute; bottom:10px; font-family:var(--font-mono); font-size:9px; letter-spacing:0.1em; text-transform:uppercase; color:var(--fg2); }
+  /* float */
+  .f-demo { background:var(--primary); }
+  /* card-in: replay on a loop */
+  .ci-demo { background:var(--secondary); color:var(--foreground); animation: vs-card-in 0.55s var(--ease-spring) both, ci-loop 2.6s steps(1) infinite; }
+  @keyframes ci-loop { 0%,38% { opacity:1; } 39%,100% { opacity:1; } }
+  .ci-wrap { animation: ci-replay 2.6s infinite; }
+  @keyframes ci-replay { 0% { transform:translateY(40px) rotate(2deg); opacity:0; } 22%,100% { transform:translateY(0) rotate(-1deg); opacity:1; } }
+  /* pop-in loop */
+  .pi-demo { background:var(--accent); animation: pi-replay 2.2s infinite; }
+  @keyframes pi-replay { 0% { transform:scale(0.6); opacity:0; } 27% { transform:scale(1.08); opacity:1; } 45%,100% { transform:scale(1); opacity:1; } }
+</style>
+</head>
+<body>
+  <div class="cap">Motion · the three house keyframes (looping)</div>
+  <div class="grid">
+    <div class="cell">
+      <div class="demo f-demo animate-float">▲</div>
+      <span class="name">float</span>
+      <span class="sub">mascot · 6s · ease-in-out</span>
+    </div>
+    <div class="cell">
+      <div class="ci-wrap"><div class="demo ci-demo">↑</div></div>
+      <span class="name">card-in</span>
+      <span class="sub">rise + rotate · spring</span>
+    </div>
+    <div class="cell">
+      <div class="demo pi-demo">★</div>
+      <span class="name">pop-in</span>
+      <span class="sub">celebrate · 0.6→1.08→1</span>
+    </div>
+  </div>
+</body>
+</html>
