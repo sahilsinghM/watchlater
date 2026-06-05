@@ -124,18 +124,30 @@ async function extractCaptionTracksFromWatchPage(
 ): Promise<Array<{ baseUrl: string; languageCode?: string; kind?: string }>> {
   try {
     const res = await fetch(
-      `https://www.youtube.com/watch?v=${youtubeId}&hl=en&gl=US`,
+      `https://www.youtube.com/watch?v=${youtubeId}&hl=en&gl=US&persist_hl=1&persist_gl=1`,
       {
         headers: {
           "User-Agent":
             "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
+          "Accept":
+            "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8",
           "Accept-Language": "en-US,en;q=0.9",
-          Accept:
-            "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
-          // Bypass YouTube's GDPR consent gate and bot-redirect pages that
-          // datacenter IPs commonly receive instead of the real watch HTML.
-          Cookie: "CONSENT=YES+42; SOCS=CAISAiAD",
-          Referer: "https://www.google.com/",
+          "Accept-Encoding": "gzip, deflate, br",
+          "Cache-Control": "no-cache",
+          "Pragma": "no-cache",
+          // Bypass YouTube's GDPR consent gate. Also include fake YouTube
+          // session cookies (GPS, YSC, VISITOR_INFO1_LIVE) so the page
+          // serves full playerResponse instead of a bot-detection gate.
+          "Cookie": "CONSENT=YES+42; SOCS=CAISAiAD; GPS=1; YSC=dIkMoOiMZ7A; VISITOR_INFO1_LIVE=oKckVSqvaGw",
+          "Referer": "https://www.google.com/",
+          "sec-ch-ua": '"Not_A Brand";v="8", "Chromium";v="124", "Google Chrome";v="124"',
+          "sec-ch-ua-mobile": "?0",
+          "sec-ch-ua-platform": '"Windows"',
+          "sec-fetch-dest": "document",
+          "sec-fetch-mode": "navigate",
+          "sec-fetch-site": "none",
+          "sec-fetch-user": "?1",
+          "upgrade-insecure-requests": "1",
         },
       },
     );
