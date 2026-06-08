@@ -1,12 +1,13 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { z } from "zod";
 import { useSuspenseQuery } from "@tanstack/react-query";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Brand, mascot } from "@/components/Brand";
 import { lessonQueryOptions } from "@/lib/lessonQuery";
 import { fmtRange } from "@/lib/lessonSchema";
 import { getBrowserSessionKey } from "@/lib/anonymousSession";
 import { submitFeedback } from "@/lib/feedback.functions";
+import { captureLead, hasCapturedLead, isLikelyEmail } from "@/lib/lead";
 
 const search = z.object({
   score: z.number().int().min(0).default(0),
@@ -29,9 +30,38 @@ function Done() {
   const label = pct >= 80 ? "Mastered" : pct >= 50 ? "Solid grasp" : "Worth a re-read";
   const [feedbackState, setFeedbackState] = useState<"idle" | "saving" | "saved" | "error">("idle");
   const [reason, setReason] = useState("");
+  const [email, setEmail] = useState("");
+  const [emailInvalid, setEmailInvalid] = useState(false);
+  const [leadCaptured, setLeadCaptured] = useState(false);
+
+  // Read the cross-screen dedup flag after mount (SSR-safe). If they already
+  // joined on the hero, we hide the email field but keep the feedback controls.
+  useEffect(() => {
+    if (hasCapturedLead()) setLeadCaptured(true);
+  }, []);
 
   async function leaveFeedback(useful: boolean) {
     setFeedbackState("saving");
+    // The early-access email rides along on the feedback click — best effort,
+    // never a precondition. Invalid input flags inline; feedback still saves.
+    const trimmedEmail = email.trim();
+    if (!leadCaptured && trimmedEmail) {
+      if (isLikelyEmail(trimmedEmail)) {
+        try {
+          await captureLead({
+            email: trimmedEmail,
+            source: "done",
+            lessonVideoId: lesson.video.id,
+          });
+          setLeadCaptured(true);
+          setEmailInvalid(false);
+        } catch (error) {
+          console.warn("[lead] failed to capture early-access email", error);
+        }
+      } else {
+        setEmailInvalid(true);
+      }
+    }
     try {
       await submitFeedback({
         data: {
@@ -90,6 +120,41 @@ function Done() {
           <div className="font-mono text-[10px] uppercase tracking-widest text-primary font-bold">
             Was this useful?
           </div>
+          {leadCaptured ? (
+            <p className="font-display text-sm font-bold">
+              <span className="text-accent">✓</span> You're on the early-access list.
+            </p>
+          ) : (
+            <div>
+              <label
+                htmlFor="early-access-email"
+                className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground font-bold"
+              >
+                Early access · optional
+              </label>
+              <input
+                id="early-access-email"
+                type="email"
+                value={email}
+                onChange={(event) => {
+                  setEmail(event.target.value);
+                  if (emailInvalid) setEmailInvalid(false);
+                }}
+                placeholder="you@example.com — we'll let you in"
+                aria-invalid={emailInvalid}
+                className={`mt-1.5 w-full rounded-2xl border-2 bg-background px-4 py-3 text-sm outline-none transition-colors ${
+                  emailInvalid
+                    ? "border-destructive"
+                    : "border-foreground/15 focus:border-foreground"
+                }`}
+              />
+              {emailInvalid && (
+                <p className="mt-1.5 font-mono text-[10px] uppercase tracking-widest text-destructive font-bold">
+                  Enter a valid email — your feedback was still saved
+                </p>
+              )}
+            </div>
+          )}
           <textarea
             value={reason}
             onChange={(event) => setReason(event.target.value)}
