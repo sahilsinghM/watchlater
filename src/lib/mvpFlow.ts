@@ -104,6 +104,17 @@ export type Feedback = {
   createdAt: string;
 };
 
+export type LeadSource = "hero" | "done";
+
+export type Lead = {
+  id: string;
+  sessionId: string;
+  email: string;
+  source: LeadSource;
+  lessonVideoId?: string;
+  createdAt: string;
+};
+
 export type MvpStore = {
   upsertAnonymousSession(sessionKey: string): Promise<AnonymousSession>;
   getAnonymousSession(sessionKey: string): Promise<AnonymousSession | null>;
@@ -120,6 +131,7 @@ export type MvpStore = {
   getLessonByYoutubeId(youtubeId: string): Promise<Lesson | null>;
   saveQuizResult(input: Omit<QuizResult, "id" | "completedAt">): Promise<QuizResult>;
   saveFeedback(input: Omit<Feedback, "id" | "createdAt">): Promise<Feedback>;
+  saveLead(input: Omit<Lead, "id" | "createdAt">): Promise<Lead>;
 };
 
 function now(): string {
@@ -136,10 +148,12 @@ export function createMemoryMvpStore(): MvpStore {
   const lessons = new Map<string, Lesson>();
   const quizResults: QuizResult[] = [];
   const feedback: Feedback[] = [];
+  const leads: Lead[] = [];
   let sessionCount = 0;
   let jobCount = 0;
   let quizCount = 0;
   let feedbackCount = 0;
+  let leadCount = 0;
 
   return {
     async upsertAnonymousSession(sessionKey) {
@@ -221,7 +235,42 @@ export function createMemoryMvpStore(): MvpStore {
       feedback.push(item);
       return item;
     },
+    async saveLead(input) {
+      // Upsert by email: one row per person. A later touch refreshes the
+      // mutable fields but preserves the original id + createdAt, mirroring the
+      // unique-email upsert in the Supabase store.
+      const existing = leads.find((lead) => lead.email === input.email);
+      if (existing) {
+        existing.source = input.source;
+        existing.sessionId = input.sessionId;
+        existing.lessonVideoId = input.lessonVideoId;
+        return existing;
+      }
+      const item: Lead = {
+        ...input,
+        id: id("lead", ++leadCount),
+        createdAt: now(),
+      };
+      leads.push(item);
+      return item;
+    },
   };
+}
+
+// A job that hasn't advanced in this long is treated as dead (the function that
+// was processing it was killed/timed out). Generation normally finishes in well
+// under a minute, so 2 minutes is a safe "give up and show an error" threshold.
+const STALE_MS = 2 * 60 * 1000;
+const NON_TERMINAL_STATUSES: ProcessingStatus[] = [
+  "queued",
+  "fetching_metadata",
+  "reading_transcript",
+  "generating_lesson",
+];
+
+export function isJobStale(job: ProcessingJob, nowMs = Date.now()): boolean {
+  if (!NON_TERMINAL_STATUSES.includes(job.status)) return false;
+  return nowMs - new Date(job.updatedAt).getTime() > STALE_MS;
 }
 
 export async function ensureAnonymousSession(
@@ -407,6 +456,14 @@ export function recordFeedback(
   input: Omit<Feedback, "id" | "createdAt">,
 ): Promise<Feedback> {
   return store.saveFeedback(input);
+}
+
+export function normalizeEmail(email: string): string {
+  return email.trim().toLowerCase();
+}
+
+export function recordLead(store: MvpStore, input: Omit<Lead, "id" | "createdAt">): Promise<Lead> {
+  return store.saveLead({ ...input, email: normalizeEmail(input.email) });
 }
 
 export type TutorContext = {

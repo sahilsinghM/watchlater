@@ -1,6 +1,6 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
-import { ensureAnonymousSession, recordFeedback, recordQuizResult } from "./mvpFlow";
+import { ensureAnonymousSession, recordFeedback, recordLead, recordQuizResult } from "./mvpFlow";
 import { getMvpStore } from "./mvpRuntime.server";
 
 export const submitQuizResult = createServerFn({ method: "POST" })
@@ -48,5 +48,27 @@ export const submitFeedback = createServerFn({ method: "POST" })
       useful: data.useful,
       reason: data.reason,
       source: data.source,
+    });
+  });
+
+export const submitLead = createServerFn({ method: "POST" })
+  .inputValidator((input: unknown) =>
+    z
+      .object({
+        sessionKey: z.string().min(1),
+        email: z.string().trim().email(),
+        source: z.enum(["hero", "done"]),
+        lessonVideoId: z.string().min(1).optional(),
+      })
+      .parse(input),
+  )
+  .handler(async ({ data }) => {
+    const store = getMvpStore();
+    const session = await ensureAnonymousSession(store, data.sessionKey);
+    return recordLead(store, {
+      sessionId: session.id,
+      email: data.email,
+      source: data.source,
+      lessonVideoId: data.lessonVideoId,
     });
   });

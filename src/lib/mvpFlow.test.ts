@@ -3,12 +3,14 @@ import { sampleLesson } from "../data/sampleLesson";
 import {
   answerTutorQuestion,
   assessTranscriptQuality,
+  isJobStale,
   buildTutorContext,
   createMemoryMvpStore,
   ensureAnonymousSession,
   generateAndPersistLesson,
   persistKeyFrames,
   recordFeedback,
+  recordLead,
   recordQuizResult,
   startProcessingJob,
   validateVideoInput,
@@ -163,6 +165,43 @@ describe("MVP flow", () => {
     expect(feedback.useful).toBe(true);
   });
 
+  test("records an early-access lead for the anonymous session with a normalized email", async () => {
+    const store = createMemoryMvpStore();
+    const session = await ensureAnonymousSession(store, "browser-session");
+
+    const lead = await recordLead(store, {
+      sessionId: session.id,
+      email: "  Reader@Example.COM ",
+      source: "hero",
+      lessonVideoId: "dQw4w9WgXcQ",
+    });
+
+    expect(lead.email).toBe("reader@example.com");
+    expect(lead.source).toBe("hero");
+    expect(lead.id).toBeTruthy();
+  });
+
+  test("upserts a lead by email so the same person is captured once", async () => {
+    const store = createMemoryMvpStore();
+    const session = await ensureAnonymousSession(store, "browser-session");
+
+    const first = await recordLead(store, {
+      sessionId: session.id,
+      email: "reader@example.com",
+      source: "hero",
+    });
+    const second = await recordLead(store, {
+      sessionId: session.id,
+      email: "  Reader@Example.com ",
+      source: "done",
+      lessonVideoId: "dQw4w9WgXcQ",
+    });
+
+    // Same row (deduped), not a new lead, but the latest touch is reflected.
+    expect(second.id).toBe(first.id);
+    expect(second.source).toBe("done");
+  });
+
   test("tutor answers from source context and refuses unsupported questions", () => {
     const context = buildTutorContext(sampleLesson);
 
@@ -175,5 +214,39 @@ describe("MVP flow", () => {
       supported: false,
       text: "I cannot tell from this video.",
     });
+  });
+});
+
+describe("isJobStale", () => {
+  const FOUR_MINUTES_AGO = Date.now() - 4 * 60 * 1000;
+  const ONE_MINUTE_AGO = Date.now() - 1 * 60 * 1000;
+
+  function makeJob(status: string, updatedAt: number) {
+    return {
+      id: "job_001",
+      sessionId: "s1",
+      youtubeId: "dQw4w9WgXcQ",
+      input: "https://www.youtube.com/watch?v=dQw4w9WgXcQ",
+      status,
+      currentStep: status,
+      createdAt: new Date(updatedAt).toISOString(),
+      updatedAt: new Date(updatedAt).toISOString(),
+    } as any;
+  }
+
+  test("flags a non-terminal job with updatedAt more than 2 minutes ago as stale", () => {
+    expect(isJobStale(makeJob("generating_lesson", FOUR_MINUTES_AGO))).toBe(true);
+  });
+
+  test("does not flag a non-terminal job updated within the last 2 minutes", () => {
+    expect(isJobStale(makeJob("reading_transcript", ONE_MINUTE_AGO))).toBe(false);
+  });
+
+  test("never flags a ready job as stale regardless of age", () => {
+    expect(isJobStale(makeJob("ready", FOUR_MINUTES_AGO))).toBe(false);
+  });
+
+  test("never flags a failed job as stale regardless of age", () => {
+    expect(isJobStale(makeJob("failed", FOUR_MINUTES_AGO))).toBe(false);
   });
 });

@@ -4,6 +4,7 @@ import { useSuspenseQuery } from "@tanstack/react-query";
 import { Brand } from "@/components/Brand";
 import { WatchScoreDial } from "@/components/WatchScoreDial";
 import { AttentionTimeline } from "@/components/AttentionTimeline";
+import { WaitlistCard } from "@/components/WaitlistCard";
 import { YouTubeEmbed, type YouTubePlayerHandle } from "@/components/YouTubeEmbed";
 import { ToneToggle } from "@/components/ToneToggle";
 import { TutorPanel } from "@/components/TutorPanel";
@@ -164,6 +165,8 @@ function LessonHero() {
             </button>
           </div>
         </section>
+
+        <WaitlistCard lessonVideoId={lesson.video.id} />
       </main>
 
       <TutorPanel lesson={lesson} />

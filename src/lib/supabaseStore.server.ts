@@ -1,4 +1,12 @@
-import type { MvpStore, AnonymousSession, ProcessingJob, KeyFrame, QuizResult, Feedback } from "./mvpFlow";
+import type {
+  MvpStore,
+  AnonymousSession,
+  ProcessingJob,
+  KeyFrame,
+  QuizResult,
+  Feedback,
+  Lead,
+} from "./mvpFlow";
 import type { Lesson } from "./lessonSchema";
 import { getSupabaseAdmin } from "./supabase-admin.server";
 
@@ -207,6 +215,33 @@ export function createSupabaseStore(): MvpStore {
         useful: data!.useful,
         reason: data!.reason ?? undefined,
         source: data!.source,
+        createdAt: data!.created_at,
+      };
+    },
+
+    async saveLead(input) {
+      const supabase = getSupabaseAdmin();
+      // Upsert on the unique email so the same person is captured once; a later
+      // touch refreshes source/session/video but keeps the original row.
+      const { data } = await supabase
+        .from("leads")
+        .upsert(
+          {
+            session_id: input.sessionId,
+            email: input.email,
+            source: input.source,
+            lesson_video_id: input.lessonVideoId ?? null,
+          },
+          { onConflict: "email" },
+        )
+        .select("*")
+        .single();
+      return {
+        id: data!.id,
+        sessionId: data!.session_id,
+        email: data!.email,
+        source: data!.source,
+        lessonVideoId: data!.lesson_video_id ?? undefined,
         createdAt: data!.created_at,
       };
     },
