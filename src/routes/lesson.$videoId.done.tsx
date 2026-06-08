@@ -33,6 +33,7 @@ function Done() {
   const [email, setEmail] = useState("");
   const [emailInvalid, setEmailInvalid] = useState(false);
   const [leadCaptured, setLeadCaptured] = useState(false);
+  const [leadError, setLeadError] = useState(false);
 
   // Read the cross-screen dedup flag after mount (SSR-safe). If they already
   // joined on the hero, we hide the email field but keep the feedback controls.
@@ -55,8 +56,12 @@ function Done() {
           });
           setLeadCaptured(true);
           setEmailInvalid(false);
+          setLeadError(false);
         } catch (error) {
+          // Best-effort: don't block feedback, but don't fail silently either —
+          // tell the user their email didn't make it (the hero card does the same).
           console.warn("[lead] failed to capture early-access email", error);
+          setLeadError(true);
         }
       } else {
         setEmailInvalid(true);
@@ -151,6 +156,11 @@ function Done() {
               {emailInvalid && (
                 <p className="mt-1.5 font-mono text-[10px] uppercase tracking-widest text-destructive font-bold">
                   Enter a valid email — your feedback was still saved
+                </p>
+              )}
+              {leadError && (
+                <p className="mt-1.5 font-mono text-[10px] uppercase tracking-widest text-destructive font-bold">
+                  We couldn't save your email — your feedback was still saved
                 </p>
               )}
             </div>
