@@ -1,13 +1,14 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { z } from "zod";
 import { useSuspenseQuery } from "@tanstack/react-query";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Brand, mascot } from "@/components/Brand";
 import { ShareButton } from "@/components/ShareButton";
 import { lessonQueryOptions } from "@/lib/lessonQuery";
 import { fmtRange } from "@/lib/lessonSchema";
 import { getBrowserSessionKey } from "@/lib/anonymousSession";
 import { submitFeedback } from "@/lib/feedback.functions";
+import { captureLead, hasCapturedLead, isLikelyEmail } from "@/lib/lead";
 
 const search = z.object({
   score: z.number().int().min(0).default(0),
@@ -33,14 +34,19 @@ function Done() {
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [emailError, setEmailError] = useState<string | null>(null);
+  const [leadCaptured, setLeadCaptured] = useState(false);
+
+  // Reflect the shared dedup flag after mount (SSR always renders the input).
+  useEffect(() => {
+    if (hasCapturedLead()) setLeadCaptured(true);
+  }, []);
 
   async function leaveFeedback(useful: boolean) {
     const trimmedEmail = email.trim();
-    if (trimmedEmail && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(trimmedEmail)) {
-      setEmailError("That email doesn't look right.");
-      return;
-    }
-    setEmailError(null);
+    const emailValid = trimmedEmail !== "" && isLikelyEmail(trimmedEmail);
+    // A bad email is flagged inline but must NOT block feedback — we just submit
+    // feedback without it. Only a valid email rides along + becomes a lead.
+    setEmailError(trimmedEmail && !emailValid ? "That email doesn't look right." : null);
     setFeedbackState("saving");
     try {
       await submitFeedback({
@@ -50,11 +56,18 @@ function Done() {
           useful,
           reason: reason.trim() || undefined,
           name: name.trim() || undefined,
-          email: trimmedEmail || undefined,
+          email: emailValid ? trimmedEmail : undefined,
           source: "completion",
         },
       });
       setFeedbackState("saved");
+      // Additionally record the early-access lead. Never blocks or fails the
+      // feedback the user already gave — fire it after, swallow errors.
+      if (emailValid && !leadCaptured) {
+        captureLead({ email: trimmedEmail, source: "done", lessonVideoId: lesson.video.id })
+          .then(() => setLeadCaptured(true))
+          .catch((error) => console.warn("[lead] failed to capture early-access email", error));
+      }
     } catch (error) {
       console.warn("[feedback] failed to persist feedback", error);
       setFeedbackState("error");
@@ -110,31 +123,49 @@ function Done() {
           />
           <div className="space-y-2">
             <div className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground font-bold">
-              Want a reply? Leave your details
+              {leadCaptured ? "Early access" : "Want a reply or early access? Leave your details"}
             </div>
-            <div className="grid gap-2 sm:grid-cols-2">
-              <input
-                type="text"
-                value={name}
-                onChange={(event) => setName(event.target.value)}
-                placeholder="Your name (optional)"
-                autoComplete="name"
-                className="w-full rounded-2xl border-2 border-foreground/15 bg-background px-4 py-3 text-sm outline-none focus:border-foreground"
-              />
-              <input
-                type="email"
-                value={email}
-                onChange={(event) => {
-                  setEmail(event.target.value);
-                  if (emailError) setEmailError(null);
-                }}
-                placeholder="you@email.com (optional)"
-                autoComplete="email"
-                className="w-full rounded-2xl border-2 border-foreground/15 bg-background px-4 py-3 text-sm outline-none focus:border-foreground"
-              />
-            </div>
-            {emailError && (
-              <p className="text-sm text-destructive font-medium">{emailError}</p>
+            {leadCaptured ? (
+              <div className="grid gap-2 sm:grid-cols-2">
+                <input
+                  type="text"
+                  value={name}
+                  onChange={(event) => setName(event.target.value)}
+                  placeholder="Your name (optional)"
+                  autoComplete="name"
+                  className="w-full rounded-2xl border-2 border-foreground/15 bg-background px-4 py-3 text-sm outline-none focus:border-foreground"
+                />
+                <p className="self-center font-display text-sm font-extrabold">
+                  <span className="text-accent">✓</span> You're on the early-access list.
+                </p>
+              </div>
+            ) : (
+              <>
+                <div className="grid gap-2 sm:grid-cols-2">
+                  <input
+                    type="text"
+                    value={name}
+                    onChange={(event) => setName(event.target.value)}
+                    placeholder="Your name (optional)"
+                    autoComplete="name"
+                    className="w-full rounded-2xl border-2 border-foreground/15 bg-background px-4 py-3 text-sm outline-none focus:border-foreground"
+                  />
+                  <input
+                    type="email"
+                    value={email}
+                    onChange={(event) => {
+                      setEmail(event.target.value);
+                      if (emailError) setEmailError(null);
+                    }}
+                    placeholder="you@email.com (optional)"
+                    autoComplete="email"
+                    className="w-full rounded-2xl border-2 border-foreground/15 bg-background px-4 py-3 text-sm outline-none focus:border-foreground"
+                  />
+                </div>
+                {emailError && (
+                  <p className="text-sm text-destructive font-medium">{emailError}</p>
+                )}
+              </>
             )}
           </div>
           <div className="flex flex-wrap gap-3">
