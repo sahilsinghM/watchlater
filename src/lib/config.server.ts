@@ -19,6 +19,8 @@ import process from "node:process";
 export function getServerConfig() {
   return {
     nodeEnv: process.env.NODE_ENV,
+    anthropicApiKey: process.env.ANTHROPIC_API_KEY,
+    anthropicModel: process.env.ANTHROPIC_MODEL,
     openaiApiKey: process.env.OPENROUTER_API_KEY ?? process.env.OPENAI_API_KEY,
     openaiModel: process.env.OPENAI_MODEL,
     allowPrototypeGeneration: process.env.ALLOW_PROTOTYPE_GENERATION === "true",
