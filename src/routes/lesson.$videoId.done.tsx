@@ -3,6 +3,7 @@ import { z } from "zod";
 import { useSuspenseQuery } from "@tanstack/react-query";
 import { useState } from "react";
 import { Brand, mascot } from "@/components/Brand";
+import { ShareButton } from "@/components/ShareButton";
 import { lessonQueryOptions } from "@/lib/lessonQuery";
 import { fmtRange } from "@/lib/lessonSchema";
 import { getBrowserSessionKey } from "@/lib/anonymousSession";
@@ -29,8 +30,17 @@ function Done() {
   const label = pct >= 80 ? "Mastered" : pct >= 50 ? "Solid grasp" : "Worth a re-read";
   const [feedbackState, setFeedbackState] = useState<"idle" | "saving" | "saved" | "error">("idle");
   const [reason, setReason] = useState("");
+  const [name, setName] = useState("");
+  const [email, setEmail] = useState("");
+  const [emailError, setEmailError] = useState<string | null>(null);
 
   async function leaveFeedback(useful: boolean) {
+    const trimmedEmail = email.trim();
+    if (trimmedEmail && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(trimmedEmail)) {
+      setEmailError("That email doesn't look right.");
+      return;
+    }
+    setEmailError(null);
     setFeedbackState("saving");
     try {
       await submitFeedback({
@@ -39,6 +49,8 @@ function Done() {
           sessionKey: getBrowserSessionKey(),
           useful,
           reason: reason.trim() || undefined,
+          name: name.trim() || undefined,
+          email: trimmedEmail || undefined,
           source: "completion",
         },
       });
@@ -96,6 +108,35 @@ function Done() {
             placeholder="Optional note"
             className="min-h-20 w-full resize-none rounded-2xl border-2 border-foreground/15 bg-background px-4 py-3 text-sm outline-none focus:border-foreground"
           />
+          <div className="space-y-2">
+            <div className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground font-bold">
+              Want a reply? Leave your details
+            </div>
+            <div className="grid gap-2 sm:grid-cols-2">
+              <input
+                type="text"
+                value={name}
+                onChange={(event) => setName(event.target.value)}
+                placeholder="Your name (optional)"
+                autoComplete="name"
+                className="w-full rounded-2xl border-2 border-foreground/15 bg-background px-4 py-3 text-sm outline-none focus:border-foreground"
+              />
+              <input
+                type="email"
+                value={email}
+                onChange={(event) => {
+                  setEmail(event.target.value);
+                  if (emailError) setEmailError(null);
+                }}
+                placeholder="you@email.com (optional)"
+                autoComplete="email"
+                className="w-full rounded-2xl border-2 border-foreground/15 bg-background px-4 py-3 text-sm outline-none focus:border-foreground"
+              />
+            </div>
+            {emailError && (
+              <p className="text-sm text-destructive font-medium">{emailError}</p>
+            )}
+          </div>
           <div className="flex flex-wrap gap-3">
             <button
               type="button"
@@ -127,6 +168,12 @@ function Done() {
         </div>
 
         <div className="flex flex-wrap justify-center gap-3 pt-2">
+          <ShareButton
+            path={`/lesson/${videoId}`}
+            title={lesson.video.title}
+            text="Learn this video in 5 minutes with VideoSense."
+            className="text-sm"
+          />
           <Link
             to="/lesson/$videoId"
             params={{ videoId }}

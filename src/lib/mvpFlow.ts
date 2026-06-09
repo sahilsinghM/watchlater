@@ -100,6 +100,8 @@ export type Feedback = {
   sessionId: string;
   useful: boolean;
   reason?: string;
+  name?: string;
+  email?: string;
   source: "completion" | "lesson" | "player";
   createdAt: string;
 };

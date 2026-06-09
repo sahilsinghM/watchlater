@@ -35,6 +35,8 @@ export const submitFeedback = createServerFn({ method: "POST" })
         sessionKey: z.string().min(1),
         useful: z.boolean(),
         reason: z.string().max(500).optional(),
+        name: z.string().max(120).optional(),
+        email: z.string().email().max(254).optional(),
         source: z.enum(["completion", "lesson", "player"]).default("completion"),
       })
       .parse(input),
@@ -47,6 +49,8 @@ export const submitFeedback = createServerFn({ method: "POST" })
       sessionId: session.id,
       useful: data.useful,
       reason: data.reason,
+      name: data.name,
+      email: data.email,
       source: data.source,
     });
   });

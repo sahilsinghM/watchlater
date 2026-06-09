@@ -7,6 +7,7 @@ import { AttentionTimeline } from "@/components/AttentionTimeline";
 import { YouTubeEmbed, type YouTubePlayerHandle } from "@/components/YouTubeEmbed";
 import { ToneToggle } from "@/components/ToneToggle";
 import { TutorPanel } from "@/components/TutorPanel";
+import { ShareButton } from "@/components/ShareButton";
 import { lessonQueryOptions } from "@/lib/lessonQuery";
 import { fmtRange, fmtTime, type Tone } from "@/lib/lessonSchema";
 
@@ -89,6 +90,11 @@ function LessonHero() {
               >
                 ▶ Watch the best part
               </button>
+              <ShareButton
+                path={`/lesson/${videoId}`}
+                title={lesson.video.title}
+                text="Learn this video in 5 minutes with VideoSense."
+              />
             </div>
           </div>
 
