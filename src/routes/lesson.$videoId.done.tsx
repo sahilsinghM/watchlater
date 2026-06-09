@@ -171,7 +171,7 @@ function Done() {
           <ShareButton
             path={`/lesson/${videoId}`}
             title={lesson.video.title}
-            text="Learn this video in 5 minutes with WatchLater."
+            text="Learn this video in 5 minutes with VideoSense."
             className="text-sm"
           />
           <Link

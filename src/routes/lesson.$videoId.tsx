@@ -93,7 +93,7 @@ function LessonHero() {
               <ShareButton
                 path={`/lesson/${videoId}`}
                 title={lesson.video.title}
-                text="Learn this video in 5 minutes with WatchLater."
+                text="Learn this video in 5 minutes with VideoSense."
               />
             </div>
           </div>
