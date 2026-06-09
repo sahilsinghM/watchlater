@@ -191,6 +191,12 @@
     background-color: var(--color-background);
     color: var(--color-foreground);
     font-family: var(--font-body);
+    /* Decorative offset shadows and rotated stacked cards intentionally
+       protrude past their containers. Clip the x-axis at the page level so
+       those protrusions never create a horizontal scrollbar (which on touch
+       devices also makes taps register as pans, so buttons feel "dead").
+       overflow-x: clip keeps vertical scrolling and sticky/fixed intact. */
+    overflow-x: clip;
   }
   h1, h2, h3, h4 {
     font-family: var(--font-display);

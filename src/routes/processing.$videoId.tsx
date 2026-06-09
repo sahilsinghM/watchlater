@@ -12,7 +12,7 @@ export const Route = createFileRoute("/processing/$videoId")({
 });
 
 const STEPS = [
-  { key: "queued",             label: "Fetching video details",           quip: "Saying hi to YouTube." },
+  { key: "queued",             label: "Lining up your video",            quip: "Getting in the queue." },
   { key: "fetching_metadata",  label: "Fetching video details",           quip: "Saying hi to YouTube." },
   { key: "reading_transcript", label: "Reading the transcript",           quip: "Watching the boring parts so you don't have to." },
   { key: "reading_transcript", label: "Finding the key moments",          quip: "Finding where the creator finally gets to the point." },
@@ -20,6 +20,11 @@ const STEPS = [
   { key: "generating_lesson",  label: "Building your interactive lesson", quip: "Stacking cards. Tuning the deck." },
   { key: "ready",              label: "Preparing your quiz",              quip: "Making sure it's earned, not gifted." },
 ];
+
+// If the worker stalls (e.g. it never picks the job up off the queue), the
+// status poll would otherwise spin forever. Past this many seconds with no
+// "ready", we stop waiting and show a recoverable error instead of hanging.
+const TIMEOUT_SECONDS = 150;
 
 function stepIndex(step: string): number {
   const i = STEPS.findIndex((s) => s.key === step);
@@ -99,6 +104,18 @@ function Processing() {
 
   const currentStep = statusQuery.data?.phase === "processing" ? statusQuery.data.step : "queued";
   const isReady = statusQuery.data?.phase === "ready";
+
+  // Guard against an indefinite hang: if we've waited past the timeout without
+  // a lesson, surface a recoverable error rather than polling forever.
+  if (!isReady && elapsed >= TIMEOUT_SECONDS) {
+    return (
+      <ErrorState
+        code="TIMEOUT"
+        detail={`No lesson after ${TIMEOUT_SECONDS}s (last step: ${currentStep})`}
+      />
+    );
+  }
+
   const activeIdx = isReady ? STEPS.length : stepIndex(currentStep);
   const pct = Math.min(100, ((isReady ? STEPS.length : activeIdx + 1) / STEPS.length) * 100);
 
@@ -222,6 +239,10 @@ const ERROR_COPY: Record<IngestErrorCode, { title: string; body: string }> = {
     title: "Lesson generation failed",
     body: "The generated lesson did not pass validation, so we are not showing it as trustworthy.",
   },
+  TIMEOUT: {
+    title: "This is taking longer than it should",
+    body: "We couldn't build your lesson in time — the processor may be busy or temporarily down. Give it another go in a minute, or try a different video.",
+  },
   UNKNOWN: {
     title: "Something went sideways",
     body: "YouTube didn't respond the way we expected. This is usually transient — try again or pick another video.",
@@ -248,10 +269,21 @@ function ErrorState({ code, detail }: { code: IngestErrorCode; detail: string })
           <summary className="cursor-pointer font-mono uppercase tracking-widest">Details</summary>
           <p className="mt-2 font-mono break-words">{code}: {detail}</p>
         </details>
-        <div className="flex justify-center gap-3 pt-2">
+        <div className="flex flex-wrap justify-center gap-3 pt-2">
+          {code === "TIMEOUT" && (
+            <button
+              type="button"
+              onClick={() => {
+                if (typeof window !== "undefined") window.location.reload();
+              }}
+              className="inline-flex items-center rounded-2xl bg-primary text-primary-foreground brutal-border px-5 py-3 font-display font-bold brutal-shadow-sm hover:-translate-y-0.5 hover:-translate-x-0.5 transition"
+            >
+              Try again →
+            </button>
+          )}
           <Link
             to="/"
-            className="inline-flex items-center rounded-2xl bg-primary text-primary-foreground brutal-border px-5 py-3 font-display font-bold brutal-shadow-sm hover:-translate-y-0.5 hover:-translate-x-0.5 transition"
+            className="inline-flex items-center rounded-2xl bg-card brutal-border px-5 py-3 font-bold hover:-translate-y-0.5 hover:-translate-x-0.5 transition"
           >
             ← Try another URL
           </Link>

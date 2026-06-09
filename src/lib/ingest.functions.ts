@@ -17,6 +17,7 @@ export type IngestErrorCode =
   | "TRANSCRIPT_TOO_NOISY"
   | "GENERATION_FAILURE"
   | "GENERATION_SCHEMA_INVALID"
+  | "TIMEOUT"
   | "UNKNOWN";
 
 export type IngestPhase = "idle" | "processing" | "ready" | "failed";
