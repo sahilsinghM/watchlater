@@ -1,4 +1,3 @@
-import { motion, AnimatePresence } from "motion/react";
 import type { LessonCard as LessonCardT, Tone } from "@/lib/lessonSchema";
 import { fmtTime } from "@/lib/lessonSchema";
 
@@ -38,22 +37,17 @@ type Props = {
   direction: 1 | -1;
 };
 
-export function LessonCardView({ card, tone, onSeek, direction }: Props) {
+export function LessonCardView({ card, tone, onSeek }: Props) {
   const lead = toneLeadIn[tone](card.kind);
   return (
     <div className="relative">
       <div className="absolute inset-0 translate-x-3 translate-y-3 rotate-2 rounded-[32px] bg-secondary brutal-border" />
       <div className="absolute inset-0 translate-x-1.5 translate-y-1.5 -rotate-1 rounded-[32px] bg-accent brutal-border" />
-      <AnimatePresence mode="wait" custom={direction}>
-        <motion.div
-          key={card.id}
-          custom={direction}
-          initial={{ opacity: 0, x: direction * 60, rotate: direction * 3 }}
-          animate={{ opacity: 1, x: 0, rotate: -1 }}
-          exit={{ opacity: 0, x: direction * -60, rotate: direction * -3 }}
-          transition={{ duration: 0.4, ease: [0.34, 1.56, 0.64, 1] }}
-          className="relative rounded-[32px] bg-card brutal-border p-5 sm:p-8 md:p-10 space-y-6"
-        >
+      {/* key={card.id} remounts the card so the CSS card-in entrance replays. */}
+      <div
+        key={card.id}
+        className="relative rounded-[32px] bg-card brutal-border p-5 sm:p-8 md:p-10 space-y-6 animate-card-in"
+      >
           <div className="flex items-center justify-between">
             <span
               className={
@@ -102,8 +96,7 @@ export function LessonCardView({ card, tone, onSeek, direction }: Props) {
               )}
             </blockquote>
           )}
-        </motion.div>
-      </AnimatePresence>
+      </div>
     </div>
   );
 }

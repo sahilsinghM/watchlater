@@ -1,13 +1,12 @@
 import { createFileRoute, useNavigate, Link } from "@tanstack/react-router";
-import { useEffect, useRef } from "react";
-import { motion } from "motion/react";
+import { useEffect, useRef, useState } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { mascot } from "@/components/Brand";
 import { requestLesson, getIngestStatus, parseIngestError, type IngestErrorCode } from "@/lib/ingest.functions";
 
 export const Route = createFileRoute("/processing/$videoId")({
   head: () => ({
-    meta: [{ title: "Building your lesson… · VideoSense" }],
+    meta: [{ title: "Building your lesson… · WatchLater" }],
   }),
   component: Processing,
 });
@@ -27,10 +26,31 @@ function stepIndex(step: string): number {
   return i === -1 ? 0 : i;
 }
 
+// Most lessons land in well under a minute; we show this as the rough target
+// so the wait has a frame of reference rather than feeling open-ended.
+const ESTIMATE_SECONDS = 60;
+
+function fmtClock(totalSeconds: number): string {
+  const s = Math.max(0, Math.floor(totalSeconds));
+  const mins = Math.floor(s / 60);
+  const secs = s % 60;
+  return `${mins}:${String(secs).padStart(2, "0")}`;
+}
+
 function Processing() {
   const navigate = useNavigate();
   const { videoId } = Route.useParams();
   const dispatched = useRef(false);
+
+  // Tick a live "time elapsed" counter from the moment the screen mounts.
+  const [elapsed, setElapsed] = useState(0);
+  useEffect(() => {
+    const startedAt = Date.now();
+    const id = setInterval(() => {
+      setElapsed(Math.floor((Date.now() - startedAt) / 1000));
+    }, 1000);
+    return () => clearInterval(id);
+  }, []);
 
   // Kick off the ingest job once — idempotent (server checks for existing jobs)
   const dispatch = useMutation({
@@ -97,17 +117,25 @@ function Processing() {
             Building your lesson…
           </h1>
           <p className="font-mono text-[11px] uppercase tracking-widest text-muted-foreground">
-            This usually takes a moment
+            This usually takes about a minute
           </p>
         </div>
 
-        <div className="h-4 w-full bg-foreground/5 rounded-full overflow-hidden brutal-border">
-          <motion.div
-            className="h-full bg-primary"
-            initial={{ width: 0 }}
-            animate={{ width: `${pct}%` }}
-            transition={{ duration: 0.5, ease: [0.34, 1.56, 0.64, 1] }}
-          />
+        <div className="space-y-2.5">
+          <div className="h-4 w-full bg-foreground/5 rounded-full overflow-hidden brutal-border">
+            <div
+              className="h-full bg-primary rounded-full transition-[width] duration-500 ease-[var(--ease-spring)]"
+              style={{ width: `${pct}%` }}
+            />
+          </div>
+          <div className="flex items-center justify-between font-mono text-[11px] font-bold uppercase tracking-widest">
+            <span className="text-foreground">
+              Elapsed · {fmtClock(elapsed)}
+            </span>
+            <span className="text-muted-foreground">
+              Est. · ~{fmtClock(ESTIMATE_SECONDS)}
+            </span>
+          </div>
         </div>
 
         <ul className="space-y-2">
@@ -156,7 +184,7 @@ function Processing() {
 const ERROR_COPY: Record<IngestErrorCode, { title: string; body: string }> = {
   NO_CAPTIONS: {
     title: "This video has no captions",
-    body: "VideoSense needs a transcript to build a lesson. Try a video with subtitles enabled — most educational channels have them.",
+    body: "WatchLater needs a transcript to build a lesson. Try a video with subtitles enabled — most educational channels have them.",
   },
   PRIVATE_OR_BLOCKED: {
     title: "This video isn't available",
@@ -168,11 +196,11 @@ const ERROR_COPY: Record<IngestErrorCode, { title: string; body: string }> = {
   },
   TOO_SHORT: {
     title: "This video is too short",
-    body: "VideoSense MVP is tuned for long-form videos between 5 and 90 minutes. Try a longer video.",
+    body: "WatchLater MVP is tuned for long-form videos between 5 and 90 minutes. Try a longer video.",
   },
   TOO_LONG: {
     title: "This video is too long",
-    body: "VideoSense MVP supports videos up to 90 minutes. Try a shorter video with a focused transcript.",
+    body: "WatchLater MVP supports videos up to 90 minutes. Try a shorter video with a focused transcript.",
   },
   NON_ENGLISH: {
     title: "This video is not English",

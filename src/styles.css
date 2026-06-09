@@ -5,7 +5,7 @@
 @custom-variant dark (&:is(.dark *));
 
 /*
- * VideoSense — "Tactile Field Guide" design system.
+ * WatchLater — "Tactile Field Guide" design system.
  * Heavy black borders, hard offset shadows, cream background, primary blue.
  */
 
@@ -214,6 +214,15 @@
 .animate-float { animation: float 6s ease-in-out infinite; }
 .animate-card-in { animation: card-in 0.55s var(--ease-spring) both; }
 .animate-pop-in { animation: pop-in 0.5s var(--ease-spring) both; }
+
+/* Honour reduced-motion globally: entrances settle instantly, no float. */
+@media (prefers-reduced-motion: reduce) {
+  .animate-float,
+  .animate-card-in,
+  .animate-pop-in {
+    animation: none;
+  }
+}
 
 .brutal-border { border: var(--border-brutal); }
 .brutal-shadow { box-shadow: var(--shadow-brutal); }

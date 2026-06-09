@@ -1,14 +1,14 @@
-# VideoSense — Design System
+# WatchLater — Design System
 
-> **VideoSense** turns any long YouTube video into a playful, interactive **5-minute lesson**: a colour-coded attention map, a stack of tappable lesson cards, a 3-question quiz with a mastery score, and a transcript-grounded AI tutor. *"Paste a YouTube link. We'll watch the boring parts so you don't have to."*
+> **WatchLater** turns any long YouTube video into a playful, interactive **5-minute lesson**: a colour-coded attention map, a stack of tappable lesson cards, a 3-question quiz with a mastery score, and a transcript-grounded AI tutor. *"Paste a YouTube link. We'll watch the boring parts so you don't have to."*
 
-This folder is a **design system**: brand foundations, colour + type tokens, real assets, documented motifs, and a high-fidelity **UI kit** that recreates the product's screens. Use it to design new VideoSense surfaces — slides, marketing pages, product mocks, throwaway prototypes — that look and feel native to the brand.
+This folder is a **design system**: brand foundations, colour + type tokens, real assets, documented motifs, and a high-fidelity **UI kit** that recreates the product's screens. Use it to design new WatchLater surfaces — slides, marketing pages, product mocks, throwaway prototypes — that look and feel native to the brand.
 
 ---
 
 ## What the product is
 
-VideoSense (internal repo name: **watchlater**) is a single-page web app built with **TanStack Start + React 19 + Tailwind v4 + shadcn/ui (new-york)**, lovable.dev–scaffolded, Supabase-backed. The core loop:
+WatchLater (internal repo name: **watchlater**) is a single-page web app built with **TanStack Start + React 19 + Tailwind v4 + shadcn/ui (new-york)**, lovable.dev–scaffolded, Supabase-backed. The core loop:
 
 1. **Landing** — paste a YouTube URL into a big bordered input.
 2. **Processing** — a stepper ("Reading the transcript… Finding the key moments…") while the lesson is built.
@@ -43,7 +43,7 @@ This system was reverse-engineered from a real codebase. The reader is encourage
 
 ## CONTENT FUNDAMENTALS
 
-How VideoSense writes. Copy is a load-bearing part of the brand — it's playful, plain-spoken, and a little cheeky, but never wastes the reader's time.
+How WatchLater writes. Copy is a load-bearing part of the brand — it's playful, plain-spoken, and a little cheeky, but never wastes the reader's time.
 
 **Voice:** A sharp, friendly study buddy who respects your time. Confident, concrete, lightly funny. Never corporate, never hype-y.
 
@@ -111,7 +111,7 @@ The look is **neo-brutalist "Tactile Field Guide"** — like a well-designed pri
 
 ## ICONOGRAPHY
 
-- **Primary icon set: [Lucide](https://lucide.dev)** (`lucide-react`, declared in `components.json` and `package.json`). This is the official set for VideoSense — thin, rounded, consistent 2px stroke, which sits well against the heavy borders. **Always use Lucide** for UI icons (chevrons, play, search, close, check, etc.). In static HTML, load it from CDN:
+- **Primary icon set: [Lucide](https://lucide.dev)** (`lucide-react`, declared in `components.json` and `package.json`). This is the official set for WatchLater — thin, rounded, consistent 2px stroke, which sits well against the heavy borders. **Always use Lucide** for UI icons (chevrons, play, search, close, check, etc.). In static HTML, load it from CDN:
   ```html
   <script src="https://unpkg.com/lucide@latest"></script>
   <script>lucide.createIcons();</script>
@@ -121,7 +121,7 @@ The look is **neo-brutalist "Tactile Field Guide"** — like a well-designed pri
 - **Unicode arrows as text** are idiomatic and everywhere — trailing `→` on CTAs, `↗` on jump links, `←` on back links, `✓`/`✗` on quiz states, `▶` on "watch" buttons. Treat these as part of the type, not as icons.
 - **Functional emoji** appear only on a few named controls (tone toggle, player reactions, tutor launcher) — see Content Fundamentals. Never decorative.
 - **The mascot** (`assets/mascot.png`) is the brand's hero image — use it for empty/loading/celebration states. Don't recolour or redraw it.
-- There is **no separate logo mark** beyond the mascot + the "VideoSense" wordmark (Plus Jakarta Sans extrabold). The lockup is: mascot image + wordmark, side by side (`components/Brand.tsx`).
+- There is **no separate logo mark** beyond the mascot + the "WatchLater" wordmark (Plus Jakarta Sans extrabold). The lockup is: mascot image + wordmark, side by side (`components/Brand.tsx`).
 
 ---
 
@@ -131,9 +131,9 @@ The look is **neo-brutalist "Tactile Field Guide"** — like a well-designed pri
 |---|---|
 | `README.md` | This file — product context, content + visual foundations, iconography. |
 | `colors_and_type.css` | All colour + type tokens (oklch), radii, the brutal shadow/border system, semantic classes, keyframes. Import this first. |
-| `assets/mascot.png` | The VideoSense mascot — the brand's hero image. |
+| `assets/mascot.png` | The WatchLater mascot — the brand's hero image. |
 | `preview/` | Small HTML specimen cards that populate the Design System tab (colours, type, shadows, components). |
-| `ui_kits/videosense/` | High-fidelity, interactive recreation of the product. `index.html` is a click-through of the whole flow; `*.jsx` are reusable components. |
+| `ui_kits/watchlater/` | High-fidelity, interactive recreation of the product. `index.html` is a click-through of the whole flow; `*.jsx` are reusable components. |
 | `SKILL.md` | Agent-Skills manifest so this system can be used as a downloadable skill. |
 
-**To design with this system:** import `colors_and_type.css`, pull components/patterns from `ui_kits/videosense/`, use the mascot from `assets/`, load Lucide from CDN, and follow the foundations above. Keep the borders heavy, the shadows hard-offset, the copy time-respecting, and reach for the mascot whenever a screen needs warmth.
+**To design with this system:** import `colors_and_type.css`, pull components/patterns from `ui_kits/watchlater/`, use the mascot from `assets/`, load Lucide from CDN, and follow the foundations above. Keep the borders heavy, the shadows hard-offset, the copy time-respecting, and reach for the mascot whenever a screen needs warmth.

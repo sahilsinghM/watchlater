@@ -1,5 +1,5 @@
-// VideoSense — sample lesson fixture (shape matches src/lib/lessonSchema.ts)
-// Realistic content written in the VideoSense voice.
+// WatchLater — sample lesson fixture (shape matches src/lib/lessonSchema.ts)
+// Realistic content written in the WatchLater voice.
 
 const SAMPLE_LESSON = {
   video: {

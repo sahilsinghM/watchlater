@@ -1,6 +1,6 @@
 ---
 name: deploy-ingest-worker
-description: Deploy the VideoSense ingest-worker Bun service to a Linux VPS over SSH. Run after the user has established an SSH session.
+description: Deploy the WatchLater ingest-worker Bun service to a Linux VPS over SSH. Run after the user has established an SSH session.
 ---
 
 You are deploying the `ingest-worker` service from this repo to a Linux VPS.
@@ -89,7 +89,7 @@ Expected response: `{"ok":true}`. If it fails, check the output for errors befor
 ```bash
 sudo tee /etc/systemd/system/ingest-worker.service > /dev/null << EOF
 [Unit]
-Description=VideoSense ingest-worker
+Description=WatchLater ingest-worker
 After=network.target
 
 [Service]

@@ -25,7 +25,7 @@ export async function generateOpenAILesson(input: {
       authorization: `Bearer ${input.apiKey}`,
       "content-type": "application/json",
       "http-referer": "https://watchlater-sigma.vercel.app",
-      "x-title": "VideoSense",
+      "x-title": "WatchLater",
     },
     body: JSON.stringify({
       model,
@@ -33,7 +33,7 @@ export async function generateOpenAILesson(input: {
         {
           role: "system",
           content:
-            "You generate trustworthy VideoSense lessons. Return only valid JSON. Do not wrap it in markdown. Ground major claims in transcript timestamps. Be blunt but not snarky about low-value videos.",
+            "You generate trustworthy WatchLater lessons. Return only valid JSON. Do not wrap it in markdown. Ground major claims in transcript timestamps. Be blunt but not snarky about low-value videos.",
         },
         {
           role: "user",

@@ -18,7 +18,7 @@ export const Route = createFileRoute("/lesson/$videoId/done")({
   validateSearch: search,
   loader: ({ context, params }) =>
     context.queryClient.ensureQueryData(lessonQueryOptions(params.videoId)),
-  head: () => ({ meta: [{ title: "Lesson complete · VideoSense" }] }),
+  head: () => ({ meta: [{ title: "Lesson complete · WatchLater" }] }),
   component: Done,
 });
 

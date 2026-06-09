@@ -7,13 +7,13 @@ import { validateVideoInput } from "@/lib/mvpFlow";
 export const Route = createFileRoute("/")({
   head: () => ({
     meta: [
-      { title: "VideoSense — Understand any long video in 5 minutes" },
+      { title: "WatchLater — Understand any long video in 5 minutes" },
       {
         name: "description",
         content:
           "Paste a YouTube URL. Get an interactive 5-minute lesson with cards, a timeline, and a quiz.",
       },
-      { property: "og:title", content: "VideoSense — Long videos, learned fast" },
+      { property: "og:title", content: "WatchLater — Long videos, learned fast" },
       {
         property: "og:description",
         content:
@@ -111,7 +111,7 @@ function Index() {
           <div className="relative animate-float">
             <img
               src={mascot}
-              alt="VideoSense mascot"
+              alt="WatchLater mascot"
               width={160}
               height={160}
               className="h-32 w-32 object-contain drop-shadow-[6px_6px_0_rgba(0,0,0,0.12)]"
@@ -192,7 +192,7 @@ function Index() {
       </section>
 
       <footer className="border-t-2 border-foreground/10 py-8 text-center text-xs font-mono uppercase tracking-widest text-muted-foreground">
-        VideoSense · A learning playground
+        WatchLater · A learning playground
       </footer>
     </div>
   );

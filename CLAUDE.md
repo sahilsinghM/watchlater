@@ -1,10 +1,10 @@
-# CLAUDE.md — VideoSense (watchlater)
+# CLAUDE.md — WatchLater (watchlater)
 
 Guidance for any agent working in this repo. **Read before touching UI.**
 
 ## What this is
 
-VideoSense turns a long YouTube video into a playful, interactive **5-minute
+WatchLater turns a long YouTube video into a playful, interactive **5-minute
 lesson**: a colour-coded attention map, a stack of tappable lesson cards, a
 3-question quiz with a mastery score, and a transcript-grounded AI tutor.
 TanStack Start + React 19 + Tailwind v4 + shadcn/ui (new-york), Supabase-backed.
@@ -53,7 +53,7 @@ disagree, the latter is correct.
    tutor 💬) — never decorative, never in prose. Don't hand-draw SVG icons.
 9. **Mascot-led warmth** on empty/loading/celebration states
    (`src/assets/mascot.png`). Never recolour or redraw the mascot. There is no
-   other logo mark beyond mascot + "VideoSense" wordmark.
+   other logo mark beyond mascot + "WatchLater" wordmark.
 10. **Backgrounds are flat cream.** No gradients, photos, textures, or patterns
     behind content (only the subtle focus glow behind the hero URL input).
 

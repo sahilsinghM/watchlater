@@ -15,7 +15,7 @@ export const Route = createFileRoute("/lesson/$videoId")({
   loader: ({ context, params }) =>
     context.queryClient.ensureQueryData(lessonQueryOptions(params.videoId)),
   head: () => ({
-    meta: [{ title: "Lesson · VideoSense" }],
+    meta: [{ title: "Lesson · WatchLater" }],
   }),
   component: LessonHero,
 });

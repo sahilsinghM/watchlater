@@ -77,14 +77,14 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
     meta: [
       { charSet: "utf-8" },
       { name: "viewport", content: "width=device-width, initial-scale=1" },
-      { title: "VideoSense — Understand any long video in 5 minutes" },
+      { title: "WatchLater — Understand any long video in 5 minutes" },
       {
         name: "description",
         content:
           "Paste a YouTube URL and get a beautiful, interactive 5-minute lesson. Skip the fluff, learn the core, test what you understood.",
       },
-      { name: "author", content: "VideoSense" },
-      { property: "og:title", content: "VideoSense — Understand any long video in 5 minutes" },
+      { name: "author", content: "WatchLater" },
+      { property: "og:title", content: "WatchLater — Understand any long video in 5 minutes" },
       {
         property: "og:description",
         content:
@@ -93,7 +93,7 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary" },
       { name: "twitter:site", content: "@Lovable" },
-      { name: "twitter:title", content: "VideoSense — Understand any long video in 5 minutes" },
+      { name: "twitter:title", content: "WatchLater — Understand any long video in 5 minutes" },
       { name: "description", content: "Pixel Perfect View precisely replicates UI screenshots, ensuring exact visual fidelity." },
       { property: "og:description", content: "Pixel Perfect View precisely replicates UI screenshots, ensuring exact visual fidelity." },
       { name: "twitter:description", content: "Pixel Perfect View precisely replicates UI screenshots, ensuring exact visual fidelity." },

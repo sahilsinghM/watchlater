@@ -1,6 +1,6 @@
-# VideoSense — "Tactile Field Guide" Design System Reference
+# WatchLater — "Tactile Field Guide" Design System Reference
 
-This is the **authoritative** design-system reference for VideoSense (repo name:
+This is the **authoritative** design-system reference for WatchLater (repo name:
 `watchlater`). It is the source of truth that **all current and future design
 work must adhere to 100%**.
 
@@ -225,7 +225,7 @@ hover inverts to ink). The tutor **only answers from the transcript** — fallba
 is exactly `"I cannot tell from this video."`
 
 ### Brand lockup (`Brand.tsx`)
-Mascot PNG + "VideoSense" wordmark (display-800, −0.02em), side by side. Hover
+Mascot PNG + "WatchLater" wordmark (display-800, −0.02em), side by side. Hover
 rotates the mascot `-6deg`. Sometimes paired with a rotated speech bubble
 (`rotate(6deg)`, 3px border, `--shadow-brutal-sm`, "I'm ready!").
 
@@ -248,7 +248,7 @@ time. Confident, concrete, lightly funny. Never corporate, never hype-y.
 - **Lucide is the official icon set** (`lucide-react`) — thin, rounded, 2px stroke. **Always use Lucide**; do not hand-draw raw-SVG icons when a Lucide glyph exists.
 - **Unicode arrows as text** are idiomatic: trailing `→` on CTAs, `↗` on jump links, `←` on back links, `✓`/`✗` on quiz states, `▶` on watch buttons. Treat them as type, not icons.
 - **Functional emoji only** on named controls (tone toggle 💡🤝😄🧐, player reactions 🤔✅🥱, tutor 💬). **Never decorative**; headlines and body copy never contain emoji.
-- **The mascot** (`src/assets/mascot.png`) is the brand's hero image — use it for empty / loading / celebration states (grayscale on errors). **Do not recolour or redraw it.** There is no separate logo mark beyond the mascot + "VideoSense" wordmark.
+- **The mascot** (`src/assets/mascot.png`) is the brand's hero image — use it for empty / loading / celebration states (grayscale on errors). **Do not recolour or redraw it.** There is no separate logo mark beyond the mascot + "WatchLater" wordmark.
 
 ---
 

@@ -3,17 +3,17 @@ import { createSupabaseStore } from "./supabaseStore.server";
 import { getServerConfig } from "./config.server";
 
 const globalStore = globalThis as typeof globalThis & {
-  __videosenseMvpStore?: MvpStore;
+  __watchlaterMvpStore?: MvpStore;
 };
 
 export function getMvpStore(): MvpStore {
-  if (!globalStore.__videosenseMvpStore) {
+  if (!globalStore.__watchlaterMvpStore) {
     const config = getServerConfig();
     if (config.supabaseUrl && config.supabaseServiceRoleKey) {
-      globalStore.__videosenseMvpStore = createSupabaseStore();
+      globalStore.__watchlaterMvpStore = createSupabaseStore();
     } else {
-      globalStore.__videosenseMvpStore = createMemoryMvpStore();
+      globalStore.__watchlaterMvpStore = createMemoryMvpStore();
     }
   }
-  return globalStore.__videosenseMvpStore;
+  return globalStore.__watchlaterMvpStore;
 }
