@@ -214,5 +214,36 @@ export function createSupabaseStore(): MvpStore {
         createdAt: data!.created_at,
       };
     },
+    async saveLead(input) {
+      const supabase = getSupabaseAdmin();
+      // Upsert on the unique email so the same person is captured once; a later
+      // touch refreshes source/session/video but keeps the original row.
+      const { data, error } = await supabase
+        .from("leads")
+        .upsert(
+          {
+            session_id: input.sessionId,
+            email: input.email,
+            source: input.source,
+            lesson_video_id: input.lessonVideoId ?? null,
+          },
+          { onConflict: "email" },
+        )
+        .select("*")
+        .single();
+      // Surface the real Postgres error (e.g. missing leads table / RLS) instead
+      // of letting a null row throw a cryptic "reading 'id'" further down.
+      if (error || !data) {
+        throw new Error(`saveLead failed: ${error?.message ?? "no row returned"}`);
+      }
+      return {
+        id: data.id,
+        sessionId: data.session_id,
+        email: data.email,
+        source: data.source,
+        lessonVideoId: data.lesson_video_id ?? undefined,
+        createdAt: data.created_at,
+      };
+    },
   };
 }

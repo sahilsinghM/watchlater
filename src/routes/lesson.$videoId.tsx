@@ -8,6 +8,7 @@ import { YouTubeEmbed, type YouTubePlayerHandle } from "@/components/YouTubeEmbe
 import { ToneToggle } from "@/components/ToneToggle";
 import { TutorPanel } from "@/components/TutorPanel";
 import { ShareButton } from "@/components/ShareButton";
+import { WaitlistCard } from "@/components/WaitlistCard";
 import { lessonQueryOptions } from "@/lib/lessonQuery";
 import { fmtRange, fmtTime, type Tone } from "@/lib/lessonSchema";
 
@@ -170,6 +171,8 @@ function LessonHero() {
             </button>
           </div>
         </section>
+
+        <WaitlistCard lessonVideoId={lesson.video.id} />
       </main>
 
       <TutorPanel lesson={lesson} />
