@@ -17,6 +17,14 @@ dist-ssr
 .nitro
 *.local
 
+# Env files (never commit secrets — pulled via `vercel env pull`)
+.env
+.env.*
+!.env.example
+ingest-worker/.env
+ingest-worker/.env.*
+!ingest-worker/.env.example
+
 # Wrangler / Cloudflare
 .wrangler/
 .dev.vars
