@@ -1,4 +1,4 @@
-const KEY = "videosense_session_key";
+const KEY = "watchlater_session_key";
 
 export function getBrowserSessionKey(): string {
   if (typeof window === "undefined") return "server-session";

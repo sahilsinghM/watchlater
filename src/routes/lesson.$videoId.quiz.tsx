@@ -9,7 +9,7 @@ import { submitQuizResult } from "@/lib/feedback.functions";
 export const Route = createFileRoute("/lesson/$videoId/quiz")({
   loader: ({ context, params }) =>
     context.queryClient.ensureQueryData(lessonQueryOptions(params.videoId)),
-  head: () => ({ meta: [{ title: "Quiz · VideoSense" }] }),
+  head: () => ({ meta: [{ title: "Quiz · WatchLater" }] }),
   component: Quiz,
 });
 

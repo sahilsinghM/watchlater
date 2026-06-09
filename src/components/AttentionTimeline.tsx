@@ -1,4 +1,3 @@
-import { motion, useReducedMotion } from "motion/react";
 import type { Segment } from "@/lib/lessonSchema";
 import { fmtRange } from "@/lib/lessonSchema";
 
@@ -35,8 +34,6 @@ const kindStyles: Record<
 // Legend order mirrors importance, brightest first.
 const legendOrder: Segment["kind"][] = ["watch", "core", "demo", "skip"];
 
-const spring = { type: "spring", stiffness: 420, damping: 30 } as const;
-
 type Props = {
   segments: Segment[];
   totalDuration: number;
@@ -45,11 +42,9 @@ type Props = {
 
 export function AttentionTimeline({ segments, totalDuration, onSeek }: Props) {
   const total = Math.max(totalDuration, 1);
-  // Respect reduced-motion: skip entrance transforms so nothing animates in
-  // (and nothing renders mid-animation) for users who opt out.
-  const reduce = useReducedMotion();
   // Cap the stagger so a dense timeline (20+ segments) doesn't take seconds
-  // to finish revealing.
+  // to finish revealing. Entrances are CSS (animate-card-in), which the global
+  // prefers-reduced-motion guard disables for users who opt out.
   const staggerAt = (i: number) => Math.min(i, 8);
 
   return (
@@ -71,22 +66,20 @@ export function AttentionTimeline({ segments, totalDuration, onSeek }: Props) {
         })}
       </div>
 
-      {/* The bar — heavy border + hard shadow, on-brand. Segments paint in.
-          No overflow-hidden: the hover chips need to escape the bar. End
-          segments round their outer corners so the frame still looks clean. */}
+      {/* The bar — heavy border + hard shadow, on-brand. End segments round
+          their outer corners so the frame still looks clean. No overflow clip:
+          the hover chips (desktop only) rise above the bar into the page
+          margin; on mobile they're hidden, so nothing escapes the viewport. */}
       <div className="flex h-10 w-full rounded-2xl brutal-border bg-card brutal-shadow-sm">
         {segments.map((seg, i) => {
           const pct = ((seg.end - seg.start) / total) * 100;
           const s = kindStyles[seg.kind];
           return (
-            <motion.button
+            <button
               key={i}
               type="button"
               onClick={() => onSeek?.(seg.start)}
-              initial={reduce ? false : { scaleX: 0 }}
-              animate={{ scaleX: 1 }}
-              transition={{ ...spring, delay: staggerAt(i) * 0.045 }}
-              style={{ width: `${pct}%`, transformOrigin: "left" }}
+              style={{ width: `${pct}%` }}
               title={`${s.label} · ${fmtRange(seg.start, seg.end)} · ${seg.title}`}
               aria-label={`Jump to ${seg.title}`}
               className={`group/seg relative h-full border-r-[3px] border-foreground last:border-r-0 ${
@@ -99,13 +92,14 @@ export function AttentionTimeline({ segments, totalDuration, onSeek }: Props) {
                   {s.label}
                 </span>
               )}
-              {/* Floating tooltip chip on hover. */}
+              {/* Floating tooltip chip on hover — desktop only; touch has no
+                  hover and it was the source of the mobile overflow. */}
               <span
-                className={`pointer-events-none absolute -top-11 left-1/2 z-10 -translate-x-1/2 whitespace-nowrap rounded-xl border-2 px-2.5 py-1 font-mono text-[10px] font-bold uppercase tracking-widest opacity-0 shadow-[3px_3px_0_0_var(--foreground)] transition-opacity duration-150 group-hover/seg:opacity-100 group-focus-visible/seg:opacity-100 ${s.chip}`}
+                className={`pointer-events-none absolute -top-11 left-1/2 z-10 hidden -translate-x-1/2 whitespace-nowrap rounded-xl border-2 px-2.5 py-1 font-mono text-[10px] font-bold uppercase tracking-widest opacity-0 shadow-[3px_3px_0_0_var(--foreground)] transition-opacity duration-150 group-hover/seg:opacity-100 group-focus-visible/seg:opacity-100 sm:block ${s.chip}`}
               >
                 {s.label} · {fmtRange(seg.start, seg.end)}
               </span>
-            </motion.button>
+            </button>
           );
         })}
       </div>
@@ -115,12 +109,10 @@ export function AttentionTimeline({ segments, totalDuration, onSeek }: Props) {
         {segments.map((seg, i) => {
           const s = kindStyles[seg.kind];
           return (
-            <motion.li
+            <li
               key={i}
-              initial={reduce ? false : { opacity: 0, y: 18, rotate: -1 }}
-              whileInView={{ opacity: 1, y: 0, rotate: 0 }}
-              viewport={{ once: true, margin: "-40px" }}
-              transition={{ ...spring, delay: staggerAt(i) * 0.05 }}
+              className="animate-card-in"
+              style={{ animationDelay: `${staggerAt(i) * 0.05}s` }}
             >
               <button
                 type="button"
@@ -147,7 +139,7 @@ export function AttentionTimeline({ segments, totalDuration, onSeek }: Props) {
                   </span>
                 </div>
               </button>
-            </motion.li>
+            </li>
           );
         })}
       </ul>

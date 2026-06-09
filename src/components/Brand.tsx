@@ -13,7 +13,7 @@ export function Brand({ size = "md" }: { size?: "sm" | "md" }) {
         className={`${dim} object-contain group-hover:-rotate-6 transition-transform`}
       />
       <span className="font-display font-extrabold text-xl tracking-tight">
-        VideoSense
+        WatchLater
       </span>
     </Link>
   );

@@ -1,4 +1,4 @@
-// VideoSense UI kit — screens + flow state machine.
+// WatchLater UI kit — screens + flow state machine.
 const { useState, useEffect, useRef } = React;
 
 const PROC_STEPS = [
@@ -47,7 +47,7 @@ function Landing({ go }) {
         </form>
         <div style={{ display: "flex", justifyContent: "center", paddingTop: 28 }}>
           <div className="animate-float" style={{ position: "relative" }}>
-            <img src="../../assets/mascot.png" alt="VideoSense mascot" width={128} height={128} style={{ filter: "drop-shadow(6px 6px 0 rgba(0,0,0,.12))" }} />
+            <img src="../../assets/mascot.png" alt="WatchLater mascot" width={128} height={128} style={{ filter: "drop-shadow(6px 6px 0 rgba(0,0,0,.12))" }} />
             <div style={{ position: "absolute", bottom: -4, right: -12, transform: "rotate(6deg)", background: "var(--card)", border: "3px solid var(--foreground)", boxShadow: "var(--shadow-brutal-sm)", fontSize: 10, fontWeight: 700, padding: "4px 9px", borderRadius: 8 }}>I'm ready!</div>
           </div>
         </div>
@@ -78,7 +78,7 @@ function Landing({ go }) {
       </section>
 
       <footer style={{ borderTop: "2px solid var(--line-soft)", padding: "32px 0", textAlign: "center" }}>
-        <Eyebrow style={{ letterSpacing: "0.2em" }}>VideoSense · A learning playground</Eyebrow>
+        <Eyebrow style={{ letterSpacing: "0.2em" }}>WatchLater · A learning playground</Eyebrow>
       </footer>
     </div>
   );

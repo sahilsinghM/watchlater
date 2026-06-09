@@ -12,7 +12,7 @@ import { fmtTime, type Tone } from "@/lib/lessonSchema";
 export const Route = createFileRoute("/lesson/$videoId/player")({
   loader: ({ context, params }) =>
     context.queryClient.ensureQueryData(lessonQueryOptions(params.videoId)),
-  head: () => ({ meta: [{ title: "Lesson · VideoSense" }] }),
+  head: () => ({ meta: [{ title: "Lesson · WatchLater" }] }),
   component: Player,
 });
 

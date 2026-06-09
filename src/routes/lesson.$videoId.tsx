@@ -15,7 +15,7 @@ export const Route = createFileRoute("/lesson/$videoId")({
   loader: ({ context, params }) =>
     context.queryClient.ensureQueryData(lessonQueryOptions(params.videoId)),
   head: () => ({
-    meta: [{ title: "Lesson · VideoSense" }],
+    meta: [{ title: "Lesson · WatchLater" }],
   }),
   component: LessonHero,
 });
@@ -93,7 +93,7 @@ function LessonHero() {
               <ShareButton
                 path={`/lesson/${videoId}`}
                 title={lesson.video.title}
-                text="Learn this video in 5 minutes with VideoSense."
+                text="Learn this video in 5 minutes with WatchLater."
               />
             </div>
           </div>

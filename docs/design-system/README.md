@@ -1,7 +1,7 @@
-# Handoff: VideoSense Design System → Production
+# Handoff: WatchLater Design System → Production
 
 ## Overview
-This is the complete **VideoSense** design system — the neo-brutalist "Tactile Field Guide" look for the app that turns long YouTube videos into playful 5-minute interactive lessons. This bundle gives a developer everything needed to implement VideoSense-branded UI in a real codebase: design tokens, type + colour, the motion system, the full set of components, and a working interactive reference of the product flow.
+This is the complete **WatchLater** design system — the neo-brutalist "Tactile Field Guide" look for the app that turns long YouTube videos into playful 5-minute interactive lessons. This bundle gives a developer everything needed to implement WatchLater-branded UI in a real codebase: design tokens, type + colour, the motion system, the full set of components, and a working interactive reference of the product flow.
 
 The original source product is the `sahilsinghM/watchlater` repo (TanStack Start + React 19 + Tailwind v4 + shadcn/ui). This handoff distills it into reusable, framework-agnostic guidance.
 
@@ -150,7 +150,7 @@ Flex shell, 3px border, radius 28, `--shadow-brutal`; hover lifts `-2,-2` + shad
 Fixed launcher pinned `bottom-24 right-24`: ink pill, `💬 Ask the tutor`. Opens a modal — scrim is the only blur in the system: `background: foreground/40; backdrop-filter: blur(4px)`. Card has 3px border, radius 28, `--shadow-brutal`. User bubbles = primary fill right-aligned; tutor bubbles = cream/line-soft. Seed-question pills (`.vs-pill`, hover inverts to ink). The tutor **only answers from the transcript** — fallback line is exactly `"I cannot tell from this video."`
 
 ### Brand lockup (`Brand`)
-Mascot PNG (`assets/mascot.png`) + "VideoSense" wordmark in display-800 −0.02em, side by side. Hover rotates the mascot `-6deg`. Sometimes paired with a rotated speech bubble (`rotate(6deg)`, 3px border, `--shadow-brutal-sm`, "I'm ready!").
+Mascot PNG (`assets/mascot.png`) + "WatchLater" wordmark in display-800 −0.02em, side by side. Hover rotates the mascot `-6deg`. Sometimes paired with a rotated speech bubble (`rotate(6deg)`, 3px border, `--shadow-brutal-sm`, "I'm ready!").
 
 ---
 
@@ -176,8 +176,8 @@ The full flow is in `ui_kit/app.jsx` (six screens) — runnable via `ui_kit/inde
 Minimal, client-side: `screen` (which view), `tone` (clear/friendly/funny/strict), quiz `idx`/`picked`/`revealed`/`answers`, and `result` `{score,total}`. In production, the lesson object (see `ui_kit/data.jsx` for the exact shape — video meta, watchScore, segments, cards, quiz, tutorSeed) would come from your API; here it's the `SAMPLE_LESSON` fixture.
 
 ## Assets
-- **`assets/mascot.png`** — the VideoSense mascot (cheerful round blue character with a play-button card). The brand's hero image; use on empty/loading/celebration states. Do **not** recolour or redraw it. Originally `src/assets/mascot.png` in the source repo.
-- **Icons: Lucide** (`lucide-react` in production; CDN `lucide@0.544.0` in the HTML reference). Thin rounded 2px-stroke set — the official VideoSense icon library. Don't hand-draw SVG icons. Unicode arrows (`→ ↗ ← ✓ ✗ ▶`) are used as text, and functional emoji only on the tone toggle / reactions / tutor launcher.
+- **`assets/mascot.png`** — the WatchLater mascot (cheerful round blue character with a play-button card). The brand's hero image; use on empty/loading/celebration states. Do **not** recolour or redraw it. Originally `src/assets/mascot.png` in the source repo.
+- **Icons: Lucide** (`lucide-react` in production; CDN `lucide@0.544.0` in the HTML reference). Thin rounded 2px-stroke set — the official WatchLater icon library. Don't hand-draw SVG icons. Unicode arrows (`→ ↗ ← ✓ ✗ ▶`) are used as text, and functional emoji only on the tone toggle / reactions / tutor launcher.
 
 ## Files in this bundle
 | Path | What it is |

@@ -1,4 +1,4 @@
-// VideoSense UI kit — reusable components. Recreates the product's custom chrome.
+// WatchLater UI kit — reusable components. Recreates the product's custom chrome.
 const { useState } = React;
 
 const MASCOT = "../../assets/mascot.png";
@@ -8,7 +8,7 @@ function Brand({ size = "md" }) {
   return (
     <a className="vs-brand" href="#" onClick={(e) => e.preventDefault()}>
       <img src={MASCOT} alt="" width={dim} height={dim} />
-      <span className="word">VideoSense</span>
+      <span className="word">WatchLater</span>
     </a>
   );
 }

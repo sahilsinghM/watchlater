@@ -2,7 +2,7 @@
 
 ## Goal
 
-VideoSense turns one supported YouTube video into a compact interactive lesson. The MVP is successful when a user can paste a supported public English YouTube video, wait for real processing, complete the generated lesson and quiz, ask grounded follow-up questions, and rate the lesson useful.
+WatchLater turns one supported YouTube video into a compact interactive lesson. The MVP is successful when a user can paste a supported public English YouTube video, wait for real processing, complete the generated lesson and quiz, ask grounded follow-up questions, and rate the lesson useful.
 
 ## Primary Journey
 

@@ -1,6 +1,6 @@
-# VideoSense Documentation
+# WatchLater Documentation
 
-This folder is the implementation reference for the VideoSense MVP. It records the product decisions, MVP scope, design direction, and engineering roadmap needed to move from the current scaffold to the complete product.
+This folder is the implementation reference for the WatchLater MVP. It records the product decisions, MVP scope, design direction, and engineering roadmap needed to move from the current scaffold to the complete product.
 
 ## Source Of Truth
 
