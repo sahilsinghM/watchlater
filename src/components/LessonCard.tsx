@@ -52,7 +52,7 @@ export function LessonCardView({ card, tone, onSeek, direction }: Props) {
           animate={{ opacity: 1, x: 0, rotate: -1 }}
           exit={{ opacity: 0, x: direction * -60, rotate: direction * -3 }}
           transition={{ duration: 0.4, ease: [0.34, 1.56, 0.64, 1] }}
-          className="relative rounded-[32px] bg-card brutal-border p-8 md:p-10 space-y-6"
+          className="relative rounded-[32px] bg-card brutal-border p-5 sm:p-8 md:p-10 space-y-6"
         >
           <div className="flex items-center justify-between">
             <span
@@ -74,9 +74,7 @@ export function LessonCardView({ card, tone, onSeek, direction }: Props) {
             )}
           </div>
 
-          <h2 className="font-display text-3xl md:text-4xl font-extrabold leading-tight">
-            {card.title}
-          </h2>
+          <h2 className="vs-h2">{card.title}</h2>
 
           <p className="text-lg leading-relaxed text-foreground/80">
             {lead && <span className="font-semibold text-foreground">{lead}</span>}

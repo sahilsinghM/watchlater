@@ -18,12 +18,13 @@ export function ToneToggle({ value, onChange }: { value: Tone; onChange: (t: Ton
             type="button"
             onClick={() => onChange(t.id)}
             className={
-              "rounded-xl px-3 py-1.5 text-xs font-bold uppercase tracking-tighter transition " +
+              "inline-flex items-center gap-1 rounded-xl px-2.5 py-1.5 text-xs font-bold uppercase tracking-tighter transition sm:px-3 " +
               (active ? "bg-foreground text-background" : "text-muted-foreground hover:text-foreground")
             }
+            aria-label={t.label}
           >
-            <span className="mr-1">{t.emoji}</span>
-            {t.label}
+            <span>{t.emoji}</span>
+            <span className="hidden sm:inline">{t.label}</span>
           </button>
         );
       })}

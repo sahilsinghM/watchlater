@@ -49,8 +49,8 @@ export function TutorPanel({ lesson }: { lesson: Lesson }) {
                   key={i}
                   className={
                     m.role === "user"
-                      ? "ml-auto max-w-[85%] rounded-2xl bg-primary text-primary-foreground px-4 py-2.5 text-sm"
-                      : "max-w-[85%] rounded-2xl bg-background border-2 border-foreground/10 px-4 py-2.5 text-sm"
+                      ? "ml-auto max-w-[85%] break-words rounded-2xl bg-primary text-primary-foreground px-4 py-2.5 text-sm"
+                      : "max-w-[85%] break-words rounded-2xl bg-background border-2 border-foreground/10 px-4 py-2.5 text-sm"
                   }
                 >
                   {m.text}

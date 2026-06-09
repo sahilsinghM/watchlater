@@ -45,12 +45,12 @@ function Player() {
 
   return (
     <div className="min-h-screen bg-background">
-      <header className="mx-auto max-w-5xl px-6 pt-6 pb-2 flex items-center justify-between gap-4 flex-wrap">
+      <header className="mx-auto max-w-5xl px-4 sm:px-6 pt-6 pb-2 flex items-center justify-between gap-4 flex-wrap">
         <Brand size="sm" />
         <ToneToggle value={tone} onChange={setTone} />
       </header>
 
-      <main className="mx-auto max-w-2xl px-6 pb-24 space-y-6">
+      <main className="mx-auto max-w-2xl px-4 sm:px-6 pb-24 space-y-6">
         <div className="space-y-2">
           <div className="flex justify-between items-end px-1">
             <span className="font-mono text-xs font-bold uppercase tracking-widest text-muted-foreground">
@@ -110,21 +110,21 @@ function Player() {
             type="button"
             onClick={prev}
             disabled={idx === 0}
-            className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground hover:text-foreground disabled:opacity-30 disabled:hover:text-muted-foreground"
+            className="inline-flex min-h-[40px] items-center px-1 -mx-1 font-mono text-[10px] uppercase tracking-widest text-muted-foreground hover:text-foreground disabled:opacity-30 disabled:hover:text-muted-foreground"
           >
             ← Previous
           </button>
           <Link
             to="/lesson/$videoId"
             params={{ videoId }}
-            className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground hover:text-foreground"
+            className="inline-flex min-h-[40px] items-center px-1 font-mono text-[10px] uppercase tracking-widest text-muted-foreground hover:text-foreground"
           >
             Exit lesson
           </Link>
           <button
             type="button"
             onClick={next}
-            className="font-mono text-[10px] uppercase tracking-widest text-primary font-bold"
+            className="inline-flex min-h-[40px] items-center px-1 -mx-1 font-mono text-[10px] uppercase tracking-widest text-primary font-bold"
           >
             {idx + 1 === total ? "Quiz time →" : "Next →"}
           </button>

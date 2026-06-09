@@ -34,26 +34,26 @@ function LessonHero() {
 
   return (
     <div className="min-h-screen bg-background">
-      <header className="mx-auto max-w-6xl px-6 pt-6 pb-4 flex items-center justify-between gap-4 flex-wrap">
+      <header className="mx-auto max-w-6xl px-4 sm:px-6 pt-6 pb-4 flex items-center justify-between gap-4 flex-wrap">
         <Brand />
         <div className="hidden md:block">
           <ToneToggle value={tone} onChange={setTone} />
         </div>
       </header>
 
-      <main className="mx-auto max-w-6xl px-6 pb-24 space-y-10">
+      <main className="mx-auto max-w-6xl px-4 sm:px-6 pb-24 space-y-10">
         <section className="grid gap-8 lg:grid-cols-5">
           <div className="lg:col-span-3 space-y-6">
             <div className="space-y-3">
               <span className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground">
                 {lesson.video.channel} · {fmtTime(lesson.video.duration)}
               </span>
-              <h1 className="font-display text-4xl md:text-5xl font-extrabold leading-[1.05]">
+              <h1 className="font-display text-3xl sm:text-4xl md:text-5xl font-extrabold leading-[1.05]">
                 {lesson.video.title}
               </h1>
             </div>
 
-            <div className="rounded-3xl brutal-border bg-card p-6 brutal-shadow-sm space-y-4">
+            <div className="rounded-3xl brutal-border bg-card p-5 sm:p-6 brutal-shadow-sm space-y-4">
               <div className="font-mono text-[10px] uppercase tracking-widest text-primary font-bold">
                 This video in 30 seconds
               </div>
@@ -135,7 +135,7 @@ function LessonHero() {
           />
         </section>
 
-        <section className="rounded-3xl brutal-border bg-card p-6 brutal-shadow-sm">
+        <section className="rounded-3xl brutal-border bg-card p-5 sm:p-6 brutal-shadow-sm">
           <div className="flex flex-wrap items-center gap-2 mb-2">
             <div className="font-mono text-[10px] uppercase tracking-widest text-primary font-bold">
               Recommendation

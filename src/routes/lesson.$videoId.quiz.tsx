@@ -62,10 +62,10 @@ function Quiz() {
 
   return (
     <div className="min-h-screen bg-background">
-      <header className="mx-auto max-w-3xl px-6 pt-6 pb-2">
+      <header className="mx-auto max-w-3xl px-4 sm:px-6 pt-6 pb-2">
         <Brand size="sm" />
       </header>
-      <main className="mx-auto max-w-2xl px-6 pb-24 space-y-6">
+      <main className="mx-auto max-w-2xl px-4 sm:px-6 pb-24 space-y-6">
         <div className="flex items-end justify-between px-1">
           <span className="font-mono text-xs font-bold uppercase tracking-widest text-muted-foreground">
             Question {idx + 1} / {total}
@@ -79,7 +79,7 @@ function Quiz() {
           />
         </div>
 
-        <div className="rounded-[32px] brutal-border bg-card p-8 brutal-shadow-sm space-y-6 animate-card-in">
+        <div className="rounded-[32px] brutal-border bg-card p-5 sm:p-8 brutal-shadow-sm space-y-6 animate-card-in">
           <h2 className="font-display text-2xl md:text-3xl font-extrabold leading-tight">
             {q.prompt}
           </h2>
@@ -107,10 +107,10 @@ function Quiz() {
                       state
                     }
                   >
-                    <span className="font-mono text-xs font-bold w-5 text-muted-foreground">
+                    <span className="font-mono text-xs font-bold w-5 shrink-0 text-muted-foreground">
                       {String.fromCharCode(65 + i)}
                     </span>
-                    <span className="flex-1">{opt}</span>
+                    <span className="min-w-0 flex-1 break-words">{opt}</span>
                     {revealed && isCorrect && <span>✓</span>}
                     {revealed && isPicked && !isCorrect && <span>✗</span>}
                   </button>
