@@ -196,6 +196,8 @@ export function createSupabaseStore(): MvpStore {
           session_id: input.sessionId,
           useful: input.useful,
           reason: input.reason ?? null,
+          name: input.name ?? null,
+          email: input.email ?? null,
           source: input.source,
         })
         .select("*")
@@ -206,6 +208,8 @@ export function createSupabaseStore(): MvpStore {
         sessionId: data!.session_id,
         useful: data!.useful,
         reason: data!.reason ?? undefined,
+        name: data!.name ?? undefined,
+        email: data!.email ?? undefined,
         source: data!.source,
         createdAt: data!.created_at,
       };
