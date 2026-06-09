@@ -53,7 +53,7 @@ function Index() {
 
   return (
     <div className="min-h-screen bg-background text-foreground">
-      <header className="mx-auto max-w-6xl px-6 pt-8 flex items-center justify-between">
+      <header className="mx-auto max-w-6xl px-4 sm:px-6 pt-8 flex items-center justify-between">
         <Brand />
         <nav className="hidden sm:flex items-center gap-6 text-sm font-medium text-muted-foreground">
           <a href="#how" className="hover:text-foreground transition">How it works</a>
@@ -61,13 +61,13 @@ function Index() {
         </nav>
       </header>
 
-      <main className="mx-auto max-w-4xl px-6 pt-16 pb-24 text-center space-y-10">
+      <main className="mx-auto max-w-4xl px-4 sm:px-6 pt-16 pb-24 text-center space-y-10">
         <div className="inline-flex items-center gap-2 px-3 py-1 bg-primary/10 text-primary rounded-full text-xs font-mono font-bold tracking-wider uppercase">
           <span className="size-2 bg-primary rounded-full animate-pulse" />
           Built for busy learners
         </div>
 
-        <h1 className="font-display text-5xl md:text-7xl font-extrabold tracking-tight text-balance leading-[1.05]">
+        <h1 className="vs-h1 text-balance">
           Understand any long video{" "}
           <span className="text-primary italic">in 5 minutes.</span>
         </h1>
@@ -123,7 +123,7 @@ function Index() {
         </div>
       </main>
 
-      <section id="what" className="mx-auto max-w-5xl px-6 pb-20">
+      <section id="what" className="mx-auto max-w-5xl px-4 sm:px-6 pb-20">
         <h2 className="font-display text-2xl font-extrabold text-center mb-8">
           What you get from every video
         </h2>
@@ -175,7 +175,7 @@ function Index() {
         </div>
       </section>
 
-      <section id="how" className="mx-auto max-w-3xl px-6 pb-24">
+      <section id="how" className="mx-auto max-w-3xl px-4 sm:px-6 pb-24">
         <h2 className="font-display text-2xl font-extrabold text-center mb-8">How it works</h2>
         <ol className="space-y-3">
           {[

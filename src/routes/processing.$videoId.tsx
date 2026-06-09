@@ -83,7 +83,7 @@ function Processing() {
   const pct = Math.min(100, ((isReady ? STEPS.length : activeIdx + 1) / STEPS.length) * 100);
 
   return (
-    <div className="min-h-screen bg-background grid place-items-center px-6 py-12">
+    <div className="min-h-screen bg-background grid place-items-center px-4 sm:px-6 py-12">
       <div className="w-full max-w-xl space-y-8">
         <div className="flex flex-col items-center gap-4">
           <img
@@ -203,7 +203,7 @@ const ERROR_COPY: Record<IngestErrorCode, { title: string; body: string }> = {
 function ErrorState({ code, detail }: { code: IngestErrorCode; detail: string }) {
   const copy = ERROR_COPY[code] ?? ERROR_COPY.UNKNOWN;
   return (
-    <div className="min-h-screen bg-background grid place-items-center px-6 py-12">
+    <div className="min-h-screen bg-background grid place-items-center px-4 sm:px-6 py-12">
       <div className="w-full max-w-xl space-y-6 text-center">
         <div className="flex justify-center">
           <img

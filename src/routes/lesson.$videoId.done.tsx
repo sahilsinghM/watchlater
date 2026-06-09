@@ -51,10 +51,10 @@ function Done() {
 
   return (
     <div className="min-h-screen bg-background">
-      <header className="mx-auto max-w-3xl px-6 pt-6 pb-2">
+      <header className="mx-auto max-w-3xl px-4 sm:px-6 pt-6 pb-2">
         <Brand size="sm" />
       </header>
-      <main className="mx-auto max-w-2xl px-6 pb-24 space-y-8 text-center">
+      <main className="mx-auto max-w-2xl px-4 sm:px-6 pb-24 space-y-8 text-center">
         <div className="flex justify-center pt-6">
           <img src={mascot} alt="" width={160} height={160} className="h-32 w-32 animate-pop-in" />
         </div>
@@ -65,7 +65,7 @@ function Done() {
           You moved through a {Math.floor(lesson.video.duration / 60)}-minute video in five.
         </p>
 
-        <div className="rounded-[32px] brutal-border bg-card p-8 brutal-shadow space-y-3">
+        <div className="rounded-[32px] brutal-border bg-card p-5 sm:p-8 brutal-shadow space-y-3">
           <div className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground">
             Mastery
           </div>
@@ -76,7 +76,7 @@ function Done() {
           </p>
         </div>
 
-        <div className="rounded-3xl brutal-border bg-card p-6 text-left space-y-3 brutal-shadow-sm">
+        <div className="rounded-3xl brutal-border bg-card p-5 sm:p-6 text-left space-y-3 brutal-shadow-sm">
           <div className="font-mono text-[10px] uppercase tracking-widest text-primary font-bold">
             If you want more
           </div>
@@ -86,7 +86,7 @@ function Done() {
           </p>
         </div>
 
-        <div className="rounded-3xl brutal-border bg-card p-6 text-left space-y-4 brutal-shadow-sm">
+        <div className="rounded-3xl brutal-border bg-card p-5 sm:p-6 text-left space-y-4 brutal-shadow-sm">
           <div className="font-mono text-[10px] uppercase tracking-widest text-primary font-bold">
             Was this useful?
           </div>
