@@ -3,31 +3,38 @@ import { fmtRange } from "@/lib/lessonSchema";
 
 const kindStyles: Record<
   Segment["kind"],
-  { bar: string; chip: string; dot: string; label: string }
+  { bar: string; chip: string; dot: string; label: string; tip: string }
 > = {
   watch: {
     bar: "bg-primary/20",
     chip: "bg-primary/15 text-primary border-primary/50",
     dot: "bg-primary",
     label: "Watch",
+    // Hover tooltip: solid per-kind border + ink text on an opaque card so it
+    // never lets the legend bleed through (the /15 chip fill above is for the
+    // static card pills, not the floating tooltip).
+    tip: "border-primary text-primary",
   },
   core: {
     bar: "bg-secondary/35",
     chip: "bg-secondary/30 text-foreground border-secondary",
     dot: "bg-secondary",
     label: "Core",
+    tip: "border-secondary text-foreground",
   },
   demo: {
     bar: "bg-accent/25",
     chip: "bg-accent/20 text-foreground border-accent",
     dot: "bg-accent",
     label: "Demo",
+    tip: "border-accent text-foreground",
   },
   skip: {
     bar: "bg-muted",
     chip: "bg-muted text-muted-foreground border-foreground/20",
     dot: "bg-muted-foreground",
     label: "Skip",
+    tip: "border-foreground/40 text-muted-foreground",
   },
 };
 
@@ -47,8 +54,10 @@ export function AttentionTimeline({ segments, totalDuration, onSeek }: Props) {
   // prefers-reduced-motion guard disables for users who opt out.
   const staggerAt = (i: number) => Math.min(i, 8);
 
+  // pt-8 reserves headroom for the hover tooltip, which lifts above the legend.
+  // Keeps the chip from landing on the legend without shifting layout on hover.
   return (
-    <div className="space-y-5">
+    <div className="space-y-5 pt-8">
       {/* Legend — so the colors in the bar are decodable at a glance. */}
       <div className="flex flex-wrap items-center gap-x-5 gap-y-2">
         {legendOrder.map((kind) => {
@@ -93,9 +102,13 @@ export function AttentionTimeline({ segments, totalDuration, onSeek }: Props) {
                 </span>
               )}
               {/* Floating tooltip chip on hover — desktop only; touch has no
-                  hover and it was the source of the mobile overflow. */}
+                  hover and it was the source of the mobile overflow. Lifted
+                  clear of the legend (-top-[4.25rem]) and painted on an opaque
+                  card (bg-card + 3px solid per-kind border) so it occludes the
+                  legend instead of colliding with / bleeding through it. z-20
+                  keeps it over neighbouring segments. */}
               <span
-                className={`pointer-events-none absolute -top-11 left-1/2 z-10 hidden -translate-x-1/2 whitespace-nowrap rounded-xl border-2 px-2.5 py-1 font-mono text-[10px] font-bold uppercase tracking-widest opacity-0 shadow-[3px_3px_0_0_var(--foreground)] transition-opacity duration-150 group-hover/seg:opacity-100 group-focus-visible/seg:opacity-100 sm:block ${s.chip}`}
+                className={`pointer-events-none absolute -top-[4.25rem] left-1/2 z-20 hidden -translate-x-1/2 whitespace-nowrap rounded-xl border-[3px] bg-card px-2.5 py-1 font-mono text-[10px] font-bold uppercase tracking-widest opacity-0 shadow-[3px_3px_0_0_var(--foreground)] transition-opacity duration-150 group-hover/seg:opacity-100 group-focus-visible/seg:opacity-100 sm:block ${s.tip}`}
               >
                 {s.label} · {fmtRange(seg.start, seg.end)}
               </span>
