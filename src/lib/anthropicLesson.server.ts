@@ -2,12 +2,22 @@ import Anthropic from "@anthropic-ai/sdk";
 import { Lesson as LessonSchema, type Lesson } from "./lessonSchema";
 import type { Cue, Meta } from "./buildLesson";
 
-// Claude-backed lesson generation. Uses the official Anthropic SDK, Opus 4.8,
-// and adaptive thinking (reasoning goes into thinking blocks; the text block is
-// the clean JSON lesson). Streamed because the transcript is long input, which
-// avoids request timeouts (see the claude-api skill). The prompt enumerates the
-// exact Lesson field names so the output parses against LessonSchema — the SDK's
-// structured-outputs helper requires Zod v4 and this project is on Zod v3.
+// Claude-backed lesson generation. Uses the official Anthropic SDK with Sonnet
+// 4.6 by default and adaptive thinking (reasoning goes into thinking blocks; the
+// text block is the clean JSON lesson). Streamed because the transcript is long
+// input, which avoids request timeouts (see the claude-api skill). The prompt
+// enumerates the exact Lesson field names so the output parses against
+// LessonSchema — the SDK's structured-outputs helper requires Zod v4 and this
+// project is on Zod v3.
+//
+// SPEED MATTERS: the whole ingest pipeline runs inline inside one Vercel
+// function, which on the Hobby plan is hard-capped at 60s. Sonnet 4.6 + a
+// bounded max_tokens keeps generation well under that. Do NOT raise these back
+// to Opus / 32k tokens without first moving generation off the 60s function
+// (raise maxDuration on Pro, or use the ingest-worker escape hatch) — Opus with
+// a 32k budget routinely overran 60s and the function was killed mid-write,
+// leaving the job stuck and the user on a spinner that timed out. Override the
+// model per-deploy with ANTHROPIC_MODEL if you have the headroom.
 
 // Mirrors src/lib/lessonSchema.ts exactly — keep in sync if the schema changes.
 const REQUIRED_SHAPE = {
@@ -60,17 +70,19 @@ export async function generateAnthropicLesson(input: {
   meta: Meta;
   cues: Cue[];
 }): Promise<Lesson> {
-  // 90s client timeout (the SDK default is 10 min) so a hung generation fails
-  // fast and surfaces as an error instead of stalling the processing page.
-  const client = new Anthropic({ apiKey: input.apiKey, timeout: 90_000, maxRetries: 1 });
-  const model = input.model ?? "claude-opus-4-8";
+  // 50s SDK timeout (default is 10 min) so a slow generation ABORTS before the
+  // 60s Hobby function cap — that lets processLesson's catch mark the job failed
+  // (a clean GENERATION_FAILURE the user can retry) instead of the function being
+  // killed mid-write, which leaves the job stuck and the spinner hanging.
+  const client = new Anthropic({ apiKey: input.apiKey, timeout: 50_000, maxRetries: 1 });
+  const model = input.model ?? "claude-sonnet-4-6";
 
   const stream = client.messages.stream({
     model,
-    // Generous ceiling: thinking + the full lesson JSON must both fit, or the
-    // JSON truncates mid-array and fails to parse. ~50s well under the 300s
-    // function budget. Reasoning lands in thinking blocks; the text block is JSON.
-    max_tokens: 32000,
+    // Bounded so thinking + the full lesson JSON both finish well inside the 60s
+    // function budget (the JSON is only ~3-4k tokens; the rest is thinking head-
+    // room). Big enough to avoid truncating mid-array, small enough to stay fast.
+    max_tokens: 12000,
     thinking: { type: "adaptive" },
     system:
       "You generate trustworthy WatchLater lessons: a colour-coded attention map (segments), exactly six tappable lesson cards (thesis, key concept, mechanism, example/analogy, nuance, recap), a 3-question quiz (main idea, a supporting detail, an application), and a transcript-grounded tutor seed. Ground every major claim in transcript timestamps. Be blunt but not snarky about low-value videos. Your response text must be a SINGLE valid JSON object matching requiredShape EXACTLY — use those exact field names and enum values, no markdown fences, no preamble, no commentary.",
