@@ -18,6 +18,7 @@ export type IngestErrorCode =
   | "TRANSCRIPT_TOO_NOISY"
   | "GENERATION_FAILURE"
   | "GENERATION_SCHEMA_INVALID"
+  | "TIMEOUT"
   | "UNKNOWN";
 
 export type IngestPhase = "idle" | "processing" | "ready" | "failed";
@@ -144,7 +145,7 @@ export const getIngestStatus = createServerFn({ method: "GET" })
     }
 
     if (isJobStale(job)) {
-      return { phase: "failed", code: "UNKNOWN", detail: "Job timed out" };
+      return { phase: "failed", code: "TIMEOUT", detail: "Job timed out" };
     }
 
     return { phase: "processing", step: job.currentStep };
