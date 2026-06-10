@@ -11,6 +11,11 @@ export class IngestError extends Error {
 
 const UA = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0 Safari/537.36";
 
+// Video metadata (title / channel / thumbnail). oEmbed is a lightweight public
+// endpoint that, unlike the caption/InnerTube path, is NOT IP-blocked from
+// datacenter IPs, so a plain direct fetch is fine here. If oEmbed ever starts
+// failing from the deployed worker, switch this to Supadata's metadata endpoint
+// (GET https://api.supadata.ai/v1/youtube/video).
 export async function fetchOEmbed(youtubeId: string): Promise<Meta> {
   const url = `https://www.youtube.com/oembed?url=${encodeURIComponent(
     `https://www.youtube.com/watch?v=${youtubeId}`,
@@ -28,167 +33,101 @@ export async function fetchOEmbed(youtubeId: string): Promise<Meta> {
   };
 }
 
-const INNERTUBE_CLIENTS = [
-  { name: "ANDROID", ver: "20.10.38", ua: "com.google.android.youtube/20.10.38 (Linux; U; Android 14)" },
-  { name: "IOS", ver: "20.10.38", ua: "com.google.ios.youtube/20.10.38 (iPhone; U; CPU OS 17_0)" },
-  { name: "TVHTML5_SIMPLY", ver: "7.20250105.00.00", ua: "Mozilla/5.0 (ChromiumStyle; Linux) AppleWebKit/537.36 (KHTML, like Gecko) FreeBSD/13.2" },
-];
+// Transcript fetching is delegated entirely to Supadata, a managed API that
+// absorbs YouTube's datacenter-IP blocking and PoToken bot-detection server-side.
+// This replaces the previous hand-rolled InnerTube + watch-page + caption-XML +
+// residential-proxy pipeline, which never worked reliably from a datacenter IP.
+// See docs/decisions.md → Ingest Architecture for the full reasoning.
+const SUPADATA_BASE = "https://api.supadata.ai/v1";
 
-function extractBalancedJSON(html: string, key: string): unknown | null {
-  const keyIdx = html.indexOf(`${key} = `);
-  if (keyIdx === -1) return null;
-  const start = html.indexOf("{", keyIdx);
-  if (start === -1) return null;
-  let depth = 0;
-  for (let i = start; i < html.length; i++) {
-    if (html[i] === "{") depth++;
-    else if (html[i] === "}") {
-      depth--;
-      if (depth === 0) {
-        try { return JSON.parse(html.slice(start, i + 1)); } catch { return null; }
-      }
-    }
+type SupadataSegment = { text: string; offset: number; duration: number; lang?: string };
+type SupadataTranscript = { content: SupadataSegment[] | string; lang?: string };
+
+function getSupadataApiKey(): string {
+  const key = process.env.SUPADATA_API_KEY?.trim();
+  if (!key) {
+    // Fail closed on a config error rather than emitting a mystery NO_CAPTIONS.
+    throw new IngestError("UNKNOWN", "SUPADATA_API_KEY is not set");
   }
-  return null;
+  return key;
 }
 
-async function extractCaptionTracksFromWatchPage(
-  youtubeId: string,
-): Promise<{ tracks: Array<{ baseUrl: string; languageCode?: string; kind?: string }>; diag: string }> {
-  try {
-    const res = await fetch(
-      `https://www.youtube.com/watch?v=${youtubeId}&hl=en&gl=US&persist_hl=1&persist_gl=1`,
-      {
-        headers: {
-          "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
-          "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8",
-          "Accept-Language": "en-US,en;q=0.9",
-          "Cache-Control": "no-cache",
-          "Cookie": "CONSENT=YES+42; SOCS=CAISAiAD; GPS=1; YSC=dIkMoOiMZ7A; VISITOR_INFO1_LIVE=oKckVSqvaGw",
-          "Referer": "https://www.google.com/",
-          "sec-fetch-dest": "document",
-          "sec-fetch-mode": "navigate",
-          "sec-fetch-site": "none",
-          "upgrade-insecure-requests": "1",
-        },
-      },
-    );
-    const diag0 = `wp:http=${res.status}`;
-    if (!res.ok) return { tracks: [], diag: diag0 };
-    const html = await res.text();
-    const pr = extractBalancedJSON(html, "ytInitialPlayerResponse") as any;
-    if (!pr) return { tracks: [], diag: `${diag0},parse=fail` };
-    const ps = pr?.playabilityStatus?.status ?? "?";
-    let tracks: unknown[] | undefined = pr?.captions?.playerCaptionsTracklistRenderer?.captionTracks;
-    if (!tracks || tracks.length === 0) {
-      const id = extractBalancedJSON(html, "ytInitialData") as any;
-      const idTracks = id?.captions?.playerCaptionsTracklistRenderer?.captionTracks;
-      if (idTracks && idTracks.length > 0) tracks = idTracks;
-    }
-    const diag = `${diag0},ps=${ps},tracks=${tracks?.length ?? 0}`;
-    if (!tracks || tracks.length === 0) return { tracks: [], diag };
-    return { tracks: tracks as Array<{ baseUrl: string; languageCode?: string; kind?: string }>, diag };
-  } catch (e: any) {
-    return { tracks: [], diag: `wp:err=${String(e?.message ?? e).slice(0, 80)}` };
+// Map Supadata's response (offset/duration in ms) onto our Cue shape (seconds),
+// dropping empty-text segments — same normalisation the old XML parser did.
+function segmentsToCues(segments: SupadataSegment[]): Cue[] {
+  const cues: Cue[] = [];
+  for (const seg of segments) {
+    const text = seg.text.trim();
+    if (text) cues.push({ start: seg.offset / 1000, dur: seg.duration / 1000, text });
   }
+  return cues;
 }
 
-async function fetchCaptionXml(baseUrl: string): Promise<string | null> {
-  for (const ua of [
-    "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_4) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/85.0.4183.83 Safari/537.36,gzip(gfe)",
-    "com.google.android.youtube/20.10.38 (Linux; U; Android 14)",
-    "com.google.ios.youtube/20.10.38 (iPhone; U; CPU OS 17_0)",
-  ]) {
-    try {
-      const res = await fetch(baseUrl, { headers: { "User-Agent": ua } });
-      if (res.ok) {
-        const body = await res.text();
-        if (body.trim()) return body;
+// Long videos return 202 + a jobId; poll the job endpoint until it completes.
+// Job status checks are free, so a tight ~1s interval is fine. Capped so the
+// worker never hangs forever on a stuck job.
+async function pollSupadataJob(jobId: string, apiKey: string): Promise<SupadataSegment[]> {
+  const deadline = Date.now() + 60_000;
+  while (Date.now() < deadline) {
+    await new Promise((r) => setTimeout(r, 1000));
+    const res = await fetch(`${SUPADATA_BASE}/transcript/${jobId}`, {
+      headers: { "x-api-key": apiKey },
+    });
+    if (!res.ok) throw new IngestError("UNKNOWN", `Supadata job poll failed: ${res.status}`);
+    const data = (await res.json()) as { status: string; content?: SupadataSegment[] | string; error?: string };
+    if (data.status === "completed") {
+      if (!Array.isArray(data.content) || data.content.length === 0) {
+        throw new IngestError("NO_CAPTIONS", "This video has no captions");
       }
-    } catch { /* try next */ }
+      return data.content;
+    }
+    if (data.status === "failed") {
+      throw new IngestError("NO_CAPTIONS", `Transcript unavailable: ${data.error ?? "failed"}`);
+    }
   }
-  return null;
+  throw new IngestError("UNKNOWN", "Transcript job timed out");
 }
 
 export async function fetchTranscript(youtubeId: string): Promise<{ cues: Cue[]; languageCode: string }> {
-  let captionTracks: Array<{ baseUrl: string; languageCode?: string; kind?: string }> = [];
-  let watchPageDiag = "";
+  const apiKey = getSupadataApiKey();
+  const params = new URLSearchParams({
+    url: `https://www.youtube.com/watch?v=${youtubeId}`,
+    text: "false", // timestamped chunks, not plain text
+    lang: "en",
+    mode: "native", // existing captions only; no Whisper generation (locked policy)
+  });
 
-  for (const client of INNERTUBE_CLIENTS) {
-    try {
-      const res = await fetch("https://www.youtube.com/youtubei/v1/player?prettyPrint=false", {
-        method: "POST",
-        headers: { "Content-Type": "application/json", "User-Agent": client.ua },
-        body: JSON.stringify({ context: { client: { clientName: client.name, clientVersion: client.ver } }, videoId: youtubeId }),
-      });
-      if (!res.ok) continue;
-      const data = await res.json();
-      const tracks: unknown[] | undefined = data?.captions?.playerCaptionsTracklistRenderer?.captionTracks;
-      if (tracks && tracks.length > 0) {
-        const en = tracks.find((t: any) => t.languageCode === "en" && !t.kind);
-        captionTracks = en ? [en as any] : [tracks[0] as any];
-        break;
-      }
-      const ps = data?.playabilityStatus?.status;
-      if (ps === "LOGIN_REQUIRED" || ps === "UNPLAYABLE") {
-        console.warn(`[worker] InnerTube ${client.name}: ${ps}`);
-      }
-    } catch (e) {
-      console.warn(`[worker] InnerTube ${client.name} failed:`, e);
-    }
+  const res = await fetch(`${SUPADATA_BASE}/transcript?${params}`, {
+    headers: { "x-api-key": apiKey },
+  });
+
+  if (res.status === 401 || res.status === 403) {
+    throw new IngestError("UNKNOWN", "Supadata auth failed — check SUPADATA_API_KEY");
+  }
+  if (res.status === 404) {
+    throw new IngestError("NOT_FOUND", "Video not found");
   }
 
-  if (captionTracks.length === 0) {
-    console.warn("[worker] all InnerTube clients blocked, trying watch-page fallback");
-    const { tracks, diag } = await extractCaptionTracksFromWatchPage(youtubeId);
-    watchPageDiag = diag;
-    if (tracks.length > 0) {
-      const en = tracks.find((t) => t.languageCode === "en" && !t.kind);
-      captionTracks = en ? [en] : [tracks[0]];
-    }
+  // 202 → async job for long videos; poll until done.
+  if (res.status === 202) {
+    const { jobId } = (await res.json()) as { jobId: string };
+    const segments = await pollSupadataJob(jobId, apiKey);
+    const cues = segmentsToCues(segments);
+    if (cues.length === 0) throw new IngestError("NO_CAPTIONS", "Captions were empty");
+    return { cues, languageCode: segments[0]?.lang ?? "en" };
   }
 
-  if (captionTracks.length === 0) {
-    throw new IngestError("NO_CAPTIONS", `This video has no captions [${watchPageDiag}]`);
+  if (!res.ok) {
+    throw new IngestError("UNKNOWN", `Supadata request failed: ${res.status}`);
   }
 
-  const track = captionTracks[0];
-  const xml = await fetchCaptionXml(track.baseUrl);
-  if (!xml) throw new IngestError("NO_CAPTIONS", "Could not download captions");
-
-  const cues: Cue[] = [];
-  const pRegex = /<p\s+t="(\d+)"\s+d="(\d+)"[^>]*>([\s\S]*?)<\/p>/g;
-  let m: RegExpExecArray | null;
-  while ((m = pRegex.exec(xml))) {
-    const startMs = parseInt(m[1], 10);
-    const durMs = parseInt(m[2], 10);
-    const inner = m[3];
-    let text = "";
-    const sRegex = /<s[^>]*>([^<]*)<\/s>/g;
-    let sm: RegExpExecArray | null;
-    while ((sm = sRegex.exec(inner))) text += sm[1];
-    if (!text) text = inner.replace(/<[^>]+>/g, "");
-    text = text
-      .replace(/&amp;/g, "&").replace(/&lt;/g, "<").replace(/&gt;/g, ">")
-      .replace(/&quot;/g, '"').replace(/&#39;/g, "'")
-      .replace(/&#x([0-9a-fA-F]+);/g, (_, h) => String.fromCodePoint(parseInt(h, 16)))
-      .replace(/&#(\d+);/g, (_, d) => String.fromCodePoint(parseInt(d, 10)))
-      .trim();
-    if (text) cues.push({ start: startMs / 1000, dur: durMs / 1000, text });
+  const data = (await res.json()) as SupadataTranscript;
+  if (!Array.isArray(data.content) || data.content.length === 0) {
+    throw new IngestError("NO_CAPTIONS", "This video has no captions");
   }
-
-  if (cues.length === 0) {
-    const classicRe = /<text start="([^"]*)" dur="([^"]*)">([^<]*)<\/text>/g;
-    while ((m = classicRe.exec(xml))) {
-      const text = m[3]
-        .replace(/&amp;/g, "&").replace(/&lt;/g, "<").replace(/&gt;/g, ">")
-        .replace(/&quot;/g, '"').replace(/&#39;/g, "'").replace(/\s+/g, " ").trim();
-      if (text) cues.push({ start: parseFloat(m[1]), dur: parseFloat(m[2] ?? "0"), text });
-    }
-  }
-
+  const cues = segmentsToCues(data.content);
   if (cues.length === 0) throw new IngestError("NO_CAPTIONS", "Captions were empty");
-  return { cues, languageCode: track.languageCode ?? "en" };
+  return { cues, languageCode: data.lang ?? data.content[0]?.lang ?? "en" };
 }
 
 export function assessTranscriptQuality(input: { durationSeconds: number; language?: string; cues: Cue[] }) {

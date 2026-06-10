@@ -1,5 +1,6 @@
 import { fetchOEmbed, fetchTranscript, assessTranscriptQuality, IngestError } from "./ingest.ts";
 import { generateLesson, buildLesson } from "./lesson.ts";
+import { generateAnthropicLesson } from "./anthropicLesson.ts";
 import { updateJob, saveLesson } from "./supabase.ts";
 
 const INGEST_SECRET = process.env.INGEST_SECRET;
@@ -27,10 +28,16 @@ async function processIngest(youtubeId: string, jobId: string) {
 
     await updateJob(jobId, "generating_lesson");
 
-    const apiKey = process.env.OPENROUTER_API_KEY ?? process.env.OPENAI_API_KEY;
-    const lesson = apiKey
-      ? await generateLesson({ apiKey, model: process.env.OPENAI_MODEL, meta, cues })
-      : buildLesson(meta, cues);
+    // Generation precedence: Claude (preferred — matches the inline path, and
+    // the worker has no 60s cap so Opus is viable) -> OpenRouter -> templated
+    // builder. Set ANTHROPIC_API_KEY to get Claude; otherwise it degrades.
+    const anthropicKey = process.env.ANTHROPIC_API_KEY;
+    const openaiKey = process.env.OPENROUTER_API_KEY ?? process.env.OPENAI_API_KEY;
+    const lesson = anthropicKey
+      ? await generateAnthropicLesson({ apiKey: anthropicKey, model: process.env.ANTHROPIC_MODEL, meta, cues })
+      : openaiKey
+        ? await generateLesson({ apiKey: openaiKey, model: process.env.OPENAI_MODEL, meta, cues })
+        : buildLesson(meta, cues);
 
     await saveLesson(youtubeId, lesson);
     await updateJob(jobId, "ready");
