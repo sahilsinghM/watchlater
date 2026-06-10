@@ -7,6 +7,7 @@ import {
   createMemoryMvpStore,
   ensureAnonymousSession,
   generateAndPersistLesson,
+  isJobStale,
   persistKeyFrames,
   recordFeedback,
   recordQuizResult,
@@ -175,5 +176,43 @@ describe("MVP flow", () => {
       supported: false,
       text: "I cannot tell from this video.",
     });
+  });
+});
+
+// A processing job is "stale" when it is still in a non-terminal status but its
+// last update is older than the staleness window — meaning the request that was
+// processing it died and the job will never advance on its own. requestLesson
+// uses this to reprocess an abandoned job instead of handing back a dead one.
+describe("isJobStale", () => {
+  const FOUR_MINUTES_AGO = Date.now() - 4 * 60 * 1000;
+  const ONE_MINUTE_AGO = Date.now() - 1 * 60 * 1000;
+
+  function makeJob(status: string, updatedAtMs: number) {
+    return {
+      id: "job_001",
+      sessionId: "s1",
+      youtubeId: "dQw4w9WgXcQ",
+      input: "https://www.youtube.com/watch?v=dQw4w9WgXcQ",
+      status,
+      currentStep: status,
+      createdAt: new Date(updatedAtMs).toISOString(),
+      updatedAt: new Date(updatedAtMs).toISOString(),
+    } as never;
+  }
+
+  test("flags a non-terminal job last updated more than 2 minutes ago as stale", () => {
+    expect(isJobStale(makeJob("generating_lesson", FOUR_MINUTES_AGO))).toBe(true);
+  });
+
+  test("does not flag a non-terminal job updated within the last 2 minutes", () => {
+    expect(isJobStale(makeJob("reading_transcript", ONE_MINUTE_AGO))).toBe(false);
+  });
+
+  test("never flags a ready job as stale regardless of age", () => {
+    expect(isJobStale(makeJob("ready", FOUR_MINUTES_AGO))).toBe(false);
+  });
+
+  test("never flags a failed job as stale regardless of age", () => {
+    expect(isJobStale(makeJob("failed", FOUR_MINUTES_AGO))).toBe(false);
   });
 });

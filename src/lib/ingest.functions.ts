@@ -2,9 +2,10 @@ import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { sampleLesson } from "@/data/sampleLesson";
 import type { Lesson } from "./lessonSchema";
-import { ensureAnonymousSession } from "./mvpFlow";
+import { ensureAnonymousSession, isJobStale } from "./mvpFlow";
 import { getServerConfig } from "./config.server";
 import { getMvpStore } from "./mvpRuntime.server";
+import { processLesson } from "./processLesson.server";
 
 export type IngestErrorCode =
   | "NO_CAPTIONS"
@@ -17,7 +18,6 @@ export type IngestErrorCode =
   | "TRANSCRIPT_TOO_NOISY"
   | "GENERATION_FAILURE"
   | "GENERATION_SCHEMA_INVALID"
-  | "TIMEOUT"
   | "UNKNOWN";
 
 export type IngestPhase = "idle" | "processing" | "ready" | "failed";
@@ -32,8 +32,32 @@ const youtubeIdValidator = z
   .string()
   .refine((s) => s === "sample" || /^[A-Za-z0-9_-]{11}$/.test(s), "invalid youtube id");
 
-// Called once when the processing page mounts. Creates a job in Supabase,
-// then fires the ingest worker (Railway) without waiting for it to finish.
+// Returns an EXTERNAL worker target only when one is explicitly configured via
+// INGEST_WORKER_URL. Otherwise returns null, which means "process inline in this
+// function" (the canonical path — see requestLesson below).
+//
+// NOTE: this deliberately does NOT fall back to the Supabase Edge Function
+// (`/functions/v1/ingest`). That function is a non-functional skeleton (see
+// docs/decisions.md → Ingest Architecture). Routing to it silently swallowed
+// every job on production — the job was created, the dispatch returned 200, and
+// nothing ever did the transcript/LLM work — leaving the UI stuck on "fetching
+// video details" forever.
+export function resolveIngestTarget(config: {
+  ingestWorkerUrl?: string | null;
+  ingestWorkerSecret?: string | null;
+}): { url: string; authHeader: string } | null {
+  if (config.ingestWorkerUrl && config.ingestWorkerSecret) {
+    return {
+      url: `${config.ingestWorkerUrl}/ingest`,
+      authHeader: config.ingestWorkerSecret,
+    };
+  }
+  return null;
+}
+
+// Called once when the processing page mounts. Creates a job in Supabase, then
+// either dispatches to an external worker (if one is configured) or processes
+// the lesson inline — there is no path that creates a job nobody processes.
 export const requestLesson = createServerFn({ method: "POST" })
   .inputValidator((input: { youtubeId: string }) =>
     z.object({ youtubeId: youtubeIdValidator }).parse(input),
@@ -48,9 +72,12 @@ export const requestLesson = createServerFn({ method: "POST" })
     const cached = await store.getLessonByYoutubeId(youtubeId);
     if (cached) return { jobId: null, alreadyReady: true };
 
-    // Return immediately if a job is already running / queued
+    // Reuse an in-flight job, but only if it's actually still being processed.
+    // A non-failed job that has gone stale was abandoned (its processing request
+    // died) — fall through and reprocess it rather than handing back a job that
+    // will never advance.
     const existing = await store.getActiveJobByYoutubeId(youtubeId);
-    if (existing && existing.status !== "failed") {
+    if (existing && existing.status !== "failed" && !isJobStale(existing)) {
       return { jobId: existing.id, alreadyReady: false };
     }
 
@@ -63,21 +90,27 @@ export const requestLesson = createServerFn({ method: "POST" })
     });
 
     const config = getServerConfig();
-    if (config.ingestWorkerUrl && config.ingestWorkerSecret) {
-      // Fire and forget — do not await the body, just confirm the worker
-      // accepted the request. The worker processes asynchronously and writes
-      // job status + lesson directly to Supabase.
-      fetch(`${config.ingestWorkerUrl}/ingest`, {
+    const target = resolveIngestTarget(config);
+    if (target) {
+      // External worker configured (INGEST_WORKER_URL). Fire and forget — do not
+      // await the body, just confirm the worker accepted the request. It then
+      // processes asynchronously and writes job status + lesson to Supabase.
+      fetch(target.url, {
         method: "POST",
         headers: {
           "content-type": "application/json",
-          "x-ingest-secret": config.ingestWorkerSecret,
+          "authorization": `Bearer ${target.authHeader}`,
         },
         body: JSON.stringify({ youtubeId, jobId: job.id }),
         signal: AbortSignal.timeout(10_000),
       }).catch((err) => console.error("[ingest] worker dispatch failed:", err));
     } else {
-      console.warn("[ingest] INGEST_WORKER_URL not set — job created but no worker dispatched");
+      // No external worker — process inline and AWAIT it. The request stays open
+      // until the lesson is written (~30s), which is what keeps the Vercel
+      // Function alive to do the work. The processing page polls getIngestStatus
+      // in parallel, so the user sees live progress while this request runs.
+      // (Fire-and-forget via waitUntil does not survive here — see processLesson.)
+      await processLesson(youtubeId, job.id);
     }
 
     return { jobId: job.id, alreadyReady: false };
@@ -108,6 +141,10 @@ export const getIngestStatus = createServerFn({ method: "GET" })
         code: (job.errorCode as IngestErrorCode) ?? "UNKNOWN",
         detail: job.errorDetail ?? "Ingest failed",
       };
+    }
+
+    if (isJobStale(job)) {
+      return { phase: "failed", code: "UNKNOWN", detail: "Job timed out" };
     }
 
     return { phase: "processing", step: job.currentStep };

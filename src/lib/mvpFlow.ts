@@ -326,6 +326,25 @@ export function assessTranscriptQuality(input: TranscriptQualityInput): Transcri
   return { ok: true, coverageRatio, cueDensity };
 }
 
+// A job is "in flight" only in these statuses; ready/failed are terminal.
+const NON_TERMINAL_STATUSES: ProcessingStatus[] = [
+  "queued",
+  "fetching_metadata",
+  "reading_transcript",
+  "capturing_visuals",
+  "generating_lesson",
+];
+
+// Matches the server-side stale backstop and the processing page's poll timeout:
+// a non-terminal job untouched for longer than this was abandoned (its
+// processing request died) and should be reprocessed rather than waited on.
+const STALE_MS = 2 * 60 * 1000;
+
+export function isJobStale(job: ProcessingJob, nowMs = Date.now()): boolean {
+  if (!NON_TERMINAL_STATUSES.includes(job.status)) return false;
+  return nowMs - new Date(job.updatedAt).getTime() > STALE_MS;
+}
+
 export async function persistKeyFrames(
   store: MvpStore,
   input: {

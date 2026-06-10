@@ -27,6 +27,23 @@ This document locks the decisions that should not be re-litigated during MVP imp
 - Anonymous sessions are required for MVP. User accounts and login are explicitly out of scope.
 - Session identity should be stable enough to connect lesson completion, quiz results, feedback, and a user's current processing job without requiring authentication.
 
+## Ingest Architecture
+
+**Historical context — why this was hard.** Vercel (and every other datacenter host) runs on IPs that YouTube blocks at the InnerTube/caption level, causing `LOGIN_REQUIRED` / empty caption tracks even for public videos. YouTube also added **PoToken** ("proof of origin") bot-detection in 2025–2026. A hand-rolled InnerTube + watch-page + caption-XML pipeline works from a residential IP and fails from every datacenter IP. Headless Chrome, `chrome-aws-lambda`, `youtubei.js` PoToken, cookies, and provider-switching were all tried and were fragile or failed to deploy. **The real cause was IP reputation, not the fetch code** — the only things that reliably work are a residential proxy or a managed transcript API.
+
+**Chosen fix: a managed transcript API (Supadata).** Transcript fetching is delegated to **Supadata** (`https://api.supadata.ai/v1/transcript`), which absorbs the IP/PoToken problem server-side. Because Supadata removed the IP requirement, the transcript + LLM work moved back into Vercel, eliminating the Railway/VPS worker as a required service.
+
+Locked decisions:
+
+- **Canonical production path: inline processing inside the Vercel Function, AWAITED.** `requestLesson` (`src/lib/ingest.functions.ts`) creates a Supabase job row, then `await`s `processLesson()` (`src/lib/processLesson.server.ts`). The request stays open (~30s, well within Vercel's 300s Fluid Compute budget) while the page polls status. **Do NOT switch this to fire-and-forget `waitUntil`** — it does not survive in the TanStack Start / Nitro serverFn environment on Vercel (the function freezes after returning and the background promise is dropped), which left jobs stuck at "fetching video details" forever. Awaiting is what keeps the instance alive to finish the work.
+- **There is no silent no-op.** A request must never create a job it has no intention of processing. If neither path can run, the job fails loud with a clear `IngestErrorCode`.
+- **Transcript via Supadata `mode=native`** (existing captions only — no Whisper generation, a locked policy), authenticated via `SUPADATA_API_KEY`; `src/lib/transcript.server.ts` fails closed if the key is missing. **Metadata stays on oEmbed** (a public, non-IP-blocked endpoint).
+- **Processing is async and job-tracked.** The processing page polls `getIngestStatus()` every 2 seconds until `ready` or `failed`. Failure `errorCode`s use the `IngestErrorCode` vocabulary so the page's `ERROR_COPY` renders the right message.
+- **The standalone Bun worker (`ingest-worker/`) is an optional escape hatch, not required.** If `INGEST_WORKER_URL` + `INGEST_WORKER_SECRET` are both set, `requestLesson` dispatches to it instead of processing inline (`resolveIngestTarget`). Leave them unset to use the free, no-extra-host inline path.
+- **Do not add `chrome-aws-lambda`, `puppeteer-core`, or headless Chromium** back to the bundle, and **do not re-introduce the hand-rolled InnerTube/watch-page parser or a residential proxy** unless Supadata is dropped. A managed API makes browser emulation unnecessary, and a second transcript code path is the exact fragility this removed.
+
+The Supabase Edge Function (`supabase/functions/fetch-yt-captions/`) is a **skeleton, not the production path** — keep it only as a reference; do not wire `requestLesson` to it.
+
 ## AI And Generation
 
 - AI provider: OpenAI only.
