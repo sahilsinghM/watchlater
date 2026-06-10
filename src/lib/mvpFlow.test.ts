@@ -10,6 +10,7 @@ import {
   isJobStale,
   persistKeyFrames,
   recordFeedback,
+  recordLead,
   recordQuizResult,
   startProcessingJob,
   validateVideoInput,
@@ -162,6 +163,43 @@ describe("MVP flow", () => {
 
     expect(quiz.score).toBe(2);
     expect(feedback.useful).toBe(true);
+  });
+
+  test("records an early-access lead with a normalized email for the session", async () => {
+    const store = createMemoryMvpStore();
+    const session = await ensureAnonymousSession(store, "browser-session");
+
+    const lead = await recordLead(store, {
+      sessionId: session.id,
+      email: "  Reader@Example.COM ",
+      source: "hero",
+      lessonVideoId: "dQw4w9WgXcQ",
+    });
+
+    expect(lead.email).toBe("reader@example.com");
+    expect(lead.source).toBe("hero");
+    expect(lead.id).toBeTruthy();
+  });
+
+  test("upserts a lead by email so the same person is captured once", async () => {
+    const store = createMemoryMvpStore();
+    const session = await ensureAnonymousSession(store, "browser-session");
+
+    const first = await recordLead(store, {
+      sessionId: session.id,
+      email: "reader@example.com",
+      source: "hero",
+    });
+    const second = await recordLead(store, {
+      sessionId: session.id,
+      email: "  Reader@Example.com ",
+      source: "done",
+      lessonVideoId: "dQw4w9WgXcQ",
+    });
+
+    // Same row (deduped by email), but the latest touch is reflected.
+    expect(second.id).toBe(first.id);
+    expect(second.source).toBe("done");
   });
 
   test("tutor answers from source context and refuses unsupported questions", () => {
