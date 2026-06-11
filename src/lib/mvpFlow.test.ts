@@ -57,6 +57,7 @@ describe("MVP flow", () => {
     });
 
     expect(quality.ok).toBe(false);
+    if (quality.ok) throw new Error("expected a failed quality result");
     expect(quality.code).toBe("TRANSCRIPT_TOO_SPARSE");
   });
 
@@ -73,6 +74,7 @@ describe("MVP flow", () => {
       cues: denseCues,
     });
     expect(quality.ok).toBe(false);
+    if (quality.ok) throw new Error("expected a failed quality result");
     expect(quality.code).toBe("NON_ENGLISH");
   });
 
