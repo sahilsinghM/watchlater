@@ -6,7 +6,7 @@ import { lessonQueryOptions } from "@/lib/lessonQuery";
 import { getBrowserSessionKey } from "@/lib/anonymousSession";
 import { submitQuizResult } from "@/lib/feedback.functions";
 
-export const Route = createFileRoute("/lesson/$videoId/quiz")({
+export const Route = createFileRoute("/lesson/$videoId_/quiz")({
   loader: ({ context, params }) =>
     context.queryClient.ensureQueryData(lessonQueryOptions(params.videoId)),
   head: () => ({ meta: [{ title: "Quiz · WatchLater" }] }),
