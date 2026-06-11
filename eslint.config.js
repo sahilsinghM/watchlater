@@ -6,7 +6,20 @@ import reactRefresh from "eslint-plugin-react-refresh";
 import tseslint from "typescript-eslint";
 
 export default tseslint.config(
-  { ignores: ["dist", ".output", ".vinxi"] },
+  {
+    ignores: [
+      "dist",
+      ".output",
+      ".vinxi",
+      ".vercel",
+      ".playwright-mcp",
+      // Generated — owned by the TanStack Router plugin, not us.
+      "src/routeTree.gen.ts",
+      // Vendored shadcn/ui kit — upstream style, not project style. Linting it
+      // produced thousands of unactionable findings that drowned real signal.
+      "src/components/ui/**",
+    ],
+  },
   {
     extends: [js.configs.recommended, ...tseslint.configs.recommended],
     files: ["**/*.{ts,tsx}"],
