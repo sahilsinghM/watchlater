@@ -38,7 +38,10 @@ function LessonHero() {
     <div className="min-h-screen bg-background">
       <header className="mx-auto max-w-6xl px-4 sm:px-6 pt-6 pb-4 flex items-center justify-between gap-4 flex-wrap">
         <Brand />
-        <div className="hidden md:block">
+        <div className="flex items-center gap-2">
+          <span className="sm:hidden font-mono text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
+            Tone
+          </span>
           <ToneToggle value={tone} onChange={setTone} />
         </div>
       </header>
@@ -126,9 +129,6 @@ function LessonHero() {
                 Click a segment to jump the video. Skip the muted parts, savour the bright ones.
               </p>
             </div>
-            <div className="md:hidden">
-              <ToneToggle value={tone} onChange={setTone} />
-            </div>
           </div>
           <AttentionTimeline
             segments={lesson.segments}
@@ -160,7 +160,7 @@ function LessonHero() {
               params={{ videoId }}
               className="inline-flex items-center rounded-2xl bg-foreground text-background px-5 py-2.5 font-bold text-sm"
             >
-              Start the lesson
+              Start 5-minute lesson →
             </Link>
             <button
               type="button"

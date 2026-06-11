@@ -204,6 +204,20 @@
   }
 }
 
+/* Keyboard focus is part of the interaction physics: a hard ink ring on
+   every focusable element, matching the border-darkens-to-ink rule. */
+:focus-visible {
+  outline: 3px solid var(--foreground);
+  outline-offset: 2px;
+}
+
+/* Display headings wrap in balanced blocks instead of orphaning one word. */
+h1,
+h2,
+h3 {
+  text-wrap: balance;
+}
+
 @keyframes float {
   0%, 100% { transform: translateY(0px) rotate(-1deg); }
   50% { transform: translateY(-10px) rotate(1deg); }

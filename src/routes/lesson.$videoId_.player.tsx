@@ -50,7 +50,7 @@ function Player() {
         <ToneToggle value={tone} onChange={setTone} />
       </header>
 
-      <main className="mx-auto max-w-2xl px-4 sm:px-6 pb-24 space-y-6">
+      <main className="mx-auto max-w-2xl px-4 sm:px-6 pb-32 sm:pb-24 space-y-6">
         <div className="space-y-2">
           <div className="flex justify-between items-end px-1">
             <span className="font-mono text-xs font-bold uppercase tracking-widest text-muted-foreground">
