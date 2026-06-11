@@ -59,7 +59,8 @@ export async function generateOpenAILesson(input: {
               watchVerdict: "skip | lesson_only | watch_core | watch_full",
               visualContextStatus: "unavailable",
               segments: "array of skip/watch/core/demo segments with timestamps",
-              cards: "exactly six cards covering thesis, key concept, mechanism, example/analogy, nuance, recap",
+              cards:
+                "exactly six cards covering thesis, key concept, mechanism, example/analogy, nuance, recap",
               keyMoments: "3-5 timestamp/caption moments",
               quiz: "3 questions: main idea, support/detail, application",
               tutorSeed: "source-grounded suggested Q/A pairs",

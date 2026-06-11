@@ -36,14 +36,20 @@ export function TutorPanel({ lesson }: { lesson: Lesson }) {
       </button>
 
       {open && (
-        <div className="fixed inset-0 z-50 flex items-end justify-end p-4 md:p-6 bg-foreground/40 backdrop-blur-sm" onClick={() => setOpen(false)}>
+        <div
+          className="fixed inset-0 z-50 flex items-end justify-end p-4 md:p-6 bg-foreground/40 backdrop-blur-sm"
+          onClick={() => setOpen(false)}
+        >
           <div
             onClick={(e) => e.stopPropagation()}
             className="w-full max-w-md flex flex-col rounded-[28px] brutal-border bg-card brutal-shadow max-h-[80vh]"
           >
             <div className="flex items-center justify-between border-b-2 border-foreground/10 px-5 py-4">
               <div className="font-display font-extrabold">Tutor for this video</div>
-              <button onClick={() => setOpen(false)} className="text-muted-foreground hover:text-foreground">
+              <button
+                onClick={() => setOpen(false)}
+                className="text-muted-foreground hover:text-foreground"
+              >
                 ✕
               </button>
             </div>

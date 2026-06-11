@@ -56,7 +56,10 @@ export function WaitlistCard({ lessonVideoId }: Props) {
           </p>
           {/* Stacked on phones: side-by-side, flex-1 crushed the input to ~78px
               next to the Join button ("you@e..."). */}
-          <form onSubmit={onSubmit} className="mt-4 flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-start">
+          <form
+            onSubmit={onSubmit}
+            className="mt-4 flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-start"
+          >
             <div className="w-full sm:w-auto sm:min-w-0 sm:flex-1">
               <input
                 type="email"

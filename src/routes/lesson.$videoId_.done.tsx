@@ -106,8 +106,11 @@ function Done() {
             If you want more
           </div>
           <p className="text-base">
-            Watch <span className="font-bold">{fmtRange(lesson.bestPart.start, lesson.bestPart.end)}</span> in the video.
-            That's the section where the argument really lands.
+            Watch{" "}
+            <span className="font-bold">
+              {fmtRange(lesson.bestPart.start, lesson.bestPart.end)}
+            </span>{" "}
+            in the video. That's the section where the argument really lands.
           </p>
         </div>
 
@@ -162,9 +165,7 @@ function Done() {
                     className="w-full rounded-2xl border-2 border-foreground/15 bg-background px-4 py-3 text-sm outline-none focus:border-foreground"
                   />
                 </div>
-                {emailError && (
-                  <p className="text-sm text-destructive font-medium">{emailError}</p>
-                )}
+                {emailError && <p className="text-sm text-destructive font-medium">{emailError}</p>}
               </>
             )}
           </div>

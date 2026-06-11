@@ -14,7 +14,9 @@ export function parseYouTubeId(input: string): string | null {
       const v = url.searchParams.get("v");
       if (v && /^[A-Za-z0-9_-]{11}$/.test(v)) return v;
       const parts = url.pathname.split("/").filter(Boolean);
-      const i = parts.findIndex((p) => p === "shorts" || p === "embed" || p === "live" || p === "v");
+      const i = parts.findIndex(
+        (p) => p === "shorts" || p === "embed" || p === "live" || p === "v",
+      );
       if (i !== -1 && parts[i + 1] && /^[A-Za-z0-9_-]{11}$/.test(parts[i + 1])) return parts[i + 1];
     }
   } catch {

@@ -56,7 +56,9 @@ function Player() {
             <span className="font-mono text-xs font-bold uppercase tracking-widest text-muted-foreground">
               Card {String(idx + 1).padStart(2, "0")} / {String(total).padStart(2, "0")}
             </span>
-            <span className="font-display font-extrabold text-primary text-sm">{pct}% complete</span>
+            <span className="font-display font-extrabold text-primary text-sm">
+              {pct}% complete
+            </span>
           </div>
           <div className="h-3 w-full bg-foreground/5 rounded-full overflow-hidden brutal-border">
             <div
@@ -66,7 +68,12 @@ function Player() {
           </div>
         </div>
 
-        <LessonCardView card={card} tone={tone} direction={dir} onSeek={(s) => playerRef.current?.seekTo(s)} />
+        <LessonCardView
+          card={card}
+          tone={tone}
+          direction={dir}
+          onSeek={(s) => playerRef.current?.seekTo(s)}
+        />
 
         {card.timestamp !== undefined && (
           <div className="space-y-2">

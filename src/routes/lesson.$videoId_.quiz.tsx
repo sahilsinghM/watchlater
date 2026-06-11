@@ -30,10 +30,7 @@ function Quiz() {
     setAnswers(next);
     setPicked(null);
     if (idx + 1 >= total) {
-      const score = next.reduce(
-        (s, a, i) => s + (a === lesson.quiz[i].correctIndex ? 1 : 0),
-        0,
-      );
+      const score = next.reduce((s, a, i) => s + (a === lesson.quiz[i].correctIndex ? 1 : 0), 0);
       try {
         await submitQuizResult({
           data: {
@@ -92,10 +89,10 @@ function Quiz() {
                   ? "border-foreground bg-primary/10"
                   : "border-foreground/15 hover:border-foreground hover:-translate-y-0.5"
                 : isCorrect
-                ? "border-accent bg-accent/15"
-                : isPicked
-                ? "border-destructive bg-destructive/10"
-                : "border-foreground/10 opacity-60";
+                  ? "border-accent bg-accent/15"
+                  : isPicked
+                    ? "border-destructive bg-destructive/10"
+                    : "border-foreground/10 opacity-60";
               return (
                 <li key={i}>
                   <button

@@ -87,18 +87,37 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       { property: "og:title", content: "WatchLater — Understand any long video in 5 minutes" },
       {
         property: "og:description",
-        content:
-          "Turn long YouTube videos into playful, interactive 5-minute lessons.",
+        content: "Turn long YouTube videos into playful, interactive 5-minute lessons.",
       },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary" },
       { name: "twitter:site", content: "@Lovable" },
       { name: "twitter:title", content: "WatchLater — Understand any long video in 5 minutes" },
-      { name: "description", content: "Pixel Perfect View precisely replicates UI screenshots, ensuring exact visual fidelity." },
-      { property: "og:description", content: "Pixel Perfect View precisely replicates UI screenshots, ensuring exact visual fidelity." },
-      { name: "twitter:description", content: "Pixel Perfect View precisely replicates UI screenshots, ensuring exact visual fidelity." },
-      { property: "og:image", content: "https://pub-bb2e103a32db4e198524a2e9ed8f35b4.r2.dev/675b3d89-357c-47ff-a758-69629d55c2c3/id-preview-fd128645--e1927533-02df-42d4-a970-6b9e4ab79ff7.lovable.app-1780628443851.png" },
-      { name: "twitter:image", content: "https://pub-bb2e103a32db4e198524a2e9ed8f35b4.r2.dev/675b3d89-357c-47ff-a758-69629d55c2c3/id-preview-fd128645--e1927533-02df-42d4-a970-6b9e4ab79ff7.lovable.app-1780628443851.png" },
+      {
+        name: "description",
+        content:
+          "Pixel Perfect View precisely replicates UI screenshots, ensuring exact visual fidelity.",
+      },
+      {
+        property: "og:description",
+        content:
+          "Pixel Perfect View precisely replicates UI screenshots, ensuring exact visual fidelity.",
+      },
+      {
+        name: "twitter:description",
+        content:
+          "Pixel Perfect View precisely replicates UI screenshots, ensuring exact visual fidelity.",
+      },
+      {
+        property: "og:image",
+        content:
+          "https://pub-bb2e103a32db4e198524a2e9ed8f35b4.r2.dev/675b3d89-357c-47ff-a758-69629d55c2c3/id-preview-fd128645--e1927533-02df-42d4-a970-6b9e4ab79ff7.lovable.app-1780628443851.png",
+      },
+      {
+        name: "twitter:image",
+        content:
+          "https://pub-bb2e103a32db4e198524a2e9ed8f35b4.r2.dev/675b3d89-357c-47ff-a758-69629d55c2c3/id-preview-fd128645--e1927533-02df-42d4-a970-6b9e4ab79ff7.lovable.app-1780628443851.png",
+      },
     ],
     links: [
       {

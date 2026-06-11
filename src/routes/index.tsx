@@ -16,8 +16,7 @@ export const Route = createFileRoute("/")({
       { property: "og:title", content: "WatchLater — Long videos, learned fast" },
       {
         property: "og:description",
-        content:
-          "Turn long YouTube videos into playful, interactive 5-minute lessons.",
+        content: "Turn long YouTube videos into playful, interactive 5-minute lessons.",
       },
     ],
   }),
@@ -56,8 +55,12 @@ function Index() {
       <header className="mx-auto max-w-6xl px-4 sm:px-6 pt-8 flex items-center justify-between">
         <Brand />
         <nav className="hidden sm:flex items-center gap-6 text-sm font-medium text-muted-foreground">
-          <a href="#how" className="hover:text-foreground transition">How it works</a>
-          <a href="#what" className="hover:text-foreground transition">What you get</a>
+          <a href="#how" className="hover:text-foreground transition">
+            How it works
+          </a>
+          <a href="#what" className="hover:text-foreground transition">
+            What you get
+          </a>
         </nav>
       </header>
 
@@ -68,13 +71,12 @@ function Index() {
         </div>
 
         <h1 className="vs-h1 text-balance">
-          Understand any long video{" "}
-          <span className="text-primary italic">in 5 minutes.</span>
+          Understand any long video <span className="text-primary italic">in 5 minutes.</span>
         </h1>
 
         <p className="mx-auto max-w-xl text-lg text-muted-foreground">
-          Paste a YouTube link. We'll watch the boring parts so you don't have to —
-          and hand you back a playful, interactive lesson with cards, a timeline, and a quick quiz.
+          Paste a YouTube link. We'll watch the boring parts so you don't have to — and hand you
+          back a playful, interactive lesson with cards, a timeline, and a quick quiz.
         </p>
 
         <form onSubmit={submit} className="relative mx-auto max-w-2xl group">
@@ -97,9 +99,7 @@ function Index() {
               Generate lesson →
             </button>
           </div>
-          {error && (
-            <p className="mt-3 text-sm text-destructive font-medium">{error}</p>
-          )}
+          {error && <p className="mt-3 text-sm text-destructive font-medium">{error}</p>}
           {import.meta.env.DEV && (
             <p className="mt-3 text-xs text-muted-foreground font-mono uppercase tracking-widest">
               Dev demo: paste <span className="text-foreground">sample</span> to skip ingestion
@@ -135,10 +135,22 @@ function Index() {
               swatch: (
                 <div className="flex h-12 w-full overflow-hidden rounded-lg brutal-border">
                   <div className="h-full bg-muted" style={{ width: "20%" }} />
-                  <div className="h-full bg-primary/30 border-l-[3px] border-foreground" style={{ width: "25%" }} />
-                  <div className="h-full bg-secondary border-l-[3px] border-foreground" style={{ width: "30%" }} />
-                  <div className="h-full bg-accent border-l-[3px] border-foreground" style={{ width: "15%" }} />
-                  <div className="h-full bg-muted border-l-[3px] border-foreground" style={{ width: "10%" }} />
+                  <div
+                    className="h-full bg-primary/30 border-l-[3px] border-foreground"
+                    style={{ width: "25%" }}
+                  />
+                  <div
+                    className="h-full bg-secondary border-l-[3px] border-foreground"
+                    style={{ width: "30%" }}
+                  />
+                  <div
+                    className="h-full bg-accent border-l-[3px] border-foreground"
+                    style={{ width: "15%" }}
+                  />
+                  <div
+                    className="h-full bg-muted border-l-[3px] border-foreground"
+                    style={{ width: "10%" }}
+                  />
                 </div>
               ),
             },
@@ -159,14 +171,23 @@ function Index() {
               body: "Three questions to prove you actually got it — with a mastery score.",
               swatch: (
                 <div className="grid grid-cols-3 gap-1.5">
-                  <div className="h-12 rounded-lg brutal-border bg-accent/30 grid place-items-center text-lg">✓</div>
-                  <div className="h-12 rounded-lg brutal-border bg-card grid place-items-center text-muted-foreground">?</div>
-                  <div className="h-12 rounded-lg brutal-border bg-card grid place-items-center text-muted-foreground">?</div>
+                  <div className="h-12 rounded-lg brutal-border bg-accent/30 grid place-items-center text-lg">
+                    ✓
+                  </div>
+                  <div className="h-12 rounded-lg brutal-border bg-card grid place-items-center text-muted-foreground">
+                    ?
+                  </div>
+                  <div className="h-12 rounded-lg brutal-border bg-card grid place-items-center text-muted-foreground">
+                    ?
+                  </div>
                 </div>
               ),
             },
           ].map((f) => (
-            <div key={f.title} className="rounded-3xl brutal-border bg-card p-5 space-y-3 brutal-shadow-sm">
+            <div
+              key={f.title}
+              className="rounded-3xl brutal-border bg-card p-5 space-y-3 brutal-shadow-sm"
+            >
               {f.swatch}
               <h3 className="font-display text-lg font-extrabold">{f.title}</h3>
               <p className="text-sm text-muted-foreground">{f.body}</p>
@@ -183,7 +204,10 @@ function Index() {
             "We pull the transcript and find the parts that actually matter",
             "You get a 5-minute interactive lesson + a 3-question quiz",
           ].map((step, i) => (
-            <li key={i} className="flex items-center gap-4 rounded-2xl brutal-border bg-card px-5 py-4">
+            <li
+              key={i}
+              className="flex items-center gap-4 rounded-2xl brutal-border bg-card px-5 py-4"
+            >
               <span className="font-display font-extrabold text-2xl text-primary w-8">{i + 1}</span>
               <span className="font-medium">{step}</span>
             </li>
