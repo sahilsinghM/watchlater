@@ -93,19 +93,28 @@ function Processing() {
     dispatch.mutate();
   }, []);
 
-  // Poll Supabase job status every 2 s until ready or failed
+  // A "failed" status is only trustworthy once the dispatch POST has settled.
+  // On a retry of a previously-failed video, the first polls race requestLesson
+  // and see the OLD failed job — treating that as final showed its error copy
+  // (and stopped polling) while the server was successfully rebuilding. Track
+  // it in a ref so refetchInterval's closure always reads the current value.
+  const dispatchSettled = dispatch.isSuccess || dispatch.isError;
+  const dispatchSettledRef = useRef(dispatchSettled);
+  dispatchSettledRef.current = dispatchSettled;
+  const failedIsFinal = (phase?: string) => phase === "failed" && dispatchSettledRef.current;
+
+  // Poll Supabase job status every 2 s until ready or definitively failed.
+  // Polling runs WHILE the requestLesson POST is in flight — that POST stays
+  // open for the whole inline build, so gating polls on it froze the UI on
+  // step 1 and hid real errors behind the generic timeout.
   const statusQuery = useQuery({
     queryKey: ["ingest-status", videoId],
     queryFn: () => getIngestStatus({ data: { youtubeId: videoId } }),
     refetchInterval: (q) => {
       const phase = q.state.data?.phase;
-      if (phase === "ready" || phase === "failed") return false;
+      if (phase === "ready" || failedIsFinal(phase)) return false;
       return 2000;
     },
-    // Always poll — including WHILE the requestLesson POST is in flight. The
-    // inline pipeline keeps that POST open for the whole build (~1 min), so
-    // gating this on dispatch settling froze the UI on step 1 until the very
-    // end and hid real server-side errors behind the generic 150s timeout.
     enabled: true,
     retry: false,
   });
@@ -118,8 +127,9 @@ function Processing() {
     }
   }, [statusQuery.data?.phase, navigate, videoId]);
 
-  // Show error state
-  if (statusQuery.data?.phase === "failed") {
+  // Show error state — but only once the dispatch has settled; before that a
+  // failed status may belong to a previous attempt that is being retried.
+  if (statusQuery.data?.phase === "failed" && dispatchSettled) {
     const { code, detail } = statusQuery.data;
     return <ErrorState code={code} detail={detail} />;
   }
