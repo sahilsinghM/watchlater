@@ -15,7 +15,7 @@ const search = z.object({
   total: z.number().int().min(1).default(3),
 });
 
-export const Route = createFileRoute("/lesson/$videoId/done")({
+export const Route = createFileRoute("/lesson/$videoId_/done")({
   validateSearch: search,
   loader: ({ context, params }) =>
     context.queryClient.ensureQueryData(lessonQueryOptions(params.videoId)),

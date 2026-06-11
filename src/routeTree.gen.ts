@@ -12,9 +12,9 @@ import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as ProcessingVideoIdRouteImport } from './routes/processing.$videoId'
 import { Route as LessonVideoIdRouteImport } from './routes/lesson.$videoId'
-import { Route as LessonVideoIdQuizRouteImport } from './routes/lesson.$videoId.quiz'
-import { Route as LessonVideoIdPlayerRouteImport } from './routes/lesson.$videoId.player'
-import { Route as LessonVideoIdDoneRouteImport } from './routes/lesson.$videoId.done'
+import { Route as LessonVideoIdQuizRouteImport } from './routes/lesson.$videoId_.quiz'
+import { Route as LessonVideoIdPlayerRouteImport } from './routes/lesson.$videoId_.player'
+import { Route as LessonVideoIdDoneRouteImport } from './routes/lesson.$videoId_.done'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
@@ -32,24 +32,24 @@ const LessonVideoIdRoute = LessonVideoIdRouteImport.update({
   getParentRoute: () => rootRouteImport,
 } as any)
 const LessonVideoIdQuizRoute = LessonVideoIdQuizRouteImport.update({
-  id: '/quiz',
-  path: '/quiz',
-  getParentRoute: () => LessonVideoIdRoute,
+  id: '/lesson/$videoId_/quiz',
+  path: '/lesson/$videoId/quiz',
+  getParentRoute: () => rootRouteImport,
 } as any)
 const LessonVideoIdPlayerRoute = LessonVideoIdPlayerRouteImport.update({
-  id: '/player',
-  path: '/player',
-  getParentRoute: () => LessonVideoIdRoute,
+  id: '/lesson/$videoId_/player',
+  path: '/lesson/$videoId/player',
+  getParentRoute: () => rootRouteImport,
 } as any)
 const LessonVideoIdDoneRoute = LessonVideoIdDoneRouteImport.update({
-  id: '/done',
-  path: '/done',
-  getParentRoute: () => LessonVideoIdRoute,
+  id: '/lesson/$videoId_/done',
+  path: '/lesson/$videoId/done',
+  getParentRoute: () => rootRouteImport,
 } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
-  '/lesson/$videoId': typeof LessonVideoIdRouteWithChildren
+  '/lesson/$videoId': typeof LessonVideoIdRoute
   '/processing/$videoId': typeof ProcessingVideoIdRoute
   '/lesson/$videoId/done': typeof LessonVideoIdDoneRoute
   '/lesson/$videoId/player': typeof LessonVideoIdPlayerRoute
@@ -57,7 +57,7 @@ export interface FileRoutesByFullPath {
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
-  '/lesson/$videoId': typeof LessonVideoIdRouteWithChildren
+  '/lesson/$videoId': typeof LessonVideoIdRoute
   '/processing/$videoId': typeof ProcessingVideoIdRoute
   '/lesson/$videoId/done': typeof LessonVideoIdDoneRoute
   '/lesson/$videoId/player': typeof LessonVideoIdPlayerRoute
@@ -66,11 +66,11 @@ export interface FileRoutesByTo {
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
-  '/lesson/$videoId': typeof LessonVideoIdRouteWithChildren
+  '/lesson/$videoId': typeof LessonVideoIdRoute
   '/processing/$videoId': typeof ProcessingVideoIdRoute
-  '/lesson/$videoId/done': typeof LessonVideoIdDoneRoute
-  '/lesson/$videoId/player': typeof LessonVideoIdPlayerRoute
-  '/lesson/$videoId/quiz': typeof LessonVideoIdQuizRoute
+  '/lesson/$videoId_/done': typeof LessonVideoIdDoneRoute
+  '/lesson/$videoId_/player': typeof LessonVideoIdPlayerRoute
+  '/lesson/$videoId_/quiz': typeof LessonVideoIdQuizRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -94,15 +94,18 @@ export interface FileRouteTypes {
     | '/'
     | '/lesson/$videoId'
     | '/processing/$videoId'
-    | '/lesson/$videoId/done'
-    | '/lesson/$videoId/player'
-    | '/lesson/$videoId/quiz'
+    | '/lesson/$videoId_/done'
+    | '/lesson/$videoId_/player'
+    | '/lesson/$videoId_/quiz'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
-  LessonVideoIdRoute: typeof LessonVideoIdRouteWithChildren
+  LessonVideoIdRoute: typeof LessonVideoIdRoute
   ProcessingVideoIdRoute: typeof ProcessingVideoIdRoute
+  LessonVideoIdDoneRoute: typeof LessonVideoIdDoneRoute
+  LessonVideoIdPlayerRoute: typeof LessonVideoIdPlayerRoute
+  LessonVideoIdQuizRoute: typeof LessonVideoIdQuizRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -128,50 +131,37 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof LessonVideoIdRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/lesson/$videoId/quiz': {
-      id: '/lesson/$videoId/quiz'
-      path: '/quiz'
+    '/lesson/$videoId_/quiz': {
+      id: '/lesson/$videoId_/quiz'
+      path: '/lesson/$videoId/quiz'
       fullPath: '/lesson/$videoId/quiz'
       preLoaderRoute: typeof LessonVideoIdQuizRouteImport
-      parentRoute: typeof LessonVideoIdRoute
+      parentRoute: typeof rootRouteImport
     }
-    '/lesson/$videoId/player': {
-      id: '/lesson/$videoId/player'
-      path: '/player'
+    '/lesson/$videoId_/player': {
+      id: '/lesson/$videoId_/player'
+      path: '/lesson/$videoId/player'
       fullPath: '/lesson/$videoId/player'
       preLoaderRoute: typeof LessonVideoIdPlayerRouteImport
-      parentRoute: typeof LessonVideoIdRoute
+      parentRoute: typeof rootRouteImport
     }
-    '/lesson/$videoId/done': {
-      id: '/lesson/$videoId/done'
-      path: '/done'
+    '/lesson/$videoId_/done': {
+      id: '/lesson/$videoId_/done'
+      path: '/lesson/$videoId/done'
       fullPath: '/lesson/$videoId/done'
       preLoaderRoute: typeof LessonVideoIdDoneRouteImport
-      parentRoute: typeof LessonVideoIdRoute
+      parentRoute: typeof rootRouteImport
     }
   }
 }
 
-interface LessonVideoIdRouteChildren {
-  LessonVideoIdDoneRoute: typeof LessonVideoIdDoneRoute
-  LessonVideoIdPlayerRoute: typeof LessonVideoIdPlayerRoute
-  LessonVideoIdQuizRoute: typeof LessonVideoIdQuizRoute
-}
-
-const LessonVideoIdRouteChildren: LessonVideoIdRouteChildren = {
+const rootRouteChildren: RootRouteChildren = {
+  IndexRoute: IndexRoute,
+  LessonVideoIdRoute: LessonVideoIdRoute,
+  ProcessingVideoIdRoute: ProcessingVideoIdRoute,
   LessonVideoIdDoneRoute: LessonVideoIdDoneRoute,
   LessonVideoIdPlayerRoute: LessonVideoIdPlayerRoute,
   LessonVideoIdQuizRoute: LessonVideoIdQuizRoute,
-}
-
-const LessonVideoIdRouteWithChildren = LessonVideoIdRoute._addFileChildren(
-  LessonVideoIdRouteChildren,
-)
-
-const rootRouteChildren: RootRouteChildren = {
-  IndexRoute: IndexRoute,
-  LessonVideoIdRoute: LessonVideoIdRouteWithChildren,
-  ProcessingVideoIdRoute: ProcessingVideoIdRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

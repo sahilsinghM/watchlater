@@ -9,7 +9,7 @@ import { TutorPanel } from "@/components/TutorPanel";
 import { lessonQueryOptions } from "@/lib/lessonQuery";
 import { fmtTime, type Tone } from "@/lib/lessonSchema";
 
-export const Route = createFileRoute("/lesson/$videoId/player")({
+export const Route = createFileRoute("/lesson/$videoId_/player")({
   loader: ({ context, params }) =>
     context.queryClient.ensureQueryData(lessonQueryOptions(params.videoId)),
   head: () => ({ meta: [{ title: "Lesson · WatchLater" }] }),
