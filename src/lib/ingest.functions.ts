@@ -3,7 +3,6 @@ import { z } from "zod";
 import { sampleLesson } from "@/data/sampleLesson";
 import type { Lesson } from "./lessonSchema";
 import { ensureAnonymousSession, isJobStale } from "./mvpFlow";
-import { getServerConfig } from "./config.server";
 import { getMvpStore } from "./mvpRuntime.server";
 import { processLesson } from "./processLesson.server";
 
@@ -33,32 +32,12 @@ const youtubeIdValidator = z
   .string()
   .refine((s) => s === "sample" || /^[A-Za-z0-9_-]{11}$/.test(s), "invalid youtube id");
 
-// Returns an EXTERNAL worker target only when one is explicitly configured via
-// INGEST_WORKER_URL. Otherwise returns null, which means "process inline in this
-// function" (the canonical path — see requestLesson below).
-//
-// NOTE: this deliberately does NOT fall back to the Supabase Edge Function
-// (`/functions/v1/ingest`). That function is a non-functional skeleton (see
-// docs/decisions.md → Ingest Architecture). Routing to it silently swallowed
-// every job on production — the job was created, the dispatch returned 200, and
-// nothing ever did the transcript/LLM work — leaving the UI stuck on "fetching
-// video details" forever.
-export function resolveIngestTarget(config: {
-  ingestWorkerUrl?: string | null;
-  ingestWorkerSecret?: string | null;
-}): { url: string; authHeader: string } | null {
-  if (config.ingestWorkerUrl && config.ingestWorkerSecret) {
-    return {
-      url: `${config.ingestWorkerUrl}/ingest`,
-      authHeader: config.ingestWorkerSecret,
-    };
-  }
-  return null;
-}
-
 // Called once when the processing page mounts. Creates a job in Supabase, then
-// either dispatches to an external worker (if one is configured) or processes
-// the lesson inline — there is no path that creates a job nobody processes.
+// processes the lesson inline in this function — there is no path that creates
+// a job nobody processes. Inline is the ONLY pipeline: the external
+// ingest-worker dispatch and the Supabase Edge Function skeleton were removed
+// (2026-06-11) after inline proved out to the 12-hour cap (8h44m built in 97s).
+// See docs/decisions.md → Ingest Architecture.
 export const requestLesson = createServerFn({ method: "POST" })
   .inputValidator((input: { youtubeId: string }) =>
     z.object({ youtubeId: youtubeIdValidator }).parse(input),
@@ -82,37 +61,18 @@ export const requestLesson = createServerFn({ method: "POST" })
       return { jobId: existing.id, alreadyReady: false };
     }
 
-    // Create a new job and dispatch to the worker
+    // Create a new job and process it inline, AWAITED. The request stays open
+    // until the lesson is written, which is what keeps the Vercel Function
+    // alive to do the work. The processing page polls getIngestStatus in
+    // parallel, so the user sees live progress while this request runs.
+    // (Fire-and-forget via waitUntil does not survive here — see processLesson.)
     const session = await ensureAnonymousSession(store, "server-anonymous-session");
     const job = await store.createProcessingJob({
       sessionId: session.id,
       youtubeId,
       rawInput: `https://www.youtube.com/watch?v=${youtubeId}`,
     });
-
-    const config = getServerConfig();
-    const target = resolveIngestTarget(config);
-    if (target) {
-      // External worker configured (INGEST_WORKER_URL). Fire and forget — do not
-      // await the body, just confirm the worker accepted the request. It then
-      // processes asynchronously and writes job status + lesson to Supabase.
-      fetch(target.url, {
-        method: "POST",
-        headers: {
-          "content-type": "application/json",
-          authorization: `Bearer ${target.authHeader}`,
-        },
-        body: JSON.stringify({ youtubeId, jobId: job.id }),
-        signal: AbortSignal.timeout(10_000),
-      }).catch((err) => console.error("[ingest] worker dispatch failed:", err));
-    } else {
-      // No external worker — process inline and AWAIT it. The request stays open
-      // until the lesson is written (~30s), which is what keeps the Vercel
-      // Function alive to do the work. The processing page polls getIngestStatus
-      // in parallel, so the user sees live progress while this request runs.
-      // (Fire-and-forget via waitUntil does not survive here — see processLesson.)
-      await processLesson(youtubeId, job.id);
-    }
+    await processLesson(youtubeId, job.id);
 
     return { jobId: job.id, alreadyReady: false };
   });

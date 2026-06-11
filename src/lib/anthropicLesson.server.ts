@@ -12,13 +12,13 @@ import type { Cue, Meta } from "./buildLesson";
 // project is on Zod v3.
 //
 // SPEED MATTERS: the whole ingest pipeline runs inline inside one Vercel
-// function, which on the Hobby plan is hard-capped at 60s. Sonnet 4.6 + a
-// bounded max_tokens keeps generation well under that. Do NOT raise these back
-// to Opus / 32k tokens without first moving generation off the 60s function
-// (raise maxDuration on Pro, or use the ingest-worker escape hatch) — Opus with
-// a 32k budget routinely overran 60s and the function was killed mid-write,
-// leaving the job stuck and the user on a spinner that timed out. Override the
-// model per-deploy with ANTHROPIC_MODEL if you have the headroom.
+// function with a 300s budget (platform default; there is no external worker —
+// see docs/decisions.md → Ingest Architecture). Sonnet 4.6 + bounded
+// max_tokens keeps generation at ~1-2 min even for 12-hour videos. Do NOT
+// raise these to Opus / 32k tokens — Opus with a big budget routinely overran
+// the function and was killed mid-write, leaving the job stuck and the user on
+// a spinner. Override the model per-deploy with ANTHROPIC_MODEL only with
+// measured headroom.
 
 // Mirrors src/lib/lessonSchema.ts exactly — keep in sync if the schema changes.
 const REQUIRED_SHAPE = {
