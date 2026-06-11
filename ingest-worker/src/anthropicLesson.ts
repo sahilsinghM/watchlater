@@ -3,11 +3,15 @@ import { Lesson as LessonSchema, type Lesson } from "./schema.ts";
 import type { Cue, Meta } from "./ingest.ts";
 
 // Claude-backed lesson generation for the worker. Mirrors the inline
-// src/lib/anthropicLesson.server.ts, but the worker runs on a box with NO
-// 60s function cap, so it can afford the stronger model + a larger token
-// budget (Opus 4.8, 32k) for higher-quality lessons. Streamed because the
-// transcript is long input. The prompt enumerates the exact Lesson field
-// names so the output parses against the shared Lesson schema.
+// src/lib/anthropicLesson.server.ts exactly: Sonnet 4.6 default, thinking
+// DISABLED + effort "low", full-transcript prompting. Thinking must stay off —
+// it shares the max_tokens budget with the visible output, and adaptive
+// thinking on long transcripts repeatedly burned the whole budget and returned
+// zero text blocks ("Anthropic returned an empty response"). The worker has no
+// request cap, so a stronger model may be opted into per-deploy via
+// ANTHROPIC_MODEL, but the DEFAULT must match inline so lesson quality is
+// consistent regardless of which path built it. The prompt enumerates the
+// exact Lesson field names so the output parses against the shared schema.
 
 const REQUIRED_SHAPE = {
   video: {
@@ -34,12 +38,20 @@ const REQUIRED_SHAPE = {
   tutorSeed: [{ q: "string", a: "string" }],
 } as const;
 
-function transcriptExcerpt(cues: Cue[]): string {
-  const maxChars = 45_000;
+// Render the FULL transcript (mirrors inline). Sonnet 4.6 has a 1M-token
+// context; even a 12-hour transcript is ~650k chars (~170k tokens). The budget
+// is a safety rail sized to only trip beyond the 12h duration cap; if it ever
+// trips, the model is told where coverage stops so it doesn't fabricate the tail.
+const TRANSCRIPT_CHAR_BUDGET = 700_000;
+
+function transcriptText(cues: Cue[], durationSeconds: number): string {
   let out = "";
   for (const cue of cues) {
     const line = `[${Math.floor(cue.start)}s] ${cue.text.replace(/\s+/g, " ").trim()}\n`;
-    if (out.length + line.length > maxChars) break;
+    if (out.length + line.length > TRANSCRIPT_CHAR_BUDGET) {
+      out += `[TRANSCRIPT TRUNCATED HERE — the video continues to ${Math.floor(durationSeconds)}s; do not describe or segment content you have not seen]\n`;
+      break;
+    }
     out += line;
   }
   return out;
@@ -57,25 +69,31 @@ export async function generateAnthropicLesson(input: {
   model?: string;
   meta: Meta;
   cues: Cue[];
+  durationSeconds: number;
 }): Promise<Lesson> {
-  // No Vercel 60s cap here, so a generous timeout is fine.
+  // No request cap on the VPS, so a generous timeout is fine (bounds
+  // connection + time-to-first-event; long prefills legitimately take a while).
   const client = new Anthropic({ apiKey: input.apiKey, timeout: 240_000, maxRetries: 1 });
-  const model = input.model ?? "claude-opus-4-8";
+  const model = input.model ?? "claude-sonnet-4-6";
 
   const stream = client.messages.stream({
     model,
-    max_tokens: 32000,
-    thinking: { type: "adaptive" },
+    // Bounded headroom for the lesson JSON (~3-4k tokens) — matches inline.
+    max_tokens: 12000,
+    // See header comment: thinking must stay disabled.
+    thinking: { type: "disabled" },
+    output_config: { effort: "low" },
     system:
       "You generate trustworthy WatchLater lessons: a colour-coded attention map (segments), exactly six tappable lesson cards (thesis, key concept, mechanism, example/analogy, nuance, recap), a 3-question quiz (main idea, a supporting detail, an application), and a transcript-grounded tutor seed. Ground every major claim in transcript timestamps. Be blunt but not snarky about low-value videos. Your response text must be a SINGLE valid JSON object matching requiredShape EXACTLY — use those exact field names and enum values, no markdown fences, no preamble, no commentary.",
     messages: [
       {
         role: "user",
         content: JSON.stringify({
-          task: "Create a six-card interactive lesson for this YouTube video, grounded in the transcript below. Return JSON exactly matching requiredShape (timestamps in seconds).",
+          task: "Create a six-card interactive lesson for this YouTube video, grounded in the transcript below. Return JSON exactly matching requiredShape (timestamps in seconds). segments must cover the FULL video duration.",
           requiredShape: REQUIRED_SHAPE,
           meta: input.meta,
-          transcript: transcriptExcerpt(input.cues),
+          durationSeconds: Math.floor(input.durationSeconds),
+          transcript: transcriptText(input.cues, input.durationSeconds),
         }),
       },
     ],
