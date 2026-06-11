@@ -1,9 +1,18 @@
 import { afterAll, beforeEach, describe, expect, mock, test } from "bun:test";
-import * as realTranscript from "./transcript.server";
-import * as realConfig from "./config.server";
-import * as realRuntime from "./mvpRuntime.server";
-import * as realAnthropic from "./anthropicLesson.server";
-import * as realOpenAI from "./openaiLesson.server";
+import * as transcriptNs from "./transcript.server";
+import * as configNs from "./config.server";
+import * as runtimeNs from "./mvpRuntime.server";
+import * as anthropicNs from "./anthropicLesson.server";
+import * as openaiNs from "./openaiLesson.server";
+
+// ESM namespace objects are LIVE views — after mock.module they reflect the
+// mock, so restoring "from the namespace" restores nothing. Snapshot the real
+// exports into plain objects at load time, before any mock registers.
+const realTranscript = { ...transcriptNs };
+const realConfig = { ...configNs };
+const realRuntime = { ...runtimeNs };
+const realAnthropic = { ...anthropicNs };
+const realOpenAI = { ...openaiNs };
 import { IngestError } from "./transcript.server";
 import type { Cue } from "./buildLesson";
 
