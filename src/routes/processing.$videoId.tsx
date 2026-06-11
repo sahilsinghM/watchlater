@@ -91,6 +91,7 @@ function Processing() {
     if (dispatched.current) return;
     dispatched.current = true;
     dispatch.mutate();
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- fire exactly once on mount; dispatched ref guards re-entry
   }, []);
 
   // A "failed" status is only trustworthy once the dispatch POST has settled.
