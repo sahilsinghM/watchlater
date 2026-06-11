@@ -77,10 +77,15 @@ export type Lesson = z.infer<typeof Lesson>;
 
 export type Tone = "clear" | "friendly" | "funny" | "strict";
 
+// Clock format exactly as the YouTube player shows it: "12:26", "8:37:26".
+// No leading zero on the first unit, hours appear only past 60 minutes —
+// previously a multi-hour video rendered as "517:26".
 export function fmtTime(s: number): string {
-  const m = Math.floor(s / 60);
-  const sec = Math.floor(s % 60);
-  return `${m.toString().padStart(2, "0")}:${sec.toString().padStart(2, "0")}`;
+  const total = Math.max(0, Math.floor(s));
+  const h = Math.floor(total / 3600);
+  const m = Math.floor((total % 3600) / 60);
+  const ss = (total % 60).toString().padStart(2, "0");
+  return h > 0 ? `${h}:${m.toString().padStart(2, "0")}:${ss}` : `${m}:${ss}`;
 }
 
 export function fmtRange(a: number, b: number): string {
