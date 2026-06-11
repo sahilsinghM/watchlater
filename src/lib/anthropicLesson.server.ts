@@ -23,8 +23,13 @@ import type { Cue, Meta } from "./buildLesson";
 // Mirrors src/lib/lessonSchema.ts exactly — keep in sync if the schema changes.
 const REQUIRED_SHAPE = {
   video: {
-    id: "string", youtubeId: "string", url: "string", title: "string",
-    channel: "string", duration: "number (seconds)", thumbnail: "string",
+    id: "string",
+    youtubeId: "string",
+    url: "string",
+    title: "string",
+    channel: "string",
+    duration: "number (seconds)",
+    thumbnail: "string",
   },
   watchScore: "number 0-10 (low scores allowed)",
   scoreReason: "string, grounded in the transcript",
@@ -36,22 +41,58 @@ const REQUIRED_SHAPE = {
   watchVerdict: '"skip" | "lesson_only" | "watch_core" | "watch_full"',
   visualContextStatus: '"unavailable"',
   segments: [
-    { start: "number (sec)", end: "number (sec)", kind: '"skip" | "watch" | "core" | "demo"', title: "string", blurb: "string" },
+    {
+      start: "number (sec)",
+      end: "number (sec)",
+      kind: '"skip" | "watch" | "core" | "demo"',
+      title: "string",
+      blurb: "string",
+    },
   ],
   cards: [
-    { id: "string", kind: '"concept" | "analogy" | "quote" | "insight" | "recap"', title: "string", body: "string", analogy: "string (optional)", quote: "string (optional)", quoteAuthor: "string (optional)", timestamp: "number sec (optional)" },
+    {
+      id: "string",
+      kind: '"concept" | "analogy" | "quote" | "insight" | "recap"',
+      title: "string",
+      body: "string",
+      analogy: "string (optional)",
+      quote: "string (optional)",
+      quoteAuthor: "string (optional)",
+      timestamp: "number sec (optional)",
+    },
   ],
   keyMoments: [{ timestamp: "number (sec)", caption: "string" }],
-  quiz: [{ id: "string", prompt: "string", options: "string[] (>=2)", correctIndex: "number (0-based)", explanation: "string" }],
+  quiz: [
+    {
+      id: "string",
+      prompt: "string",
+      options: "string[] (>=2)",
+      correctIndex: "number (0-based)",
+      explanation: "string",
+    },
+  ],
   tutorSeed: [{ q: "string", a: "string" }],
 } as const;
 
-function transcriptExcerpt(cues: Cue[]): string {
-  const maxChars = 45_000;
+// Render the FULL transcript. Sonnet 4.6 has a 1M-token context; even a
+// 12-hour podcast transcript is ~650k chars (~170k tokens), so whole-video
+// coverage costs well under $1 of input and needs no map-reduce machinery.
+// The previous 45k-char cap silently amputated everything past ~50 minutes
+// of speech — the lesson then claimed the video *was* that long.
+//
+// The budget below is a safety rail for pathological transcripts, sized so it
+// can only trip beyond the 12h duration cap. If it ever trips, the model is
+// told exactly where coverage stops so it doesn't fabricate the tail.
+const TRANSCRIPT_CHAR_BUDGET = 700_000;
+
+function transcriptText(cues: Cue[], durationSeconds: number): string {
   let out = "";
   for (const cue of cues) {
     const line = `[${Math.floor(cue.start)}s] ${cue.text.replace(/\s+/g, " ").trim()}\n`;
-    if (out.length + line.length > maxChars) break;
+    if (out.length + line.length > TRANSCRIPT_CHAR_BUDGET) {
+      out += `[TRANSCRIPT TRUNCATED HERE — the video continues to ${Math.floor(durationSeconds)}s; do not describe or segment content you have not seen]\n`;
+      break;
+    }
     out += line;
   }
   return out;
@@ -61,7 +102,10 @@ function transcriptExcerpt(cues: Cue[]): string {
 function stripJsonFence(text: string): string {
   const t = text.trim();
   return t.startsWith("```")
-    ? t.replace(/^```(?:json)?\s*/i, "").replace(/\s*```$/, "").trim()
+    ? t
+        .replace(/^```(?:json)?\s*/i, "")
+        .replace(/\s*```$/, "")
+        .trim()
     : t;
 }
 
@@ -70,12 +114,15 @@ export async function generateAnthropicLesson(input: {
   model?: string;
   meta: Meta;
   cues: Cue[];
+  durationSeconds: number;
 }): Promise<Lesson> {
-  // 50s SDK timeout (default is 10 min) so a slow generation ABORTS before the
-  // 60s Hobby function cap — that lets processLesson's catch mark the job failed
-  // (a clean GENERATION_FAILURE the user can retry) instead of the function being
-  // killed mid-write, which leaves the job stuck and the spinner hanging.
-  const client = new Anthropic({ apiKey: input.apiKey, timeout: 50_000, maxRetries: 1 });
+  // 120s SDK timeout (bounds connection + time-to-first-event; default is
+  // 10 min). Multi-hour transcripts mean ~100k+ tokens of prefill, so first
+  // byte can take tens of seconds — but a run that hasn't STARTED after 120s
+  // should abort as a clean GENERATION_FAILURE while the Vercel function
+  // (300s budget) still has time to write the failure to the job row. With
+  // maxRetries:1 the worst case is ~240s before our catch runs — inside cap.
+  const client = new Anthropic({ apiKey: input.apiKey, timeout: 120_000, maxRetries: 1 });
   const model = input.model ?? "claude-sonnet-4-6";
 
   const stream = client.messages.stream({
@@ -97,10 +144,11 @@ export async function generateAnthropicLesson(input: {
       {
         role: "user",
         content: JSON.stringify({
-          task: "Create a six-card interactive lesson for this YouTube video, grounded in the transcript below. Return JSON exactly matching requiredShape (timestamps in seconds).",
+          task: "Create a six-card interactive lesson for this YouTube video, grounded in the transcript below. Return JSON exactly matching requiredShape (timestamps in seconds). segments must cover the FULL video duration.",
           requiredShape: REQUIRED_SHAPE,
           meta: input.meta,
-          transcript: transcriptExcerpt(input.cues),
+          durationSeconds: Math.floor(input.durationSeconds),
+          transcript: transcriptText(input.cues, input.durationSeconds),
         }),
       },
     ],

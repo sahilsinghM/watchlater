@@ -2,7 +2,12 @@ import { createFileRoute, useNavigate, Link } from "@tanstack/react-router";
 import { useEffect, useRef, useState } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { mascot } from "@/components/Brand";
-import { requestLesson, getIngestStatus, parseIngestError, type IngestErrorCode } from "@/lib/ingest.functions";
+import {
+  requestLesson,
+  getIngestStatus,
+  parseIngestError,
+  type IngestErrorCode,
+} from "@/lib/ingest.functions";
 
 export const Route = createFileRoute("/processing/$videoId")({
   head: () => ({
@@ -12,19 +17,39 @@ export const Route = createFileRoute("/processing/$videoId")({
 });
 
 const STEPS = [
-  { key: "queued",             label: "Lining up your video",            quip: "Getting in the queue." },
-  { key: "fetching_metadata",  label: "Fetching video details",           quip: "Saying hi to YouTube." },
-  { key: "reading_transcript", label: "Reading the transcript",           quip: "Watching the boring parts so you don't have to." },
-  { key: "reading_transcript", label: "Finding the key moments",          quip: "Finding where the creator finally gets to the point." },
-  { key: "generating_lesson",  label: "Analyzing key moments",            quip: "Finding the timestamps worth jumping to." },
-  { key: "generating_lesson",  label: "Building your interactive lesson", quip: "Stacking cards. Tuning the deck." },
-  { key: "ready",              label: "Preparing your quiz",              quip: "Making sure it's earned, not gifted." },
+  { key: "queued", label: "Lining up your video", quip: "Getting in the queue." },
+  { key: "fetching_metadata", label: "Fetching video details", quip: "Saying hi to YouTube." },
+  {
+    key: "reading_transcript",
+    label: "Reading the transcript",
+    quip: "Watching the boring parts so you don't have to.",
+  },
+  {
+    key: "reading_transcript",
+    label: "Finding the key moments",
+    quip: "Finding where the creator finally gets to the point.",
+  },
+  {
+    key: "generating_lesson",
+    label: "Analyzing key moments",
+    quip: "Finding the timestamps worth jumping to.",
+  },
+  {
+    key: "generating_lesson",
+    label: "Building your interactive lesson",
+    quip: "Stacking cards. Tuning the deck.",
+  },
+  { key: "ready", label: "Preparing your quiz", quip: "Making sure it's earned, not gifted." },
 ];
 
 // If the worker stalls (e.g. it never picks the job up off the queue), the
 // status poll would otherwise spin forever. Past this many seconds with no
 // "ready", we stop waiting and show a recoverable error instead of hanging.
-const TIMEOUT_SECONDS = 150;
+// Sized to outlast the server's worst case: the Vercel function gets 300s
+// (multi-hour videos legitimately generate for several minutes — the server
+// heartbeats the job while it works), plus buffer. Real failures surface much
+// sooner via the failed-job status, not this backstop.
+const TIMEOUT_SECONDS = 330;
 
 function stepIndex(step: string): number {
   const i = STEPS.findIndex((s) => s.key === step);
@@ -88,10 +113,7 @@ function Processing() {
   // Navigate as soon as lesson is ready
   useEffect(() => {
     if (statusQuery.data?.phase === "ready") {
-      const t = setTimeout(
-        () => navigate({ to: "/lesson/$videoId", params: { videoId } }),
-        400,
-      );
+      const t = setTimeout(() => navigate({ to: "/lesson/$videoId", params: { videoId } }), 400);
       return () => clearTimeout(t);
     }
   }, [statusQuery.data?.phase, navigate, videoId]);
@@ -138,7 +160,7 @@ function Processing() {
             Building your lesson…
           </h1>
           <p className="font-mono text-[11px] uppercase tracking-widest text-muted-foreground">
-            This usually takes about a minute
+            Usually about a minute · multi-hour videos take a few
           </p>
         </div>
 
@@ -150,12 +172,8 @@ function Processing() {
             />
           </div>
           <div className="flex items-center justify-between font-mono text-[11px] font-bold uppercase tracking-widest">
-            <span className="text-foreground">
-              Elapsed · {fmtClock(elapsed)}
-            </span>
-            <span className="text-muted-foreground">
-              Est. · ~{fmtClock(ESTIMATE_SECONDS)}
-            </span>
+            <span className="text-foreground">Elapsed · {fmtClock(elapsed)}</span>
+            <span className="text-muted-foreground">Est. · ~{fmtClock(ESTIMATE_SECONDS)}</span>
           </div>
         </div>
 
@@ -171,8 +189,8 @@ function Processing() {
                   (done
                     ? "border-foreground/10 bg-card opacity-70"
                     : active
-                    ? "border-foreground bg-card brutal-shadow-sm"
-                    : "border-foreground/10 bg-card/60 opacity-50")
+                      ? "border-foreground bg-card brutal-shadow-sm"
+                      : "border-foreground/10 bg-card/60 opacity-50")
                 }
               >
                 <span
@@ -181,8 +199,8 @@ function Processing() {
                     (done
                       ? "bg-accent text-accent-foreground"
                       : active
-                      ? "bg-primary text-primary-foreground animate-pulse"
-                      : "bg-muted text-muted-foreground")
+                        ? "bg-primary text-primary-foreground animate-pulse"
+                        : "bg-muted text-muted-foreground")
                   }
                 >
                   {done ? "✓" : i + 1}
@@ -217,11 +235,11 @@ const ERROR_COPY: Record<IngestErrorCode, { title: string; body: string }> = {
   },
   TOO_SHORT: {
     title: "This video is too short",
-    body: "WatchLater MVP is tuned for long-form videos between 5 and 90 minutes. Try a longer video.",
+    body: "WatchLater is tuned for long-form videos — anything from 5 minutes to 12 hours. Try a longer video.",
   },
   TOO_LONG: {
     title: "This video is too long",
-    body: "WatchLater MVP supports videos up to 90 minutes. Try a shorter video with a focused transcript.",
+    body: "WatchLater supports videos up to 12 hours. If your video is longer than that, we're impressed you were going to watch it.",
   },
   NON_ENGLISH: {
     title: "This video is not English",
@@ -271,7 +289,9 @@ function ErrorState({ code, detail }: { code: IngestErrorCode; detail: string })
         <p className="text-muted-foreground">{copy.body}</p>
         <details className="rounded-2xl brutal-border bg-card p-4 text-left text-xs text-muted-foreground">
           <summary className="cursor-pointer font-mono uppercase tracking-widest">Details</summary>
-          <p className="mt-2 font-mono break-words">{code}: {detail}</p>
+          <p className="mt-2 font-mono break-words">
+            {code}: {detail}
+          </p>
         </details>
         <div className="flex flex-wrap justify-center gap-3 pt-2">
           {code === "TIMEOUT" && (

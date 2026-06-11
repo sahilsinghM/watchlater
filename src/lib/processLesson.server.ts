@@ -19,7 +19,16 @@ import { buildLesson } from "./buildLesson";
 // left jobs stuck at "fetching video details" forever.
 
 const MIN_DURATION = 5 * 60;
-const MAX_DURATION = 90 * 60;
+// 12h covers even marathon podcasts (Lex Fridman #438 is 8h44m). The cost and
+// latency of long videos are bounded by the transcript char budget in
+// anthropicLesson.server.ts, not by this cap.
+const MAX_DURATION = 12 * 60 * 60;
+
+// While Claude generates, the job row isn't otherwise touched. isJobStale's
+// window is 2 minutes, and long-video generation can exceed that — without a
+// heartbeat the UI would misreport an in-flight build as TIMEOUT and a retry
+// would spawn a duplicate job. Keep updated_at fresh while we work.
+const HEARTBEAT_MS = 45_000;
 
 // We persist the worker-style error codes (NO_CAPTIONS, TOO_SHORT, …) because
 // the processing page's ERROR_COPY is keyed by IngestErrorCode. The store types
@@ -49,9 +58,13 @@ export async function processLesson(youtubeId: string, jobId: string): Promise<v
     if (duration < MIN_DURATION)
       throw new IngestError("TOO_SHORT", "Video is shorter than the 5-minute minimum");
     if (duration > MAX_DURATION)
-      throw new IngestError("TOO_LONG", "Video is longer than the 90-minute maximum");
+      throw new IngestError("TOO_LONG", "Video is longer than the 12-hour maximum");
 
-    const quality = assessTranscriptQuality({ durationSeconds: duration, language: languageCode, cues });
+    const quality = assessTranscriptQuality({
+      durationSeconds: duration,
+      language: languageCode,
+      cues,
+    });
     if (!quality.ok) throw new IngestError(quality.code, quality.detail);
 
     await store.updateProcessingJob(jobId, {
@@ -61,18 +74,32 @@ export async function processLesson(youtubeId: string, jobId: string): Promise<v
 
     const config = getServerConfig();
     let lesson;
+    const heartbeat = setInterval(() => {
+      store
+        .updateProcessingJob(jobId, {
+          status: "generating_lesson",
+          currentStep: "generating_lesson",
+        })
+        .catch(() => {});
+    }, HEARTBEAT_MS);
     try {
       if (config.anthropicApiKey) {
-        // Preferred: Claude generation (claude-opus-4-8).
+        // Preferred: Claude generation.
         lesson = await generateAnthropicLesson({
           apiKey: config.anthropicApiKey,
           model: config.anthropicModel,
           meta,
           cues,
+          durationSeconds: duration,
         });
       } else if (config.openaiApiKey) {
         // Fallback: OpenRouter, if no Anthropic key is configured.
-        lesson = await generateOpenAILesson({ apiKey: config.openaiApiKey, model: config.openaiModel, meta, cues });
+        lesson = await generateOpenAILesson({
+          apiKey: config.openaiApiKey,
+          model: config.openaiModel,
+          meta,
+          cues,
+        });
       } else {
         // No LLM key at all — templated, density-based lesson (no AI).
         lesson = buildLesson(meta, cues);
@@ -87,7 +114,26 @@ export async function processLesson(youtubeId: string, jobId: string): Promise<v
           ? "Generated lesson did not match the required schema."
           : `Lesson generation failed: ${e instanceof Error ? e.message : String(e)}`,
       );
+    } finally {
+      clearInterval(heartbeat);
     }
+
+    // The video facts are ours, not the model's. Left to the model, duration
+    // gets reported as far as the transcript it saw (a 63-min video once
+    // shipped as "50.5 min" because of excerpt truncation) and titles/urls can
+    // drift. Overwrite with the values we fetched and computed.
+    lesson = {
+      ...lesson,
+      video: {
+        ...lesson.video,
+        youtubeId,
+        url: `https://www.youtube.com/watch?v=${youtubeId}`,
+        title: meta.title,
+        channel: meta.channel,
+        thumbnail: meta.thumbnail,
+        duration,
+      },
+    };
 
     await store.saveLesson({ youtubeId, lesson });
     await store.updateProcessingJob(jobId, { status: "ready", currentStep: "ready" });
