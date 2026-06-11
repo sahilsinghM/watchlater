@@ -3,8 +3,10 @@ import type { Lesson } from "./schema.ts";
 
 function getClient() {
   const url = process.env.SUPABASE_URL;
-  const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
-  if (!url || !key) throw new Error("SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY are required");
+  // sb_secret_... key only — legacy JWT service_role keys are disabled on the
+  // project (they can't be revoked independently of the JWT secret).
+  const key = process.env.SUPABASE_SECRET_KEY;
+  if (!url || !key) throw new Error("SUPABASE_URL and SUPABASE_SECRET_KEY are required");
   return createClient(url, key, { auth: { persistSession: false } });
 }
 

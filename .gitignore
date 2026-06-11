@@ -17,13 +17,13 @@ dist-ssr
 .nitro
 *.local
 
-# Env files (never commit secrets — pulled via `vercel env pull`)
+# Env files (never commit secrets — no .env.example by owner's choice;
+# the variable names are documented in .env itself, which never leaves
+# this machine)
 .env
 .env.*
-!.env.example
 ingest-worker/.env
 ingest-worker/.env.*
-!ingest-worker/.env.example
 
 # Wrangler / Cloudflare
 .wrangler/
@@ -44,3 +44,4 @@ supabase/.temp/
 *.sw?
 .vercel
 .gstack/
+.playwright-mcp/
