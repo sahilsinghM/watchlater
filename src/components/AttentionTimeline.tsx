@@ -118,7 +118,7 @@ export function AttentionTimeline({ segments, totalDuration, onSeek }: Props) {
       </div>
 
       {/* Segment cards — full brutal treatment + a satisfying lift on hover. */}
-      <ul className="grid gap-4 sm:grid-cols-2">
+      <ul className="grid grid-cols-1 gap-4 sm:grid-cols-2">
         {segments.map((seg, i) => {
           const s = kindStyles[seg.kind];
           return (
