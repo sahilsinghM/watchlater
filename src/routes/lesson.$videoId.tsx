@@ -2,12 +2,12 @@ import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useRef, useState } from "react";
 import { useSuspenseQuery } from "@tanstack/react-query";
 import { Brand } from "@/components/Brand";
-import { WatchScoreDial } from "@/components/WatchScoreDial";
 import { AttentionTimeline } from "@/components/AttentionTimeline";
 import { YouTubeEmbed, type YouTubePlayerHandle } from "@/components/YouTubeEmbed";
 import { ToneToggle } from "@/components/ToneToggle";
 import { TutorPanel } from "@/components/TutorPanel";
 import { ShareButton } from "@/components/ShareButton";
+import { VerdictBadge } from "@/components/VerdictBadge";
 import { WaitlistCard } from "@/components/WaitlistCard";
 import { lessonQueryOptions } from "@/lib/lessonQuery";
 import { fmtRange, fmtTime, type Tone } from "@/lib/lessonSchema";
@@ -48,17 +48,28 @@ function LessonHero() {
 
       <main className="mx-auto max-w-6xl px-4 sm:px-6 pb-24 space-y-10">
         <section className="grid grid-cols-1 gap-8 lg:grid-cols-5">
-          <div className="lg:col-span-3 space-y-6">
-            <div className="space-y-3">
+          {/* Phones read top-to-bottom: eyebrow, clamped title, VERDICT, CTA —
+              the product's answer in the first viewport. The summary card
+              follows. Desktop keeps the original order via sm:order-*. */}
+          <div className="lg:col-span-3 flex flex-col gap-6">
+            <div className="order-1 space-y-3">
               <span className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground">
                 {lesson.video.channel} · {fmtTime(lesson.video.duration)}
               </span>
-              <h1 className="font-display text-3xl sm:text-4xl md:text-5xl font-extrabold leading-[1.05]">
+              <h1 className="font-display text-3xl sm:text-4xl md:text-5xl font-extrabold leading-[1.05] line-clamp-2 sm:line-clamp-none">
                 {lesson.video.title}
               </h1>
             </div>
 
-            <div className="rounded-3xl brutal-border bg-card p-5 sm:p-6 brutal-shadow-sm space-y-4">
+            <VerdictBadge
+              score={lesson.watchScore}
+              difficulty={lesson.difficulty}
+              verdict={lesson.watchVerdict}
+              reason={lesson.scoreReason}
+              className="order-2 sm:hidden"
+            />
+
+            <div className="order-4 sm:order-2 rounded-3xl brutal-border bg-card p-5 sm:p-6 brutal-shadow-sm space-y-4">
               <div className="font-mono text-[10px] uppercase tracking-widest text-primary font-bold">
                 This video in 30 seconds
               </div>
@@ -79,7 +90,7 @@ function LessonHero() {
               </div>
             </div>
 
-            <div className="flex flex-wrap items-center gap-3">
+            <div className="order-3 flex flex-wrap items-center gap-3">
               <Link
                 to="/lesson/$videoId/player"
                 params={{ videoId }}
@@ -97,27 +108,20 @@ function LessonHero() {
               <ShareButton
                 path={`/lesson/${videoId}`}
                 title={lesson.video.title}
-                text="Learn this video in 5 minutes with VideoSense."
+                text="Learn this video in 5 minutes with WatchLater."
               />
             </div>
           </div>
 
           <div className="lg:col-span-2 space-y-4">
             <YouTubeEmbed ref={playerRef} videoId={lesson.video.youtubeId} />
-            <div className="rounded-3xl brutal-border bg-card p-5 flex items-center gap-5 brutal-shadow-sm">
-              <WatchScoreDial score={lesson.watchScore} />
-              <div className="min-w-0">
-                <div className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground">
-                  Watch Score
-                </div>
-                <div className="font-display text-lg font-extrabold leading-tight">
-                  {lesson.difficulty} · Worth your time
-                </div>
-                <p className="text-xs text-muted-foreground mt-1 line-clamp-3">
-                  {lesson.scoreReason}
-                </p>
-              </div>
-            </div>
+            <VerdictBadge
+              score={lesson.watchScore}
+              difficulty={lesson.difficulty}
+              verdict={lesson.watchVerdict}
+              reason={lesson.scoreReason}
+              className="hidden sm:flex"
+            />
           </div>
         </section>
 
