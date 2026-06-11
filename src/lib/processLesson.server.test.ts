@@ -1,4 +1,9 @@
-import { beforeEach, describe, expect, mock, test } from "bun:test";
+import { afterAll, beforeEach, describe, expect, mock, test } from "bun:test";
+import * as realTranscript from "./transcript.server";
+import * as realConfig from "./config.server";
+import * as realRuntime from "./mvpRuntime.server";
+import * as realAnthropic from "./anthropicLesson.server";
+import * as realOpenAI from "./openaiLesson.server";
 import { IngestError } from "./transcript.server";
 import type { Cue } from "./buildLesson";
 
@@ -81,6 +86,18 @@ beforeEach(() => {
       throw new Error("openai should not be called in this scenario");
     },
   }));
+});
+
+// Bun module mocks are PROCESS-GLOBAL: without this restore, whichever test
+// file runs after this one imports the MOCKS instead of the real modules.
+// That broke transcript.server.test.ts in CI (different file order than local)
+// — its stubbed 404s "succeeded" because fetchTranscript was scenario data.
+afterAll(() => {
+  mock.module("./transcript.server", () => realTranscript);
+  mock.module("./config.server", () => realConfig);
+  mock.module("./mvpRuntime.server", () => realRuntime);
+  mock.module("./anthropicLesson.server", () => realAnthropic);
+  mock.module("./openaiLesson.server", () => realOpenAI);
 });
 
 const statuses = () => bag.updates.map((u) => u.status);
