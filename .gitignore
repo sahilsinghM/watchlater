@@ -22,8 +22,6 @@ dist-ssr
 # this machine)
 .env
 .env.*
-ingest-worker/.env
-ingest-worker/.env.*
 
 # Wrangler / Cloudflare
 .wrangler/

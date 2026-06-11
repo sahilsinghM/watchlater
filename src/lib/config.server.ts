@@ -30,7 +30,5 @@ export function getServerConfig() {
     // JWT secret, which is how the 2026-06 leak stayed valid. Legacy JWT keys
     // are disabled on the Supabase project — do not reintroduce them.
     supabaseSecretKey: process.env.SUPABASE_SECRET_KEY,
-    ingestWorkerUrl: process.env.INGEST_WORKER_URL,
-    ingestWorkerSecret: process.env.INGEST_WORKER_SECRET,
   };
 }
