@@ -1,0 +1,75 @@
+import { z } from "zod";
+
+// The single boundary between the environment and the app. Every variable the
+// server reads is declared here — this schema IS the documentation of the
+// deployment surface. parseServerEnv either returns the typed config or throws
+// an error naming the exact offending variable; nothing else in the codebase
+// reads process.env for server config.
+//
+// Empty strings are treated as missing: `vercel env pull` writes sensitive
+// vars as "" and a blank dashboard field saves as "" — both bit us on
+// 2026-06-11 when production silently fell back to the in-memory store.
+
+const nonEmpty = z
+  .string()
+  .transform((s) => (s.trim() === "" ? undefined : s.trim()))
+  .optional();
+
+const EnvSchema = z.object({
+  NODE_ENV: nonEmpty,
+  VERCEL_ENV: nonEmpty,
+  ANTHROPIC_API_KEY: nonEmpty,
+  ANTHROPIC_MODEL: nonEmpty,
+  OPENROUTER_API_KEY: nonEmpty,
+  OPENAI_API_KEY: nonEmpty,
+  OPENAI_MODEL: nonEmpty,
+  ALLOW_PROTOTYPE_GENERATION: nonEmpty,
+  SUPABASE_URL: nonEmpty,
+  SUPABASE_SECRET_KEY: nonEmpty,
+});
+
+export type ServerConfig = {
+  nodeEnv: string | undefined;
+  isProduction: boolean;
+  anthropicApiKey: string | undefined;
+  anthropicModel: string | undefined;
+  openaiApiKey: string | undefined;
+  openaiModel: string | undefined;
+  allowPrototypeGeneration: boolean;
+  supabaseUrl: string | undefined;
+  supabaseSecretKey: string | undefined;
+};
+
+export function parseServerEnv(env: Record<string, string | undefined>): ServerConfig {
+  const parsed = EnvSchema.parse(env);
+  const isProduction = parsed.VERCEL_ENV === "production" || parsed.NODE_ENV === "production";
+
+  if (parsed.SUPABASE_URL && !/^https?:\/\/.+/.test(parsed.SUPABASE_URL)) {
+    throw new Error(`SUPABASE_URL is not a valid URL: "${parsed.SUPABASE_URL}"`);
+  }
+
+  if (isProduction) {
+    // Without persistent storage the app would "work" on the per-instance
+    // memory store and silently discard lessons and lead emails (it did, on
+    // 2026-06-11). Production refuses to start instead.
+    for (const key of ["SUPABASE_URL", "SUPABASE_SECRET_KEY"] as const) {
+      if (!parsed[key]) {
+        throw new Error(
+          `Refusing to start in production: ${key} is missing or empty. Set it in Vercel and redeploy.`,
+        );
+      }
+    }
+  }
+
+  return {
+    nodeEnv: parsed.NODE_ENV,
+    isProduction,
+    anthropicApiKey: parsed.ANTHROPIC_API_KEY,
+    anthropicModel: parsed.ANTHROPIC_MODEL,
+    openaiApiKey: parsed.OPENROUTER_API_KEY ?? parsed.OPENAI_API_KEY,
+    openaiModel: parsed.OPENAI_MODEL,
+    allowPrototypeGeneration: parsed.ALLOW_PROTOTYPE_GENERATION === "true",
+    supabaseUrl: parsed.SUPABASE_URL,
+    supabaseSecretKey: parsed.SUPABASE_SECRET_KEY,
+  };
+}
