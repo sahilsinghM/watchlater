@@ -38,8 +38,18 @@ function failCode(code: string): ProcessingJob["errorCode"] {
   return code as ProcessingJob["errorCode"];
 }
 
+// Single-line JSON lifecycle events, filterable in Vercel log search with
+// `"tag":"ingest"`. The ops report (scripts/job-stats.ts) reads the jobs
+// table; these logs are the per-job drill-down.
+function logIngest(event: Record<string, unknown>) {
+  console.log(JSON.stringify({ tag: "ingest", ts: new Date().toISOString(), ...event }));
+}
+
 export async function processLesson(youtubeId: string, jobId: string): Promise<void> {
   const store = getMvpStore();
+  const startedAt = Date.now();
+  let transcriptChars = 0;
+  let model = "templated";
   try {
     await store.updateProcessingJob(jobId, {
       status: "fetching_metadata",
@@ -52,6 +62,7 @@ export async function processLesson(youtubeId: string, jobId: string): Promise<v
       currentStep: "reading_transcript",
     });
     const { cues, languageCode } = await fetchTranscript(youtubeId);
+    transcriptChars = cues.reduce((n, c) => n + c.text.length, 0);
 
     const last = cues[cues.length - 1];
     const duration = Math.max(60, Math.ceil(last.start + (last.dur || 4)));
@@ -85,6 +96,7 @@ export async function processLesson(youtubeId: string, jobId: string): Promise<v
     try {
       if (config.anthropicApiKey) {
         // Preferred: Claude generation.
+        model = config.anthropicModel ?? "claude-sonnet-4-6";
         lesson = await generateAnthropicLesson({
           apiKey: config.anthropicApiKey,
           model: config.anthropicModel,
@@ -94,6 +106,7 @@ export async function processLesson(youtubeId: string, jobId: string): Promise<v
         });
       } else if (config.openaiApiKey) {
         // Fallback: OpenRouter, if no Anthropic key is configured.
+        model = config.openaiModel ?? "openrouter-default";
         lesson = await generateOpenAILesson({
           apiKey: config.openaiApiKey,
           model: config.openaiModel,
@@ -137,7 +150,15 @@ export async function processLesson(youtubeId: string, jobId: string): Promise<v
 
     await store.saveLesson({ youtubeId, lesson });
     await store.updateProcessingJob(jobId, { status: "ready", currentStep: "ready" });
-    console.log(`[ingest] done: ${youtubeId}`);
+    logIngest({
+      event: "done",
+      jobId,
+      youtubeId,
+      outcome: "ready",
+      durationMs: Date.now() - startedAt,
+      transcriptChars,
+      model,
+    });
   } catch (e: unknown) {
     const code = e instanceof IngestError ? e.code : "UNKNOWN";
     const detail = e instanceof Error ? e.message : "Ingest failed";
@@ -149,6 +170,16 @@ export async function processLesson(youtubeId: string, jobId: string): Promise<v
         errorDetail: detail,
       })
       .catch(() => {});
-    console.error(`[ingest] failed ${youtubeId}: [${code}] ${detail}`);
+    logIngest({
+      event: "failed",
+      jobId,
+      youtubeId,
+      outcome: "failed",
+      errorCode: code,
+      errorDetail: detail,
+      durationMs: Date.now() - startedAt,
+      transcriptChars,
+      model,
+    });
   }
 }
