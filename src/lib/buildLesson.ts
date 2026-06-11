@@ -49,7 +49,8 @@ function pickCards(cues: Cue[], duration: number): Cue[] {
   const stride = Math.max(1, Math.floor(sorted.length / 6));
   for (let i = 0; out.length < 6 && i < sorted.length; i += stride) out.push(sorted[i]);
   // Pad if we still don't have 6
-  while (out.length < 6 && cues.length > 0) out.push(cues[Math.min(cues.length - 1, out.length * 10)]);
+  while (out.length < 6 && cues.length > 0)
+    out.push(cues[Math.min(cues.length - 1, out.length * 10)]);
   return out.slice(0, 6);
 }
 
@@ -143,8 +144,16 @@ export function buildLesson(meta: Meta, cues: Cue[]): Lesson {
     scoreReason: `Density estimate: ${cues.length} transcript cues over ${Math.floor(duration / 60)} minutes. AI analysis pending.`,
     difficulty: cues.length > 800 ? "Advanced" : cues.length > 300 ? "Intermediate" : "Beginner",
     reallyAbout,
-    bestPart: { start: core.start, end: core.end, why: "Where the speaker stops setting up and makes the actual point." },
-    skipPart: { start: skip.start, end: skip.end, why: "Intro, definitions, and housekeeping. Skim or skip." },
+    bestPart: {
+      start: core.start,
+      end: core.end,
+      why: "Where the speaker stops setting up and makes the actual point.",
+    },
+    skipPart: {
+      start: skip.start,
+      end: skip.end,
+      why: "Intro, definitions, and housekeeping. Skim or skip.",
+    },
     recommendation: `Do the 5-minute lesson first. If you want depth, jump to ${fmtRange(core.start, core.end)}.`,
     watchVerdict: watchScore >= 8 ? "watch_full" : watchScore >= 6 ? "watch_core" : "lesson_only",
     visualContextStatus: "unavailable",
@@ -163,7 +172,9 @@ export function buildLesson(meta: Meta, cues: Cue[]): Lesson {
       },
       {
         q: "What's the single biggest takeaway?",
-        a: cards[0] ? `“${cards[0].title}.” The speaker develops this around ${fmtRange(cards[0].timestamp ?? 0, (cards[0].timestamp ?? 0) + 60)}.` : "The lesson cards cover the main takeaways in order.",
+        a: cards[0]
+          ? `“${cards[0].title}.” The speaker develops this around ${fmtRange(cards[0].timestamp ?? 0, (cards[0].timestamp ?? 0) + 60)}.`
+          : "The lesson cards cover the main takeaways in order.",
       },
     ],
   };

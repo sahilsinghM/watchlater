@@ -19,7 +19,9 @@ export function ToneToggle({ value, onChange }: { value: Tone; onChange: (t: Ton
             onClick={() => onChange(t.id)}
             className={
               "inline-flex items-center gap-1 rounded-xl px-2.5 py-1.5 text-xs font-bold uppercase tracking-tighter transition sm:px-3 " +
-              (active ? "bg-foreground text-background" : "text-muted-foreground hover:text-foreground")
+              (active
+                ? "bg-foreground text-background"
+                : "text-muted-foreground hover:text-foreground")
             }
             aria-label={t.label}
           >

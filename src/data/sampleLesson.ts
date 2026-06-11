@@ -32,12 +32,48 @@ export const sampleLesson: Lesson = {
   recommendation:
     "Do the 5-minute lesson first. Then jump to the demo section (18:20–31:10) if you want implementation clarity.",
   segments: [
-    { start: 0, end: 405, kind: "skip", title: "Intro & hype", blurb: "Setup and definitions. Skim or skip." },
-    { start: 405, end: 1100, kind: "watch", title: "What LLMs really are", blurb: "Useful framing of LLMs as zip-compressed knowledge." },
-    { start: 1100, end: 1870, kind: "core", title: "Agent loops & tools", blurb: "Core argument of the video. Worth watching." },
-    { start: 1870, end: 2470, kind: "demo", title: "Live demo: controlled workflow", blurb: "Implementation clarity. Watch if practical." },
-    { start: 2470, end: 3010, kind: "watch", title: "Failure modes", blurb: "Where unconstrained agents break, with examples." },
-    { start: 3010, end: 3492, kind: "skip", title: "Closing thoughts", blurb: "Mostly recap. Skip unless you want the wrap-up." },
+    {
+      start: 0,
+      end: 405,
+      kind: "skip",
+      title: "Intro & hype",
+      blurb: "Setup and definitions. Skim or skip.",
+    },
+    {
+      start: 405,
+      end: 1100,
+      kind: "watch",
+      title: "What LLMs really are",
+      blurb: "Useful framing of LLMs as zip-compressed knowledge.",
+    },
+    {
+      start: 1100,
+      end: 1870,
+      kind: "core",
+      title: "Agent loops & tools",
+      blurb: "Core argument of the video. Worth watching.",
+    },
+    {
+      start: 1870,
+      end: 2470,
+      kind: "demo",
+      title: "Live demo: controlled workflow",
+      blurb: "Implementation clarity. Watch if practical.",
+    },
+    {
+      start: 2470,
+      end: 3010,
+      kind: "watch",
+      title: "Failure modes",
+      blurb: "Where unconstrained agents break, with examples.",
+    },
+    {
+      start: 3010,
+      end: 3492,
+      kind: "skip",
+      title: "Closing thoughts",
+      blurb: "Mostly recap. Skip unless you want the wrap-up.",
+    },
   ],
   cards: [
     {

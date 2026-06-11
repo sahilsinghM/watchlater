@@ -25,12 +25,16 @@ try {
   console.log(`Transcript OK: cues=${t.cues.length} lang=${t.languageCode}`);
   console.log(`first cue: ${JSON.stringify(t.cues[0])}`);
 } catch (e) {
-  console.log(`Transcript FAIL: ${(e as { code?: string }).code ?? "?"} :: ${(e as Error).message}`);
+  console.log(
+    `Transcript FAIL: ${(e as { code?: string }).code ?? "?"} :: ${(e as Error).message}`,
+  );
   failed = true;
 }
 
 if (failed) {
-  console.log("\n✗ Probe failed. Check SUPADATA_API_KEY is set and the video has English captions.");
+  console.log(
+    "\n✗ Probe failed. Check SUPADATA_API_KEY is set and the video has English captions.",
+  );
   process.exit(1);
 }
 console.log("\n✓ Probe passed.");

@@ -25,8 +25,7 @@ export function ShareButton({ path, title, text, label = "Share", className }: P
   const [copied, setCopied] = useState(false);
 
   async function onShare() {
-    const url =
-      typeof window !== "undefined" ? `${window.location.origin}${path}` : path;
+    const url = typeof window !== "undefined" ? `${window.location.origin}${path}` : path;
 
     // Prefer the native share sheet where available (mobile).
     if (typeof navigator !== "undefined" && typeof navigator.share === "function") {

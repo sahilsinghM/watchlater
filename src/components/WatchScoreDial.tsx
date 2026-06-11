@@ -7,7 +7,15 @@ export function WatchScoreDial({ score }: Props) {
   return (
     <div className="relative grid place-items-center">
       <svg width="120" height="120" viewBox="0 0 120 120" className="-rotate-90">
-        <circle cx="60" cy="60" r={r} stroke="currentColor" className="text-foreground/10" strokeWidth="10" fill="none" />
+        <circle
+          cx="60"
+          cy="60"
+          r={r}
+          stroke="currentColor"
+          className="text-foreground/10"
+          strokeWidth="10"
+          fill="none"
+        />
         <circle
           cx="60"
           cy="60"

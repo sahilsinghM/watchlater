@@ -25,8 +25,8 @@ const toneLeadIn: Record<Tone, (k: LessonCardT["kind"]) => string | null> = {
     k === "concept"
       ? "Brace yourself, hot take incoming: "
       : k === "recap"
-      ? "Tattoo this on your forearm: "
-      : null,
+        ? "Tattoo this on your forearm: "
+        : null,
   strict: (k) => (k === "concept" ? "Pay attention. " : k === "recap" ? "Do not forget: " : null),
 };
 
@@ -49,54 +49,52 @@ export function LessonCardView({ card, tone, onSeek }: Props) {
         key={card.id}
         className="relative rounded-[32px] bg-card brutal-border p-5 sm:p-8 md:p-10 space-y-6 animate-card-in"
       >
-          <div className="flex items-center justify-between">
-            <span
-              className={
-                "inline-block rounded-lg border px-3 py-1 text-xs font-bold uppercase tracking-tighter " +
-                kindAccent[card.kind]
-              }
+        <div className="flex items-center justify-between">
+          <span
+            className={
+              "inline-block rounded-lg border px-3 py-1 text-xs font-bold uppercase tracking-tighter " +
+              kindAccent[card.kind]
+            }
+          >
+            {kindLabel[card.kind]}
+          </span>
+          {card.timestamp !== undefined && onSeek && (
+            <button
+              type="button"
+              onClick={() => onSeek(card.timestamp!)}
+              className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground hover:text-primary transition"
             >
-              {kindLabel[card.kind]}
-            </span>
-            {card.timestamp !== undefined && onSeek && (
-              <button
-                type="button"
-                onClick={() => onSeek(card.timestamp!)}
-                className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground hover:text-primary transition"
-              >
-                @ {fmtTime(card.timestamp)} ↗
-              </button>
-            )}
+              @ {fmtTime(card.timestamp)} ↗
+            </button>
+          )}
+        </div>
+
+        <h2 className="vs-h2">{card.title}</h2>
+
+        <p className="text-lg leading-relaxed text-foreground/80">
+          {lead && <span className="font-semibold text-foreground">{lead}</span>}
+          {card.body}
+        </p>
+
+        {card.analogy && (
+          <div className="rounded-2xl border-2 border-dashed border-foreground/20 bg-background p-5 space-y-2">
+            <p className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground font-bold">
+              The analogy
+            </p>
+            <p className="text-base font-medium italic text-foreground/85">{card.analogy}</p>
           </div>
+        )}
 
-          <h2 className="vs-h2">{card.title}</h2>
-
-          <p className="text-lg leading-relaxed text-foreground/80">
-            {lead && <span className="font-semibold text-foreground">{lead}</span>}
-            {card.body}
-          </p>
-
-          {card.analogy && (
-            <div className="rounded-2xl border-2 border-dashed border-foreground/20 bg-background p-5 space-y-2">
-              <p className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground font-bold">
-                The analogy
-              </p>
-              <p className="text-base font-medium italic text-foreground/85">{card.analogy}</p>
-            </div>
-          )}
-
-          {card.quote && (
-            <blockquote className="border-l-4 border-primary pl-5">
-              <p className="font-display text-2xl font-bold italic leading-snug">
-                “{card.quote}”
-              </p>
-              {card.quoteAuthor && (
-                <footer className="mt-2 font-mono text-[10px] uppercase tracking-widest text-muted-foreground">
-                  — {card.quoteAuthor}
-                </footer>
-              )}
-            </blockquote>
-          )}
+        {card.quote && (
+          <blockquote className="border-l-4 border-primary pl-5">
+            <p className="font-display text-2xl font-bold italic leading-snug">“{card.quote}”</p>
+            {card.quoteAuthor && (
+              <footer className="mt-2 font-mono text-[10px] uppercase tracking-widest text-muted-foreground">
+                — {card.quoteAuthor}
+              </footer>
+            )}
+          </blockquote>
+        )}
       </div>
     </div>
   );
