@@ -32,3 +32,10 @@ Deferred scope from /autoplan review (2026-06-05, commit fed6eeb).
 - [ ] Add tests for `buildLesson` with 0, 4, 12 cues
 - [ ] Add integration test for Supabase quiz/feedback saves
 - [x] Add `assessTranscriptQuality` test with non-English language code **Completed: 2026-06-05**
+
+## Design audit deferrals (2026-06-11, /design-review)
+- [ ] MED: Tone toggle floats unlabeled on the lesson page mobile layout — anchor it or label it
+- [ ] LOW: Attention-map bar sliver segments are sub-44px touch targets on phones
+- [ ] LOW: FAB grazes the 3rd reaction button corner on the player at 430px — pad the reaction row
+- [ ] LOW: favicon 404 on every page
+- [ ] LOW: lesson hero title wraps 4 lines at 390px before any visual
