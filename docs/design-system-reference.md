@@ -141,7 +141,7 @@ back to the visible end-state.
 Three named keyframes (`.animate-float` / `.animate-card-in` / `.animate-pop-in`):
 
 - **float** — `translateY(0→-10px)` + `rotate(-1deg→1deg)`, **6s** loop. The mascot.
-- **card-in** — rise + rotate-in (`40px/rotate(2deg)/opacity 0` → `0/rotate(-1deg)/opacity 1`), **0.55s** spring. Player/quiz card entrance.
+- **card-in** — rise-in (`40px/opacity 0` → `0/opacity 1`), **0.55s** spring. Player/quiz card entrance. No rotation — owner decision 2026-06-11: cards never rest tilted.
 - **pop-in** — `scale(0.6→1.08→1)` + fade, **0.5s** spring. The done-screen celebration.
 
 ### Interaction physics (apply everywhere — this is the brand)
@@ -178,9 +178,9 @@ radius 16). Dashed inset `.vs-dashed` (2px dashed ink@22%, cream bg).
 
 ### Lesson card (signature — `LessonCard.tsx`)
 A white card (3px border, radius 32, pad 32) with **two coloured cards peeking
-out behind it**, slightly rotated, so the stack looks physically dealt: back
-card `translate(12px,12px) rotate(2deg)` amber; mid card `translate(6px,6px)
-rotate(-1deg)` green; face card `rotate(-1deg)`, entrance via `card-in`. Inside:
+out behind it**, offset but NOT rotated (owner decision 2026-06-11 — no static
+tilt anywhere): back card `translate(12px,12px)` amber; mid card
+`translate(6px,6px)` green; face card level, entrance via `card-in`. Inside:
 a kind chip (top-left) + mono timecode jump-link `@ 12:48 ↗` (top-right), a
 display-800 32px title, 18px/1.6 body, optional dashed "analogy" box or a
 `4px solid primary` left-border blockquote for "The Quote".

@@ -41,8 +41,9 @@ export function LessonCardView({ card, tone, onSeek }: Props) {
   const lead = toneLeadIn[tone](card.kind);
   return (
     <div className="relative">
-      <div className="absolute inset-0 translate-x-3 translate-y-3 rotate-2 rounded-[32px] bg-secondary brutal-border" />
-      <div className="absolute inset-0 translate-x-1.5 translate-y-1.5 -rotate-1 rounded-[32px] bg-accent brutal-border" />
+      {/* Deck layers are OFFSET only, never rotated (owner decision 2026-06-11). */}
+      <div className="absolute inset-0 translate-x-3 translate-y-3 rounded-[32px] bg-secondary brutal-border" />
+      <div className="absolute inset-0 translate-x-1.5 translate-y-1.5 rounded-[32px] bg-accent brutal-border" />
       {/* key={card.id} remounts the card so the CSS card-in entrance replays. */}
       <div
         key={card.id}
