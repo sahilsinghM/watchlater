@@ -26,9 +26,13 @@ export function TutorPanel({ lesson }: { lesson: Lesson }) {
       <button
         type="button"
         onClick={() => setOpen(true)}
-        className="fixed bottom-6 right-6 z-40 inline-flex items-center gap-2 rounded-2xl bg-foreground text-background brutal-border px-5 py-3 brutal-shadow-sm font-display font-bold hover:-translate-y-0.5 hover:-translate-x-0.5 transition"
+        aria-label="Ask the tutor"
+        className="fixed bottom-5 right-5 z-40 inline-flex items-center gap-2 rounded-full p-4 sm:rounded-2xl sm:px-5 sm:py-3 sm:bottom-6 sm:right-6 bg-foreground text-background brutal-border brutal-shadow-sm font-display font-bold hover:-translate-y-0.5 hover:-translate-x-0.5 transition"
       >
-        <span>💬</span> Ask the tutor
+        {/* Icon-only on phones: the full pill was 173px wide and covered the
+            lesson CTA, the early-access Join button, and the player's GOT IT
+            reaction as content scrolled beneath it. */}
+        <span>💬</span> <span className="hidden sm:inline">Ask the tutor</span>
       </button>
 
       {open && (
