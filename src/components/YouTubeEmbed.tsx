@@ -1,8 +1,19 @@
 import { useEffect, useRef, useImperativeHandle, forwardRef } from "react";
 
+// Minimal structural typings for the slice of the YouTube IFrame API we use.
+type YTPlayer = {
+  seekTo?: (seconds: number, allowSeekAhead: boolean) => void;
+  playVideo?: () => void;
+  pauseVideo?: () => void;
+  destroy?: () => void;
+};
+type YTNamespace = {
+  Player: new (el: HTMLElement, opts: Record<string, unknown>) => YTPlayer;
+};
+
 declare global {
   interface Window {
-    YT?: any;
+    YT?: YTNamespace;
     onYouTubeIframeAPIReady?: () => void;
   }
 }
@@ -42,7 +53,7 @@ export const YouTubeEmbed = forwardRef<YouTubePlayerHandle, Props>(function YouT
   ref,
 ) {
   const containerRef = useRef<HTMLDivElement>(null);
-  const playerRef = useRef<any>(null);
+  const playerRef = useRef<YTPlayer | null>(null);
 
   useImperativeHandle(ref, () => ({
     seekTo: (s: number) => {

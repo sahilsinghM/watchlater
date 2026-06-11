@@ -9,6 +9,10 @@ import type {
 import type { Lesson } from "./lessonSchema";
 import { getSupabaseAdmin } from "./supabase-admin.server";
 
+/* eslint-disable @typescript-eslint/no-explicit-any --
+   Row shapes are untyped until #52 lands generated Database types on the
+   admin client; these parse fns are the single boundary where `any` lives. */
+
 function parseAnonymousSession(row: any): AnonymousSession {
   return {
     id: row.id,
