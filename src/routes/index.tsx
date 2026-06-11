@@ -116,7 +116,7 @@ function Index() {
               height={160}
               className="h-32 w-32 object-contain drop-shadow-[6px_6px_0_rgba(0,0,0,0.12)]"
             />
-            <div className="absolute -bottom-1 -right-3 px-3 py-1 bg-card brutal-border text-[10px] font-bold rounded-lg rotate-6 brutal-shadow-sm">
+            <div className="absolute -bottom-1 -right-3 px-3 py-1 bg-card brutal-border text-[10px] font-bold rounded-lg brutal-shadow-sm">
               I'm ready!
             </div>
           </div>
@@ -147,8 +147,8 @@ function Index() {
               body: "Six tappable cards: concepts, analogies, the best quotes, and a recap.",
               swatch: (
                 <div className="relative h-12">
-                  <div className="absolute inset-x-4 top-0 h-12 rounded-lg bg-secondary brutal-border translate-x-2 translate-y-1 rotate-2" />
-                  <div className="absolute inset-x-4 top-0 h-12 rounded-lg bg-card brutal-border -rotate-1 grid place-items-center font-mono text-[10px] font-bold">
+                  <div className="absolute inset-x-4 top-0 h-12 rounded-lg bg-secondary brutal-border translate-x-2 translate-y-1" />
+                  <div className="absolute inset-x-4 top-0 h-12 rounded-lg bg-card brutal-border grid place-items-center font-mono text-[10px] font-bold">
                     CARD 03 / 06
                   </div>
                 </div>

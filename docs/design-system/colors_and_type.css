@@ -151,7 +151,7 @@
 
 /* Keyframes used across the product */
 @keyframes vs-float    { 0%,100% { transform: translateY(0) rotate(-1deg); } 50% { transform: translateY(-10px) rotate(1deg); } }
-@keyframes vs-card-in  { from { transform: translateY(40px) rotate(2deg); opacity: 0; } to { transform: translateY(0) rotate(-1deg); opacity: 1; } }
+@keyframes vs-card-in  { from { transform: translateY(40px); opacity: 0; } to { transform: translateY(0); opacity: 1; } } /* no rotation — owner decision 2026-06-11: no static tilt */
 @keyframes vs-pop-in   { 0% { transform: scale(0.6); opacity: 0; } 60% { transform: scale(1.08); opacity: 1; } 100% { transform: scale(1); } }
 .animate-float   { animation: vs-float 6s ease-in-out infinite; }
 .animate-card-in { animation: vs-card-in 0.55s var(--ease-spring) both; }

@@ -209,8 +209,9 @@
   50% { transform: translateY(-10px) rotate(1deg); }
 }
 @keyframes card-in {
-  from { transform: translateY(40px) rotate(2deg); opacity: 0; }
-  to { transform: translateY(0) rotate(-1deg); opacity: 1; }
+  /* No rotation: cards must REST level (owner decision 2026-06-11 — no static tilt). */
+  from { transform: translateY(40px); opacity: 0; }
+  to { transform: translateY(0); opacity: 1; }
 }
 @keyframes pop-in {
   0% { transform: scale(0.6); opacity: 0; }
