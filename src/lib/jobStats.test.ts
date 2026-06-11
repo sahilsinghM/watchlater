@@ -32,11 +32,23 @@ describe("aggregateJobStats", () => {
 describe("durations", () => {
   test("p50/p95 come from succeeded jobs only", () => {
     const mk = (sec: number) =>
-      row({ status: "ready", created_at: "2026-06-11T10:00:00Z", updated_at: `2026-06-11T10:0${Math.floor(sec / 60)}:${String(sec % 60).padStart(2, "0")}Z` });
+      row({
+        status: "ready",
+        created_at: "2026-06-11T10:00:00Z",
+        updated_at: `2026-06-11T10:0${Math.floor(sec / 60)}:${String(sec % 60).padStart(2, "0")}Z`,
+      });
     // durations: 30s, 60s, 90s, 120s + one failed job that must not count
     const stats = aggregateJobStats([
-      mk(30), mk(60), mk(90), mk(120),
-      row({ status: "failed", error_code: "TOO_LONG", created_at: "2026-06-11T10:00:00Z", updated_at: "2026-06-11T10:09:00Z" }),
+      mk(30),
+      mk(60),
+      mk(90),
+      mk(120),
+      row({
+        status: "failed",
+        error_code: "TOO_LONG",
+        created_at: "2026-06-11T10:00:00Z",
+        updated_at: "2026-06-11T10:09:00Z",
+      }),
     ]);
     expect(stats.p50Ms).toBe(60_000);
     expect(stats.p95Ms).toBe(120_000);
