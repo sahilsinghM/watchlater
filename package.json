@@ -11,7 +11,8 @@
     "test": "bun test",
     "probe": "bun run scripts/probe-transcript.ts",
     "lint": "eslint .",
-    "format": "prettier --write ."
+    "format": "prettier --write .",
+    "gen:db-types": "supabase gen types typescript --project-id uxczumklefbdmxilshro > src/lib/database.types.ts"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.101.0",

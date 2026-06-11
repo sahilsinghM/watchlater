@@ -2,18 +2,27 @@ import type {
   MvpStore,
   AnonymousSession,
   ProcessingJob,
+  ProcessingStatus,
+  MvpErrorCode,
   KeyFrame,
-  QuizResult,
   Feedback,
+  Lead,
 } from "./mvpFlow";
 import type { Lesson } from "./lessonSchema";
 import { getSupabaseAdmin } from "./supabase-admin.server";
+import type { Database } from "./database.types";
 
-/* eslint-disable @typescript-eslint/no-explicit-any --
-   Row shapes are untyped until #52 lands generated Database types on the
-   admin client; these parse fns are the single boundary where `any` lives. */
+// Generated row shapes — the compile-checked boundary between Postgres and
+// the domain types. Regenerate after migrations with `bun run gen:db-types`.
+type Tables = Database["public"]["Tables"];
+type SessionRow = Tables["anonymous_sessions"]["Row"];
+type JobRow = Tables["processing_jobs"]["Row"];
+type LessonRow = Tables["lessons"]["Row"];
+type QuizRow = Tables["quiz_results"]["Row"];
+type FeedbackRow = Tables["feedback"]["Row"];
+type LeadRow = Tables["leads"]["Row"];
 
-function parseAnonymousSession(row: any): AnonymousSession {
+function parseAnonymousSession(row: SessionRow): AnonymousSession {
   return {
     id: row.id,
     sessionKey: row.session_key,
@@ -22,15 +31,17 @@ function parseAnonymousSession(row: any): AnonymousSession {
   };
 }
 
-function parseProcessingJob(row: any): ProcessingJob {
+// The live table has no `input` column (the original URL isn't persisted) and
+// session_id is nullable; the domain type wants both. Defaults applied here.
+function parseProcessingJob(row: JobRow & { input?: string }): ProcessingJob {
   return {
     id: row.id,
-    sessionId: row.session_id,
+    sessionId: row.session_id ?? "",
     youtubeId: row.youtube_id,
     input: row.input ?? "",
-    status: row.status,
-    currentStep: row.current_step,
-    errorCode: row.error_code ?? undefined,
+    status: row.status as ProcessingStatus,
+    currentStep: row.current_step as ProcessingStatus,
+    errorCode: (row.error_code ?? undefined) as MvpErrorCode | undefined,
     errorDetail: row.error_detail ?? undefined,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
@@ -116,7 +127,7 @@ export function createSupabaseStore(): MvpStore {
 
     async updateProcessingJob(id, patch) {
       const supabase = getSupabaseAdmin();
-      const updates: Record<string, any> = { updated_at: new Date().toISOString() };
+      const updates: Tables["processing_jobs"]["Update"] = { updated_at: new Date().toISOString() };
       if (patch.status) updates.status = patch.status;
       if (patch.currentStep) updates.current_step = patch.currentStep;
       if (patch.errorCode !== undefined) updates.error_code = patch.errorCode;
@@ -140,7 +151,7 @@ export function createSupabaseStore(): MvpStore {
         capture_status: f.status,
       }));
       const { data } = await supabase.from("screenshots").insert(rows).select("*");
-      const saved: KeyFrame[] = (data ?? []).map((row: any) => ({
+      const saved: KeyFrame[] = (data ?? []).map((row) => ({
         id: row.id,
         videoId: row.video_id,
         timestamp: row.timestamp_seconds,
@@ -172,7 +183,7 @@ export function createSupabaseStore(): MvpStore {
       }
       await supabase.from("lessons").insert({
         youtube_id: youtubeId,
-        video_id: existingLesson?.video_id ?? null,
+        video_id: null,
         schema_version: "lesson.v1",
         lesson_json: JSON.parse(JSON.stringify(lesson)),
       });
@@ -207,9 +218,9 @@ export function createSupabaseStore(): MvpStore {
         .single();
       return {
         id: data!.id,
-        lessonId: data!.lesson_id,
-        sessionId: data!.session_id,
-        answers: data!.answers,
+        lessonId: data!.lesson_video_id ?? input.lessonId,
+        sessionId: data!.session_id ?? "",
+        answers: (data!.answers as number[] | null) ?? [],
         score: data!.score,
         total: data!.total,
         completedAt: data!.completed_at,
@@ -234,13 +245,13 @@ export function createSupabaseStore(): MvpStore {
         .single();
       return {
         id: data!.id,
-        lessonId: data!.lesson_id,
-        sessionId: data!.session_id,
+        lessonId: data!.lesson_video_id ?? input.lessonId,
+        sessionId: data!.session_id ?? "",
         useful: data!.useful,
         reason: data!.reason ?? undefined,
         name: data!.name ?? undefined,
         email: data!.email ?? undefined,
-        source: data!.source,
+        source: data!.source as Feedback["source"],
         createdAt: data!.created_at,
       };
     },
@@ -268,9 +279,9 @@ export function createSupabaseStore(): MvpStore {
       }
       return {
         id: data.id,
-        sessionId: data.session_id,
+        sessionId: data.session_id ?? "",
         email: data.email,
-        source: data.source,
+        source: data.source as Lead["source"],
         lessonVideoId: data.lesson_video_id ?? undefined,
         createdAt: data.created_at,
       };
