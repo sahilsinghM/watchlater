@@ -126,7 +126,12 @@ export type MvpStore = {
     rawInput: string;
   }): Promise<ProcessingJob>;
   getProcessingJob(id: string): Promise<ProcessingJob | null>;
-  getActiveJobByYoutubeId(youtubeId: string): Promise<ProcessingJob | null>;
+  // Latest job for the video, INCLUDING failed ones. getIngestStatus needs
+  // failed jobs to render their dedicated error copy (TOO_LONG, NO_CAPTIONS,
+  // GENERATION_FAILURE, ...); requestLesson treats a failed latest job as
+  // "create a fresh one". Filtering failed jobs out here made every server-
+  // side failure look like a stuck queue to the UI.
+  getLatestJobByYoutubeId(youtubeId: string): Promise<ProcessingJob | null>;
   updateProcessingJob(id: string, patch: Partial<ProcessingJob>): Promise<ProcessingJob>;
   saveKeyFrames(frames: KeyFrame[]): Promise<KeyFrame[]>;
   saveLesson(input: { youtubeId: string; lesson: Lesson }): Promise<Lesson>;
@@ -196,11 +201,13 @@ export function createMemoryMvpStore(): MvpStore {
     async getProcessingJob(jobId) {
       return jobs.get(jobId) ?? null;
     },
-    async getActiveJobByYoutubeId(youtubeId) {
+    async getLatestJobByYoutubeId(youtubeId) {
+      let latest: ProcessingJob | null = null;
       for (const job of jobs.values()) {
-        if (job.youtubeId === youtubeId && job.status !== "failed") return job;
+        if (job.youtubeId !== youtubeId) continue;
+        if (!latest || job.createdAt > latest.createdAt) latest = job;
       }
-      return null;
+      return latest;
     },
     async updateProcessingJob(jobId, patch) {
       const existing = jobs.get(jobId);
@@ -426,10 +433,7 @@ export async function generateAndPersistLesson(
     generator: LessonGenerator;
     maxAttempts?: number;
   },
-): Promise<
-  | { ok: true; lesson: Lesson }
-  | { ok: false; code: MvpErrorCode; detail: string }
-> {
+): Promise<{ ok: true; lesson: Lesson } | { ok: false; code: MvpErrorCode; detail: string }> {
   const attempts = input.maxAttempts ?? 2;
   let lastError: unknown;
   for (let i = 0; i < attempts; i++) {
@@ -484,7 +488,9 @@ export function buildTutorContext(lesson: Lesson): TutorContext {
     lesson.recommendation,
     lesson.bestPart.why,
     lesson.skipPart.why,
-    ...lesson.cards.flatMap((card) => [card.title, card.body, card.analogy, card.quote].filter(Boolean)),
+    ...lesson.cards.flatMap((card) =>
+      [card.title, card.body, card.analogy, card.quote].filter(Boolean),
+    ),
     ...lesson.tutorSeed.flatMap((seed) => [seed.q, seed.a]),
   ]
     .join(" ")
@@ -519,9 +525,7 @@ export function answerTutorQuestion(
     "should",
     "tell",
   ]);
-  const words = q
-    .split(/\W+/)
-    .filter((word) => word.length > 3 && !stopWords.has(word));
+  const words = q.split(/\W+/).filter((word) => word.length > 3 && !stopWords.has(word));
   const supported = words.some((word) => context.searchable.includes(word));
   if (!supported) {
     return {
@@ -531,7 +535,9 @@ export function answerTutorQuestion(
   }
 
   const seed = context.lesson.tutorSeed.find((item) =>
-    words.some((word) => item.q.toLowerCase().includes(word) || item.a.toLowerCase().includes(word)),
+    words.some(
+      (word) => item.q.toLowerCase().includes(word) || item.a.toLowerCase().includes(word),
+    ),
   );
   return {
     supported: true,

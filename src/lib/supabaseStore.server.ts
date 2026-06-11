@@ -1,9 +1,21 @@
-import type { MvpStore, AnonymousSession, ProcessingJob, KeyFrame, QuizResult, Feedback } from "./mvpFlow";
+import type {
+  MvpStore,
+  AnonymousSession,
+  ProcessingJob,
+  KeyFrame,
+  QuizResult,
+  Feedback,
+} from "./mvpFlow";
 import type { Lesson } from "./lessonSchema";
 import { getSupabaseAdmin } from "./supabase-admin.server";
 
 function parseAnonymousSession(row: any): AnonymousSession {
-  return { id: row.id, sessionKey: row.session_key, firstSeenAt: row.first_seen_at, lastSeenAt: row.last_seen_at };
+  return {
+    id: row.id,
+    sessionKey: row.session_key,
+    firstSeenAt: row.first_seen_at,
+    lastSeenAt: row.last_seen_at,
+  };
 }
 
 function parseProcessingJob(row: any): ProcessingJob {
@@ -75,17 +87,23 @@ export function createSupabaseStore(): MvpStore {
 
     async getProcessingJob(id) {
       const supabase = getSupabaseAdmin();
-      const { data } = await supabase.from("processing_jobs").select("*").eq("id", id).maybeSingle();
+      const { data } = await supabase
+        .from("processing_jobs")
+        .select("*")
+        .eq("id", id)
+        .maybeSingle();
       return data ? parseProcessingJob(data) : null;
     },
 
-    async getActiveJobByYoutubeId(youtubeId) {
+    async getLatestJobByYoutubeId(youtubeId) {
       const supabase = getSupabaseAdmin();
+      // No status filter: failed jobs must be visible so the processing page
+      // can show their dedicated error copy instead of spinning to a generic
+      // timeout (see MvpStore.getLatestJobByYoutubeId).
       const { data } = await supabase
         .from("processing_jobs")
         .select("*")
         .eq("youtube_id", youtubeId)
-        .neq("status", "failed")
         .order("created_at", { ascending: false })
         .limit(1)
         .maybeSingle();
@@ -99,7 +117,12 @@ export function createSupabaseStore(): MvpStore {
       if (patch.currentStep) updates.current_step = patch.currentStep;
       if (patch.errorCode !== undefined) updates.error_code = patch.errorCode;
       if (patch.errorDetail !== undefined) updates.error_detail = patch.errorDetail;
-      const { data } = await supabase.from("processing_jobs").update(updates).eq("id", id).select("*").single();
+      const { data } = await supabase
+        .from("processing_jobs")
+        .update(updates)
+        .eq("id", id)
+        .select("*")
+        .single();
       return parseProcessingJob(data!);
     },
 
@@ -136,7 +159,10 @@ export function createSupabaseStore(): MvpStore {
       if (existingLesson) {
         await supabase
           .from("lessons")
-          .update({ lesson_json: JSON.parse(JSON.stringify(lesson)), updated_at: new Date().toISOString() })
+          .update({
+            lesson_json: JSON.parse(JSON.stringify(lesson)),
+            updated_at: new Date().toISOString(),
+          })
           .eq("id", existingLesson.id);
         return lesson;
       }
@@ -166,7 +192,7 @@ export function createSupabaseStore(): MvpStore {
       const { data } = await supabase
         .from("quiz_results")
         .insert({
-          lesson_id: null,               // UUID FK — we don't expose the DB UUID; lesson_video_id is the lookup key
+          lesson_id: null, // UUID FK — we don't expose the DB UUID; lesson_video_id is the lookup key
           lesson_video_id: input.lessonId,
           session_id: input.sessionId,
           answers: input.answers,
@@ -191,7 +217,7 @@ export function createSupabaseStore(): MvpStore {
       const { data } = await supabase
         .from("feedback")
         .insert({
-          lesson_id: null,               // UUID FK — lesson_video_id is the lookup key
+          lesson_id: null, // UUID FK — lesson_video_id is the lookup key
           lesson_video_id: input.lessonId,
           session_id: input.sessionId,
           useful: input.useful,

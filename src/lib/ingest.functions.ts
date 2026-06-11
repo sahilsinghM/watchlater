@@ -77,7 +77,7 @@ export const requestLesson = createServerFn({ method: "POST" })
     // A non-failed job that has gone stale was abandoned (its processing request
     // died) — fall through and reprocess it rather than handing back a job that
     // will never advance.
-    const existing = await store.getActiveJobByYoutubeId(youtubeId);
+    const existing = await store.getLatestJobByYoutubeId(youtubeId);
     if (existing && existing.status !== "failed" && !isJobStale(existing)) {
       return { jobId: existing.id, alreadyReady: false };
     }
@@ -100,7 +100,7 @@ export const requestLesson = createServerFn({ method: "POST" })
         method: "POST",
         headers: {
           "content-type": "application/json",
-          "authorization": `Bearer ${target.authHeader}`,
+          authorization: `Bearer ${target.authHeader}`,
         },
         body: JSON.stringify({ youtubeId, jobId: job.id }),
         signal: AbortSignal.timeout(10_000),
@@ -131,7 +131,7 @@ export const getIngestStatus = createServerFn({ method: "GET" })
     const cached = await store.getLessonByYoutubeId(youtubeId);
     if (cached) return { phase: "ready" };
 
-    const job = await store.getActiveJobByYoutubeId(youtubeId);
+    const job = await store.getLatestJobByYoutubeId(youtubeId);
     if (!job) return { phase: "idle" };
 
     if (job.status === "ready") return { phase: "ready" };
