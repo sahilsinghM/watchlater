@@ -126,7 +126,7 @@ function Done() {
               {leadCaptured ? "Early access" : "Want a reply or early access? Leave your details"}
             </div>
             {leadCaptured ? (
-              <div className="grid gap-2 sm:grid-cols-2">
+              <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
                 <input
                   type="text"
                   value={name}
@@ -141,7 +141,7 @@ function Done() {
               </div>
             ) : (
               <>
-                <div className="grid gap-2 sm:grid-cols-2">
+                <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
                   <input
                     type="text"
                     value={name}

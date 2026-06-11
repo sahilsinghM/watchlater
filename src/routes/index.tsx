@@ -127,7 +127,7 @@ function Index() {
         <h2 className="font-display text-2xl font-extrabold text-center mb-8">
           What you get from every video
         </h2>
-        <div className="grid gap-5 sm:grid-cols-3">
+        <div className="grid grid-cols-1 gap-5 sm:grid-cols-3">
           {[
             {
               title: "Visual timeline",

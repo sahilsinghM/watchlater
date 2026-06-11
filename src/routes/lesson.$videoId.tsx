@@ -44,7 +44,7 @@ function LessonHero() {
       </header>
 
       <main className="mx-auto max-w-6xl px-4 sm:px-6 pb-24 space-y-10">
-        <section className="grid gap-8 lg:grid-cols-5">
+        <section className="grid grid-cols-1 gap-8 lg:grid-cols-5">
           <div className="lg:col-span-3 space-y-6">
             <div className="space-y-3">
               <span className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground">
@@ -60,7 +60,7 @@ function LessonHero() {
                 This video in 30 seconds
               </div>
               <p className="text-lg leading-relaxed">{lesson.reallyAbout}</p>
-              <div className="grid gap-3 sm:grid-cols-2 pt-2">
+              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 pt-2">
                 <div className="rounded-2xl border-2 border-dashed border-accent/60 bg-accent/10 p-4">
                   <div className="font-mono text-[10px] uppercase tracking-widest text-accent font-bold mb-1">
                     Best part · {fmtRange(lesson.bestPart.start, lesson.bestPart.end)}
