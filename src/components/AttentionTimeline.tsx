@@ -87,17 +87,29 @@ export function AttentionTimeline({ segments, totalDuration, onSeek }: Props) {
             <button
               key={i}
               type="button"
-              onClick={() => onSeek?.(seg.start)}
-              style={{ width: `${pct}%` }}
+              onClick={() => {
+                onSeek?.(seg.start);
+                // Phones: the bar is an index, the cards are the content —
+                // jump to the segment's card. Desktop keeps seek-only.
+                if (window.matchMedia("(max-width: 639px)").matches) {
+                  const reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+                  document
+                    .getElementById(`segment-card-${i}`)
+                    ?.scrollIntoView({ behavior: reduce ? "auto" : "smooth", block: "center" });
+                }
+              }}
+              // flexGrow keeps widths proportional while min-w guarantees a
+              // finger-sized tap target on phones (sliver segments were ~10px).
+              style={{ flexGrow: seg.end - seg.start, flexBasis: 0 }}
               title={`${s.label} · ${fmtRange(seg.start, seg.end)} · ${seg.title}`}
               aria-label={`Jump to ${seg.title}`}
-              className={`group/seg relative h-full border-r-[3px] border-foreground last:border-r-0 ${
+              className={`group/seg relative h-full min-w-[44px] sm:min-w-0 border-r-[3px] border-foreground last:border-r-0 ${
                 i === 0 ? "rounded-l-2xl" : ""
               } ${i === segments.length - 1 ? "rounded-r-2xl" : ""} ${s.bar} transition-[filter] hover:brightness-105`}
             >
               {/* Inline label when the segment is wide enough to read. */}
               {pct > 11 && (
-                <span className="pointer-events-none absolute inset-0 grid place-items-center px-1 font-mono text-[9px] font-bold uppercase tracking-widest text-foreground/80">
+                <span className="pointer-events-none absolute inset-0 hidden sm:grid place-items-center px-1 font-mono text-[9px] font-bold uppercase tracking-widest text-foreground/80">
                   {s.label}
                 </span>
               )}
@@ -124,7 +136,8 @@ export function AttentionTimeline({ segments, totalDuration, onSeek }: Props) {
           return (
             <li
               key={i}
-              className="animate-card-in"
+              id={`segment-card-${i}`}
+              className="animate-card-in scroll-mt-24"
               style={{ animationDelay: `${staggerAt(i) * 0.05}s` }}
             >
               <button
