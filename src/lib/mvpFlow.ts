@@ -276,7 +276,7 @@ export function recordLead(store: MvpStore, input: Omit<Lead, "id" | "createdAt"
 
 export async function ensureAnonymousSession(
   store: MvpStore,
-  sessionKey = crypto.randomUUID(),
+  sessionKey: string = crypto.randomUUID(),
 ): Promise<AnonymousSession> {
   return store.upsertAnonymousSession(sessionKey);
 }
