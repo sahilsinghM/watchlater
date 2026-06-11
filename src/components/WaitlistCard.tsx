@@ -54,8 +54,10 @@ export function WaitlistCard({ lessonVideoId }: Props) {
           <p className="mt-1 text-sm text-muted-foreground">
             Drop your email and we'll let you in.
           </p>
-          <form onSubmit={onSubmit} className="mt-4 flex flex-wrap items-start gap-3">
-            <div className="min-w-0 flex-1">
+          {/* Stacked on phones: side-by-side, flex-1 crushed the input to ~78px
+              next to the Join button ("you@e..."). */}
+          <form onSubmit={onSubmit} className="mt-4 flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-start">
+            <div className="w-full sm:w-auto sm:min-w-0 sm:flex-1">
               <input
                 type="email"
                 value={email}
@@ -84,7 +86,7 @@ export function WaitlistCard({ lessonVideoId }: Props) {
             <button
               type="submit"
               disabled={status === "saving"}
-              className="inline-flex items-center gap-2 rounded-2xl bg-primary text-primary-foreground brutal-border px-5 py-3 font-display font-bold brutal-shadow-sm transition hover:-translate-y-0.5 hover:-translate-x-0.5 active:translate-x-0 active:translate-y-0 disabled:opacity-50"
+              className="inline-flex w-full justify-center sm:w-auto items-center gap-2 rounded-2xl bg-primary text-primary-foreground brutal-border px-5 py-3 font-display font-bold brutal-shadow-sm transition hover:-translate-y-0.5 hover:-translate-x-0.5 active:translate-x-0 active:translate-y-0 disabled:opacity-50"
             >
               {status === "saving" ? "Joining…" : "Join early access →"}
             </button>
