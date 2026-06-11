@@ -25,7 +25,11 @@ export function getServerConfig() {
     openaiModel: process.env.OPENAI_MODEL,
     allowPrototypeGeneration: process.env.ALLOW_PROTOTYPE_GENERATION === "true",
     supabaseUrl: process.env.SUPABASE_URL,
-    supabaseServiceRoleKey: process.env.SUPABASE_SERVICE_ROLE_KEY,
+    // sb_secret_... key (Settings → API Keys). The legacy JWT service_role key
+    // is NOT supported here: it can't be revoked without rotating the project's
+    // JWT secret, which is how the 2026-06 leak stayed valid. Legacy JWT keys
+    // are disabled on the Supabase project — do not reintroduce them.
+    supabaseSecretKey: process.env.SUPABASE_SECRET_KEY,
     ingestWorkerUrl: process.env.INGEST_WORKER_URL,
     ingestWorkerSecret: process.env.INGEST_WORKER_SECRET,
   };

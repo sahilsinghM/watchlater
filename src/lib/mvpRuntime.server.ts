@@ -9,7 +9,7 @@ const globalStore = globalThis as typeof globalThis & {
 export function getMvpStore(): MvpStore {
   if (!globalStore.__watchlaterMvpStore) {
     const config = getServerConfig();
-    if (config.supabaseUrl && config.supabaseServiceRoleKey) {
+    if (config.supabaseUrl && config.supabaseSecretKey) {
       globalStore.__watchlaterMvpStore = createSupabaseStore();
     } else {
       globalStore.__watchlaterMvpStore = createMemoryMvpStore();

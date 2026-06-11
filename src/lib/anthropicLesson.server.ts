@@ -3,9 +3,10 @@ import { Lesson as LessonSchema, type Lesson } from "./lessonSchema";
 import type { Cue, Meta } from "./buildLesson";
 
 // Claude-backed lesson generation. Uses the official Anthropic SDK with Sonnet
-// 4.6 by default and adaptive thinking (reasoning goes into thinking blocks; the
-// text block is the clean JSON lesson). Streamed because the transcript is long
-// input, which avoids request timeouts (see the claude-api skill). The prompt
+// 4.6 by default, thinking disabled, and effort=low — a single-shot structured
+// JSON task needs speed and a guaranteed text block, not reasoning (see the
+// thinking comment on the request below). Streamed because the transcript is
+// long input, which avoids request timeouts (see the claude-api skill). The prompt
 // enumerates the exact Lesson field names so the output parses against
 // LessonSchema — the SDK's structured-outputs helper requires Zod v4 and this
 // project is on Zod v3.
@@ -79,11 +80,17 @@ export async function generateAnthropicLesson(input: {
 
   const stream = client.messages.stream({
     model,
-    // Bounded so thinking + the full lesson JSON both finish well inside the 60s
-    // function budget (the JSON is only ~3-4k tokens; the rest is thinking head-
-    // room). Big enough to avoid truncating mid-array, small enough to stay fast.
+    // Bounded headroom for the lesson JSON (~3-4k tokens). Big enough to avoid
+    // truncating mid-array, small enough to stay fast.
     max_tokens: 12000,
-    thinking: { type: "adaptive" },
+    // Thinking must stay OFF for this call. Adaptive thinking shares the
+    // max_tokens budget with the visible output; on long transcripts the model
+    // could spend the entire 12k budget thinking and end at max_tokens with
+    // zero text blocks — surfacing as "Anthropic returned an empty response"
+    // (GENERATION_FAILURE) after minutes of streaming. The SDK timeout does not
+    // guard against this: it bounds time-to-first-byte, not an active stream.
+    thinking: { type: "disabled" },
+    output_config: { effort: "low" },
     system:
       "You generate trustworthy WatchLater lessons: a colour-coded attention map (segments), exactly six tappable lesson cards (thesis, key concept, mechanism, example/analogy, nuance, recap), a 3-question quiz (main idea, a supporting detail, an application), and a transcript-grounded tutor seed. Ground every major claim in transcript timestamps. Be blunt but not snarky about low-value videos. Your response text must be a SINGLE valid JSON object matching requiredShape EXACTLY — use those exact field names and enum values, no markdown fences, no preamble, no commentary.",
     messages: [

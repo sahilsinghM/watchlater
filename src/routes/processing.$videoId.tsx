@@ -77,7 +77,11 @@ function Processing() {
       if (phase === "ready" || phase === "failed") return false;
       return 2000;
     },
-    enabled: dispatch.isSuccess || dispatch.isError,
+    // Always poll — including WHILE the requestLesson POST is in flight. The
+    // inline pipeline keeps that POST open for the whole build (~1 min), so
+    // gating this on dispatch settling froze the UI on step 1 until the very
+    // end and hid real server-side errors behind the generic 150s timeout.
+    enabled: true,
     retry: false,
   });
 
