@@ -13,8 +13,9 @@ export default tseslint.config(
       ".vinxi",
       ".vercel",
       ".playwright-mcp",
-      // Generated — owned by the TanStack Router plugin, not us.
+      // Generated — owned by the TanStack Router plugin / Supabase CLI, not us.
       "src/routeTree.gen.ts",
+      "src/lib/database.types.ts",
       // Vendored shadcn/ui kit — upstream style, not project style. Linting it
       // produced thousands of unactionable findings that drowned real signal.
       "src/components/ui/**",
