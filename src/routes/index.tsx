@@ -55,10 +55,10 @@ function Index() {
       <header className="mx-auto max-w-6xl px-4 sm:px-6 pt-8 flex items-center justify-between">
         <Brand />
         <nav className="hidden sm:flex items-center gap-6 text-sm font-medium text-muted-foreground">
-          <a href="#how" className="hover:text-foreground transition">
+          <a href="#how" className="flex items-center py-3 hover:text-foreground transition">
             How it works
           </a>
-          <a href="#what" className="hover:text-foreground transition">
+          <a href="#what" className="flex items-center py-3 hover:text-foreground transition">
             What you get
           </a>
         </nav>
