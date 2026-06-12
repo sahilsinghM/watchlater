@@ -17,9 +17,9 @@ type Props = {
 // interaction physics. Native share sheet on mobile, copy-link fallback on
 // desktop with a brief "Link copied ✓" confirmation.
 const baseClass =
-  "inline-flex items-center gap-2 rounded-2xl bg-card brutal-border px-5 py-3 font-bold transition " +
+  "inline-flex items-center gap-2 rounded-2xl bg-card brutal-border brutal-shadow-sm px-5 py-3 font-bold transition " +
   "hover:-translate-y-0.5 hover:-translate-x-0.5 hover:bg-foreground hover:text-background " +
-  "active:translate-x-0 active:translate-y-0";
+  "active:translate-x-0 active:translate-y-0.5";
 
 export function ShareButton({ path, title, text, label = "Share", className }: Props) {
   const [copied, setCopied] = useState(false);
