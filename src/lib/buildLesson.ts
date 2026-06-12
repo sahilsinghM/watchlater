@@ -48,9 +48,13 @@ function pickCards(cues: Cue[], duration: number): Cue[] {
   const out: Cue[] = [];
   const stride = Math.max(1, Math.floor(sorted.length / 6));
   for (let i = 0; out.length < 6 && i < sorted.length; i += stride) out.push(sorted[i]);
-  // Pad if we still don't have 6
+  // Pad with real cues first, then with evenly-spaced placeholder cues for 0-cue videos.
   while (out.length < 6 && cues.length > 0)
     out.push(cues[Math.min(cues.length - 1, out.length * 10)]);
+  while (out.length < 6) {
+    const t = Math.floor((duration * out.length) / 6);
+    out.push({ start: t, dur: 10, text: "Content from this video." });
+  }
   return out.slice(0, 6);
 }
 

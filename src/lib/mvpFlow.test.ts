@@ -61,6 +61,24 @@ describe("MVP flow", () => {
     expect(quality.code).toBe("TRANSCRIPT_TOO_SPARSE");
   });
 
+  // TODOS debt: synthetic cue path — all-identical noise cues (like "[Music]") must be
+  // rejected as TOO_NOISY rather than generating a lesson with garbage content.
+  test("rejects transcript consisting entirely of repeated synthetic noise tags", () => {
+    const syntheticCues = Array.from({ length: 30 }, (_, i) => ({
+      start: i * 60,
+      dur: 55,
+      text: "[Music]",
+    }));
+    const quality = assessTranscriptQuality({
+      durationSeconds: 30 * 60,
+      language: "en",
+      cues: syntheticCues,
+    });
+    expect(quality.ok).toBe(false);
+    if (quality.ok) throw new Error("expected a failed quality result");
+    expect(quality.code).toBe("TRANSCRIPT_TOO_NOISY");
+  });
+
   // H1: NON_ENGLISH detection — the quality function supports it, ingest must pass the real language
   test("rejects non-English transcript when actual language code is passed", () => {
     const denseCues = Array.from({ length: 30 }, (_, i) => ({

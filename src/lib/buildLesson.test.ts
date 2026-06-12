@@ -58,6 +58,24 @@ describe("buildLesson", () => {
     expect(new Set(ids).size).toBe(ids.length);
   });
 
+  // TODOS debt: 0 cues
+  test("handles 0 cues without crashing and uses a 600s default duration", () => {
+    const lesson = buildLesson(meta, []);
+    expect(lesson.video.duration).toBe(600);
+    expect(lesson.cards).toHaveLength(6);
+    expect(lesson.segments).toHaveLength(6);
+  });
+
+  // TODOS debt: 4 cues (below quality threshold but buildLesson itself must not crash)
+  test("handles 4 cues without crashing and still produces 6 cards", () => {
+    const cues = makeCues(4, 600);
+    const lesson = buildLesson(meta, cues);
+    expect(lesson.cards).toHaveLength(6);
+    expect(lesson.quiz).toHaveLength(3);
+    const ids = lesson.cards.map((c) => c.id);
+    expect(new Set(ids).size).toBe(ids.length);
+  });
+
   // pickCards: fewer than 6 distinct cues in middle band triggers padding path
   test("produces 6 cards even when fewer than 6 cues fall in the middle 70% band", () => {
     // All cues are in the first 10% — all outside the middle band

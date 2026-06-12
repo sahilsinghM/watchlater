@@ -28,14 +28,14 @@ Deferred scope from /autoplan review (2026-06-05, commit fed6eeb).
 
 ## Test debt
 
-- [ ] Add tests for synthetic cue path (expect NO_CAPTIONS, not a lesson)
-- [ ] Add tests for `buildLesson` with 0, 4, 12 cues
+- [x] Add tests for synthetic cue path (all-`[Music]` transcript → TRANSCRIPT_TOO_NOISY) **Completed: chore/test-debt-and-chrome-fixes**
+- [x] Add tests for `buildLesson` with 0, 4, 12 cues **Completed: chore/test-debt-and-chrome-fixes**
 - [ ] Add integration test for Supabase quiz/feedback saves
 - [x] Add `assessTranscriptQuality` test with non-English language code **Completed: 2026-06-05**
 
 ## Design audit deferrals (2026-06-11, /design-review)
-- [ ] MED: Tone toggle floats unlabeled on the lesson page mobile layout — anchor it or label it
-- [ ] LOW: Attention-map bar sliver segments are sub-44px touch targets on phones
-- [ ] LOW: FAB grazes the 3rd reaction button corner on the player at 430px — pad the reaction row
-- [ ] LOW: favicon 404 on every page
-- [ ] LOW: lesson hero title wraps 4 lines at 390px before any visual
+- [x] MED: Tone toggle floats unlabeled on the lesson page mobile layout — anchor it or label it **Fixed: #55 (TONE mono eyebrow in header)**
+- [x] LOW: Attention-map bar sliver segments are sub-44px touch targets on phones **Fixed: #57 (min-width enforcement)**
+- [x] LOW: FAB grazes the 3rd reaction button corner on the player at 430px — pad the reaction row **Fixed: #55 (pb-32 on player main)**
+- [x] LOW: favicon 404 on every page **Fixed: #55 (mascot favicon + apple-touch-icon)**
+- [x] LOW: lesson hero title wraps 4 lines at 390px before any visual **Fixed: #55 (text-wrap: balance + line-clamp-2) + #56 (verdict-first)**
