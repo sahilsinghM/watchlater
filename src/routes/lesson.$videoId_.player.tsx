@@ -12,7 +12,7 @@ import { lessonQueryOptions } from "@/lib/lessonQuery";
 import { fmtTime, type Tone } from "@/lib/lessonSchema";
 
 export const Route = createFileRoute("/lesson/$videoId_/player")({
-  validateSearch: z.object({ t: z.number().int().min(0).default(0) }),
+  validateSearch: z.object({ t: z.number().min(0).default(0) }),
   loader: ({ context, params }) =>
     context.queryClient.ensureQueryData(lessonQueryOptions(params.videoId)),
   head: () => ({ meta: [{ title: "Lesson · WatchLater" }] }),
@@ -36,6 +36,7 @@ function Player() {
   const card = lesson.cards[idx];
   const total = lesson.cards.length;
   const pct = Math.round(((idx + 1) / total) * 100);
+  const displaySeconds = card.timestamp ?? (idx === 0 ? seekTo : undefined);
 
   function next() {
     if (idx + 1 >= total) {
@@ -83,16 +84,16 @@ function Player() {
           onSeek={(s) => playerRef.current?.seekTo(s)}
         />
 
-        {(card.timestamp !== undefined || seekTo > 0) && (
+        {displaySeconds !== undefined && (
           <div className="space-y-2">
             <div className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground px-1">
-              See it in the video · {fmtTime(card.timestamp ?? seekTo)}
+              See it in the video · {fmtTime(displaySeconds)}
             </div>
             <YouTubeEmbed
               key={card.id}
               ref={playerRef}
               videoId={lesson.video.youtubeId}
-              startSeconds={card.timestamp ?? seekTo}
+              startSeconds={displaySeconds}
             />
           </div>
         )}

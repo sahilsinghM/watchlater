@@ -144,7 +144,8 @@ function Done() {
             value={reason}
             onChange={(event) => setReason(event.target.value)}
             placeholder="Optional note"
-            className="min-h-20 w-full resize-none rounded-2xl brutal-border bg-background px-4 py-3 text-sm outline-none focus:ring-0 focus:shadow-[4px_4px_0_var(--foreground)]"
+            disabled={feedbackState === "saved"}
+            className="min-h-20 w-full resize-none rounded-2xl brutal-border bg-background px-4 py-3 text-sm outline-none focus:ring-0 focus:shadow-[4px_4px_0_var(--foreground)] disabled:opacity-50"
           />
           <div className="space-y-2">
             <div className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground font-bold">
@@ -158,7 +159,8 @@ function Done() {
                   onChange={(event) => setName(event.target.value)}
                   placeholder="Your name (optional)"
                   autoComplete="name"
-                  className="w-full rounded-2xl brutal-border bg-background px-4 py-3 text-sm outline-none focus:ring-0 focus:shadow-[4px_4px_0_var(--foreground)]"
+                  disabled={feedbackState === "saved"}
+                    className="w-full rounded-2xl brutal-border bg-background px-4 py-3 text-sm outline-none focus:ring-0 focus:shadow-[4px_4px_0_var(--foreground)] disabled:opacity-50"
                 />
                 <p className="self-center font-display text-sm font-extrabold">
                   <span className="text-accent">✓</span> You're on the early-access list.
@@ -173,7 +175,8 @@ function Done() {
                     onChange={(event) => setName(event.target.value)}
                     placeholder="Your name (optional)"
                     autoComplete="name"
-                    className="w-full rounded-2xl brutal-border bg-background px-4 py-3 text-sm outline-none focus:ring-0 focus:shadow-[4px_4px_0_var(--foreground)]"
+                    disabled={feedbackState === "saved"}
+                    className="w-full rounded-2xl brutal-border bg-background px-4 py-3 text-sm outline-none focus:ring-0 focus:shadow-[4px_4px_0_var(--foreground)] disabled:opacity-50"
                   />
                   <input
                     type="email"
@@ -184,7 +187,8 @@ function Done() {
                     }}
                     placeholder="you@email.com (optional)"
                     autoComplete="email"
-                    className="w-full rounded-2xl brutal-border bg-background px-4 py-3 text-sm outline-none focus:ring-0 focus:shadow-[4px_4px_0_var(--foreground)]"
+                    disabled={feedbackState === "saved"}
+                    className="w-full rounded-2xl brutal-border bg-background px-4 py-3 text-sm outline-none focus:ring-0 focus:shadow-[4px_4px_0_var(--foreground)] disabled:opacity-50"
                   />
                 </div>
                 {emailError && <p className="text-sm text-destructive font-medium">{emailError}</p>}
