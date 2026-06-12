@@ -56,7 +56,9 @@ function makeClientSpy(
     return c;
   }
 
-  const client = { from: (table: string) => chain(table) } as SupabaseClientLike;
+  // The spy is intentionally minimal, so it doesn't structurally overlap the
+  // real SupabaseClient — route the cast through unknown (TS2352 otherwise).
+  const client = { from: (table: string) => chain(table) } as unknown as SupabaseClientLike;
   return { client, getCaptured: () => captured };
 }
 
