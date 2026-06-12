@@ -115,6 +115,35 @@ describe("MVP flow", () => {
     expect(frames.frames[0].storagePath).toContain("dQw4w9WgXcQ");
   });
 
+  test("marks frames as captured when capture is available", async () => {
+    const store = createMemoryMvpStore();
+    const frames = await persistKeyFrames(store, {
+      videoId: "video_1",
+      youtubeId: "dQw4w9WgXcQ",
+      moments: [{ timestamp: 60, caption: "intro" }],
+      captureAvailable: true,
+      visualsEssential: false,
+    });
+
+    expect(frames.status).toBe("captured");
+    expect(frames.frames[0].status).toBe("captured");
+  });
+
+  test("returns failed status when visuals are essential but capture is unavailable", async () => {
+    const store = createMemoryMvpStore();
+    const frames = await persistKeyFrames(store, {
+      videoId: "video_1",
+      youtubeId: "dQw4w9WgXcQ",
+      moments: [{ timestamp: 60, caption: "demo" }],
+      captureAvailable: false,
+      visualsEssential: true,
+    });
+
+    expect(frames.status).toBe("failed");
+    expect(frames.frames).toHaveLength(0);
+    expect(frames.detail).toBeTruthy();
+  });
+
   test("persists only schema-valid generated lessons", async () => {
     const store = createMemoryMvpStore();
     const generator: LessonGenerator = async () => ({

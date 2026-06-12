@@ -50,6 +50,8 @@ function makeStore() {
       updateProcessingJob: async (_id: string, patch: Record<string, unknown>) => {
         updates.push(patch);
       },
+      upsertVideo: async () => "video_test_id",
+      saveKeyFrames: async (frames: unknown[]) => frames,
       saveLesson: async (x: { youtubeId: string }) => {
         saved.push(x);
       },
