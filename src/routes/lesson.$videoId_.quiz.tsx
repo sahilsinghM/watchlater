@@ -87,7 +87,7 @@ function Quiz() {
               const state = !revealed
                 ? isPicked
                   ? "border-foreground bg-primary/10"
-                  : "border-foreground/15 hover:border-foreground hover:-translate-y-0.5"
+                  : "border-foreground/15 hover:border-foreground hover:-translate-y-0.5 active:translate-y-0.5"
                 : isCorrect
                   ? "border-accent bg-accent/15"
                   : isPicked
@@ -100,7 +100,7 @@ function Quiz() {
                     onClick={() => !revealed && setPicked(i)}
                     disabled={revealed}
                     className={
-                      "flex w-full items-center gap-3 rounded-2xl border-2 bg-card px-5 py-4 text-left font-medium transition " +
+                      "flex w-full items-center gap-3 rounded-2xl border-[3px] bg-card px-5 py-4 text-left font-medium transition " +
                       state
                     }
                   >
