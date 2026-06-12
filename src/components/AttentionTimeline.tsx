@@ -79,7 +79,7 @@ export function AttentionTimeline({ segments, totalDuration, onSeek }: Props) {
           their outer corners so the frame still looks clean. No overflow clip:
           the hover chips (desktop only) rise above the bar into the page
           margin; on mobile they're hidden, so nothing escapes the viewport. */}
-      <div className="flex h-10 w-full rounded-2xl brutal-border bg-card brutal-shadow-sm">
+      <div className="flex h-[50px] w-full rounded-2xl brutal-border bg-card brutal-shadow-sm">
         {segments.map((seg, i) => {
           const pct = ((seg.end - seg.start) / total) * 100;
           const s = kindStyles[seg.kind];
