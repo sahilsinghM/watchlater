@@ -83,10 +83,7 @@ export type ParsedSupadataResponse =
  * Parse and validate a raw Supadata API response at the network boundary.
  * Returns a discriminated union — callers match on `.kind`.
  */
-export function parseSupadataResponse(
-  status: number,
-  body: unknown,
-): ParsedSupadataResponse {
+export function parseSupadataResponse(status: number, body: unknown): ParsedSupadataResponse {
   if (status === 202) {
     const result = SupadataAsyncResponseSchema.safeParse(body);
     if (!result.success) return { kind: "error", status, data: {}, raw: body };

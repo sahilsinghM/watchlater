@@ -89,7 +89,11 @@ describe("createProcessingJob", () => {
 
     const captured = getCaptured();
     expect(captured?.table).toBe("processing_jobs");
-    expect(captured?.insert).toMatchObject({ session_id: "sess-1", youtube_id: "dQw4w9WgXcQ", status: "queued" });
+    expect(captured?.insert).toMatchObject({
+      session_id: "sess-1",
+      youtube_id: "dQw4w9WgXcQ",
+      status: "queued",
+    });
     expect(result.id).toBe("job-uuid-1");
     expect(result.status).toBe("queued");
     expect(result.youtubeId).toBe("dQw4w9WgXcQ");
@@ -126,7 +130,10 @@ describe("updateProcessingJob", () => {
     const { client } = makeClientSpy(updatedRow);
     const store = createSupabaseStore(() => client);
 
-    const result = await store.updateProcessingJob("job-uuid-1", { status: "ready", currentStep: "ready" });
+    const result = await store.updateProcessingJob("job-uuid-1", {
+      status: "ready",
+      currentStep: "ready",
+    });
 
     expect(result.id).toBe("job-uuid-1");
     expect(result.status).toBe("ready");
@@ -136,9 +143,9 @@ describe("updateProcessingJob", () => {
     const { client } = makeClientSpy({}, { message: "row not found" });
     const store = createSupabaseStore(() => client);
 
-    await expect(
-      store.updateProcessingJob("missing-id", { status: "ready" }),
-    ).rejects.toThrow("updateProcessingJob failed");
+    await expect(store.updateProcessingJob("missing-id", { status: "ready" })).rejects.toThrow(
+      "updateProcessingJob failed",
+    );
   });
 });
 
@@ -169,7 +176,9 @@ describe("upsertAnonymousSession", () => {
     const { client } = makeClientSpy({}, { message: "unique violation" });
     const store = createSupabaseStore(() => client);
 
-    await expect(store.upsertAnonymousSession("new-key")).rejects.toThrow("upsertAnonymousSession failed");
+    await expect(store.upsertAnonymousSession("new-key")).rejects.toThrow(
+      "upsertAnonymousSession failed",
+    );
   });
 });
 
@@ -242,7 +251,13 @@ describe("saveQuizResult", () => {
     const store = createSupabaseStore(() => client);
 
     await expect(
-      store.saveQuizResult({ lessonId: "vid-1", sessionId: "sess-1", answers: [0], score: 1, total: 1 }),
+      store.saveQuizResult({
+        lessonId: "vid-1",
+        sessionId: "sess-1",
+        answers: [0],
+        score: 1,
+        total: 1,
+      }),
     ).rejects.toThrow("saveQuizResult failed");
   });
 });
@@ -333,7 +348,12 @@ describe("saveFeedback", () => {
     const store = createSupabaseStore(() => client);
 
     await expect(
-      store.saveFeedback({ lessonId: "vid-1", sessionId: "sess-1", useful: true, source: "completion" }),
+      store.saveFeedback({
+        lessonId: "vid-1",
+        sessionId: "sess-1",
+        useful: true,
+        source: "completion",
+      }),
     ).rejects.toThrow("saveFeedback failed");
   });
 });

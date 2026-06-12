@@ -49,7 +49,6 @@ export async function fetchOEmbed(youtubeId: string): Promise<Meta> {
 
 const SUPADATA_BASE = "https://api.supadata.ai/v1";
 
-
 function getSupadataApiKey(): string {
   const key = process.env.SUPADATA_API_KEY?.trim();
   // Fail closed on a config error rather than emitting a mystery NO_CAPTIONS.
@@ -79,9 +78,14 @@ async function pollSupadataJob(jobId: string, apiKey: string): Promise<SupadataS
     });
     if (!res.ok) throw new IngestError("UNKNOWN", `Supadata job poll failed: ${res.status}`);
     let pollBody: unknown;
-    try { pollBody = await res.json(); } catch { throw new IngestError("UNKNOWN", "Supadata job poll returned non-JSON"); }
+    try {
+      pollBody = await res.json();
+    } catch {
+      throw new IngestError("UNKNOWN", "Supadata job poll returned non-JSON");
+    }
     const jobResult = SupadataJobResultSchema.safeParse(pollBody);
-    if (!jobResult.success) throw new IngestError("UNKNOWN", "Supadata job poll returned unexpected shape");
+    if (!jobResult.success)
+      throw new IngestError("UNKNOWN", "Supadata job poll returned unexpected shape");
     const { data } = jobResult;
     if (data.status === "completed") {
       if (!Array.isArray(data.content) || data.content.length === 0) {
@@ -120,7 +124,11 @@ export async function fetchTranscript(
   if (!res.ok) throw new IngestError("UNKNOWN", `Supadata request failed: ${res.status}`);
 
   let responseBody: unknown;
-  try { responseBody = await res.json(); } catch { throw new IngestError("UNKNOWN", "Supadata returned non-JSON response"); }
+  try {
+    responseBody = await res.json();
+  } catch {
+    throw new IngestError("UNKNOWN", "Supadata returned non-JSON response");
+  }
   const parsed = parseSupadataResponse(res.status, responseBody);
 
   if (parsed.kind === "async") {

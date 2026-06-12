@@ -73,15 +73,15 @@ describe("SupadataSegmentSchema", () => {
   });
 
   test("rejects when offset is a string rather than a number", () => {
-    expect(
-      SupadataSegmentSchema.safeParse({ ...SEGMENT_FIXTURE, offset: "1200" }).success,
-    ).toBe(false);
+    expect(SupadataSegmentSchema.safeParse({ ...SEGMENT_FIXTURE, offset: "1200" }).success).toBe(
+      false,
+    );
   });
 
   test("rejects when duration is a string rather than a number", () => {
-    expect(
-      SupadataSegmentSchema.safeParse({ ...SEGMENT_FIXTURE, duration: "3400" }).success,
-    ).toBe(false);
+    expect(SupadataSegmentSchema.safeParse({ ...SEGMENT_FIXTURE, duration: "3400" }).success).toBe(
+      false,
+    );
   });
 
   test("offset and duration are preserved as numbers (milliseconds, not seconds)", () => {
