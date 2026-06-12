@@ -62,7 +62,10 @@ export function createSupabaseStore(
       // race that would throw a constraint violation under concurrent SSR requests.
       const { data, error } = await supabase
         .from("anonymous_sessions")
-        .upsert({ session_key: sessionKey, last_seen_at: new Date().toISOString() }, { onConflict: "session_key" })
+        .upsert(
+          { session_key: sessionKey, last_seen_at: new Date().toISOString() },
+          { onConflict: "session_key" },
+        )
         .select("*")
         .single();
       if (error || !data) throw new Error("upsertAnonymousSession failed");

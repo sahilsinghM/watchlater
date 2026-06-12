@@ -150,7 +150,10 @@ if (!apiKey) {
           body.credits ?? body.quota ?? body.remaining ?? body.creditsRemaining ?? body.balance;
         if (remaining !== undefined) {
           if (Number(remaining) === 0) {
-            fail("Credits remaining", "Account has 0 credits — transcript calls will fail with 402");
+            fail(
+              "Credits remaining",
+              "Account has 0 credits — transcript calls will fail with 402",
+            );
           } else {
             pass("Credits remaining", `${remaining} credits available`);
           }

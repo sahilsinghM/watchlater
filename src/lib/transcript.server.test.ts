@@ -127,6 +127,22 @@ describe("fetchTranscript (Supadata)", () => {
     expect(await codeOf(() => fetchTranscript("abcdefghijk"))).toBe("NO_CAPTIONS");
   });
 
+  test("maps a 206 (Supadata transcript-unavailable) to NO_CAPTIONS", async () => {
+    // Regression: prod job d1c907ab (2026-06-12, oo1oADOiVmM) died as
+    // UNKNOWN "Supadata response schema error (status 206)" — but 206 is
+    // Supadata's documented "no transcript" answer, a user-facing condition.
+    stubFetch(() => ({
+      status: 206,
+      body: {
+        error: "transcript-unavailable",
+        message: "Transcript Unavailable",
+        details: "No transcript is available for this video.",
+        documentationUrl: "https://docs.supadata.ai/errors/transcript-unavailable",
+      },
+    }));
+    expect(await codeOf(() => fetchTranscript("abcdefghijk"))).toBe("NO_CAPTIONS");
+  });
+
   test("raises UNKNOWN when a 200 body fails schema validation (parsed.kind=error branch)", async () => {
     // Supadata 200 but body doesn't match SupadataSyncResponseSchema →
     // parseSupadataResponse returns kind='error' → fetchTranscript must throw IngestError UNKNOWN
