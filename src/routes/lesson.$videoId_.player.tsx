@@ -122,21 +122,21 @@ function Player() {
             type="button"
             onClick={prev}
             disabled={idx === 0}
-            className="inline-flex min-h-[40px] items-center px-1 -mx-1 font-mono text-[10px] uppercase tracking-widest text-muted-foreground hover:text-foreground disabled:opacity-30 disabled:hover:text-muted-foreground"
+            className="inline-flex min-h-[44px] items-center px-1 -mx-1 font-mono text-[10px] uppercase tracking-widest text-muted-foreground hover:text-foreground disabled:opacity-30 disabled:hover:text-muted-foreground"
           >
             ← Previous
           </button>
           <Link
             to="/lesson/$videoId"
             params={{ videoId }}
-            className="inline-flex min-h-[40px] items-center px-1 font-mono text-[10px] uppercase tracking-widest text-muted-foreground hover:text-foreground"
+            className="inline-flex min-h-[44px] items-center px-1 font-mono text-[10px] uppercase tracking-widest text-muted-foreground hover:text-foreground"
           >
             Exit lesson
           </Link>
           <button
             type="button"
             onClick={next}
-            className="inline-flex min-h-[40px] items-center px-1 -mx-1 font-mono text-[10px] uppercase tracking-widest text-primary font-bold"
+            className="inline-flex min-h-[44px] items-center px-1 -mx-1 font-mono text-[10px] uppercase tracking-widest text-primary font-bold"
           >
             {idx + 1 === total ? "Quiz time →" : "Next →"}
           </button>
