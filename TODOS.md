@@ -30,7 +30,7 @@ Deferred scope from /autoplan review (2026-06-05, commit fed6eeb).
 
 - [x] Add tests for synthetic cue path (all-`[Music]` transcript → TRANSCRIPT_TOO_NOISY) **Completed: chore/test-debt-and-chrome-fixes**
 - [x] Add tests for `buildLesson` with 0, 4, 12 cues **Completed: chore/test-debt-and-chrome-fixes**
-- [ ] Add integration test for Supabase quiz/feedback saves
+- [x] Add integration test for Supabase quiz/feedback saves **Completed: chore/test-debt-and-chrome-fixes**
 - [x] Add `assessTranscriptQuality` test with non-English language code **Completed: 2026-06-05**
 
 ## Design audit deferrals (2026-06-11, /design-review)

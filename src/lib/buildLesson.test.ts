@@ -58,15 +58,12 @@ describe("buildLesson", () => {
     expect(new Set(ids).size).toBe(ids.length);
   });
 
-  // TODOS debt: 0 cues
-  test("handles 0 cues without crashing and uses a 600s default duration", () => {
-    const lesson = buildLesson(meta, []);
-    expect(lesson.video.duration).toBe(600);
-    expect(lesson.cards).toHaveLength(6);
-    expect(lesson.segments).toHaveLength(6);
+  // Edge case: 0 cues — must throw; upstream assessTranscriptQuality prevents this in production
+  test("throws when given 0 cues", () => {
+    expect(() => buildLesson(meta, [])).toThrow("requires at least 1 cue");
   });
 
-  // TODOS debt: 4 cues (below quality threshold but buildLesson itself must not crash)
+  // Edge case: 4 cues (below quality threshold) — buildLesson must not crash; quality gate happens upstream
   test("handles 4 cues without crashing and still produces 6 cards", () => {
     const cues = makeCues(4, 600);
     const lesson = buildLesson(meta, cues);

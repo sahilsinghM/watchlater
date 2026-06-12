@@ -61,7 +61,7 @@ describe("MVP flow", () => {
     expect(quality.code).toBe("TRANSCRIPT_TOO_SPARSE");
   });
 
-  // TODOS debt: synthetic cue path — all-identical noise cues (like "[Music]") must be
+  // Synthetic cue path: all-identical noise cues (like "[Music]") must be
   // rejected as TOO_NOISY rather than generating a lesson with garbage content.
   test("rejects transcript consisting entirely of repeated synthetic noise tags", () => {
     const syntheticCues = Array.from({ length: 30 }, (_, i) => ({
