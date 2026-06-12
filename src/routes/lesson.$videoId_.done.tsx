@@ -87,7 +87,7 @@ function Done() {
           Lesson complete.
         </h1>
         <p className="text-muted-foreground">
-          You moved through a {Math.floor(lesson.video.duration / 60)}-minute video in five.
+          You moved through a {Math.floor(lesson.video.duration / 60)}-minute video in 5 minutes.
         </p>
 
         <div className="rounded-[32px] brutal-border bg-card p-5 sm:p-8 brutal-shadow space-y-3">
