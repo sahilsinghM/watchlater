@@ -73,12 +73,14 @@ async function pollSupadataJob(jobId: string, apiKey: string): Promise<SupadataS
   const deadline = Date.now() + 60_000;
   while (Date.now() < deadline) {
     await new Promise((r) => setTimeout(r, 1000));
-    const res = await fetch(`${SUPADATA_BASE}/transcript/${jobId}`, {
+    const res = await fetch(`${SUPADATA_BASE}/transcript/${encodeURIComponent(jobId)}`, {
       headers: { "x-api-key": apiKey },
       signal: AbortSignal.timeout(15_000),
     });
     if (!res.ok) throw new IngestError("UNKNOWN", `Supadata job poll failed: ${res.status}`);
-    const jobResult = SupadataJobResultSchema.safeParse(await res.json());
+    let pollBody: unknown;
+    try { pollBody = await res.json(); } catch { throw new IngestError("UNKNOWN", "Supadata job poll returned non-JSON"); }
+    const jobResult = SupadataJobResultSchema.safeParse(pollBody);
     if (!jobResult.success) throw new IngestError("UNKNOWN", "Supadata job poll returned unexpected shape");
     const { data } = jobResult;
     if (data.status === "completed") {
@@ -117,7 +119,9 @@ export async function fetchTranscript(
 
   if (!res.ok) throw new IngestError("UNKNOWN", `Supadata request failed: ${res.status}`);
 
-  const parsed = parseSupadataResponse(res.status, await res.json());
+  let responseBody: unknown;
+  try { responseBody = await res.json(); } catch { throw new IngestError("UNKNOWN", "Supadata returned non-JSON response"); }
+  const parsed = parseSupadataResponse(res.status, responseBody);
 
   if (parsed.kind === "async") {
     const segments = await pollSupadataJob(parsed.data.jobId, apiKey);

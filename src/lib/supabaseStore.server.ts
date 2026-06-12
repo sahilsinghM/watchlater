@@ -58,23 +58,11 @@ export function createSupabaseStore(
   return {
     async upsertAnonymousSession(sessionKey) {
       const supabase = getClient();
-      const { data: existing } = await supabase
-        .from("anonymous_sessions")
-        .select("*")
-        .eq("session_key", sessionKey)
-        .maybeSingle();
-      if (existing) {
-        const { data } = await supabase
-          .from("anonymous_sessions")
-          .update({ last_seen_at: new Date().toISOString() })
-          .eq("id", existing.id)
-          .select("*")
-          .single();
-        return parseAnonymousSession(data ?? existing);
-      }
+      // Atomic upsert on the unique session_key — avoids a SELECT-then-INSERT
+      // race that would throw a constraint violation under concurrent SSR requests.
       const { data, error } = await supabase
         .from("anonymous_sessions")
-        .insert({ session_key: sessionKey })
+        .upsert({ session_key: sessionKey, last_seen_at: new Date().toISOString() }, { onConflict: "session_key" })
         .select("*")
         .single();
       if (error || !data) throw new Error("upsertAnonymousSession failed");
@@ -173,7 +161,6 @@ export function createSupabaseStore(
 
     async saveLesson({ youtubeId, lesson }) {
       const supabase = getClient();
-      const videoId = `${youtubeId}_v1`;
       const { data: existingLesson } = await supabase
         .from("lessons")
         .select("id, video_id")
