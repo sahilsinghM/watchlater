@@ -67,7 +67,7 @@ function Quiz() {
           <span className="font-mono text-xs font-bold uppercase tracking-widest text-muted-foreground">
             Question {idx + 1} / {total}
           </span>
-          <span className="font-display font-extrabold text-primary text-sm">Quiz</span>
+          <span className="font-mono text-[10px] uppercase tracking-widest text-primary font-bold">Quiz</span>
         </div>
         <div className="h-3 w-full bg-foreground/5 rounded-full overflow-hidden brutal-border">
           <div
