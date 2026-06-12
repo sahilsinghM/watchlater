@@ -1,4 +1,6 @@
 import type { Cue, Meta } from "./buildLesson";
+import { parseSupadataResponse, SupadataJobResultSchema } from "./supadata-adapter";
+import type { SupadataSegment } from "./supadata-adapter";
 
 // Server-only transcript + metadata fetching. The .server.ts suffix keeps this
 // out of the client bundle. Transcript fetching is delegated to Supadata, a
@@ -47,8 +49,6 @@ export async function fetchOEmbed(youtubeId: string): Promise<Meta> {
 
 const SUPADATA_BASE = "https://api.supadata.ai/v1";
 
-type SupadataSegment = { text: string; offset: number; duration: number; lang?: string };
-type SupadataTranscript = { content: SupadataSegment[] | string; lang?: string };
 
 function getSupadataApiKey(): string {
   const key = process.env.SUPADATA_API_KEY?.trim();
@@ -73,21 +73,21 @@ async function pollSupadataJob(jobId: string, apiKey: string): Promise<SupadataS
   const deadline = Date.now() + 60_000;
   while (Date.now() < deadline) {
     await new Promise((r) => setTimeout(r, 1000));
-    const res = await fetch(`${SUPADATA_BASE}/transcript/${jobId}`, {
+    const res = await fetch(`${SUPADATA_BASE}/transcript/${encodeURIComponent(jobId)}`, {
       headers: { "x-api-key": apiKey },
       signal: AbortSignal.timeout(15_000),
     });
     if (!res.ok) throw new IngestError("UNKNOWN", `Supadata job poll failed: ${res.status}`);
-    const data = (await res.json()) as {
-      status: string;
-      content?: SupadataSegment[] | string;
-      error?: string;
-    };
+    let pollBody: unknown;
+    try { pollBody = await res.json(); } catch { throw new IngestError("UNKNOWN", "Supadata job poll returned non-JSON"); }
+    const jobResult = SupadataJobResultSchema.safeParse(pollBody);
+    if (!jobResult.success) throw new IngestError("UNKNOWN", "Supadata job poll returned unexpected shape");
+    const { data } = jobResult;
     if (data.status === "completed") {
       if (!Array.isArray(data.content) || data.content.length === 0) {
         throw new IngestError("NO_CAPTIONS", "This video has no captions");
       }
-      return data.content;
+      return data.content as SupadataSegment[];
     }
     if (data.status === "failed") {
       throw new IngestError("NO_CAPTIONS", `Transcript unavailable: ${data.error ?? "failed"}`);
@@ -117,22 +117,29 @@ export async function fetchTranscript(
   }
   if (res.status === 404) throw new IngestError("NOT_FOUND", "Video not found");
 
-  // 202 → async job for long videos; poll until done.
-  if (res.status === 202) {
-    const { jobId } = (await res.json()) as { jobId: string };
-    const segments = await pollSupadataJob(jobId, apiKey);
+  if (!res.ok) throw new IngestError("UNKNOWN", `Supadata request failed: ${res.status}`);
+
+  let responseBody: unknown;
+  try { responseBody = await res.json(); } catch { throw new IngestError("UNKNOWN", "Supadata returned non-JSON response"); }
+  const parsed = parseSupadataResponse(res.status, responseBody);
+
+  if (parsed.kind === "async") {
+    const segments = await pollSupadataJob(parsed.data.jobId, apiKey);
     const cues = segmentsToCues(segments);
     if (cues.length === 0) throw new IngestError("NO_CAPTIONS", "Captions were empty");
     return { cues, languageCode: segments[0]?.lang ?? "en" };
   }
 
-  if (!res.ok) throw new IngestError("UNKNOWN", `Supadata request failed: ${res.status}`);
+  if (parsed.kind === "error") {
+    throw new IngestError("UNKNOWN", `Supadata response schema error (status ${parsed.status})`);
+  }
 
-  const data = (await res.json()) as SupadataTranscript;
-  if (!Array.isArray(data.content) || data.content.length === 0) {
+  // kind === "sync"
+  const { content, lang } = parsed.data;
+  if (!Array.isArray(content) || content.length === 0) {
     throw new IngestError("NO_CAPTIONS", "This video has no captions");
   }
-  const cues = segmentsToCues(data.content);
+  const cues = segmentsToCues(content);
   if (cues.length === 0) throw new IngestError("NO_CAPTIONS", "Captions were empty");
-  return { cues, languageCode: data.lang ?? data.content[0]?.lang ?? "en" };
+  return { cues, languageCode: lang ?? content[0]?.lang ?? "en" };
 }

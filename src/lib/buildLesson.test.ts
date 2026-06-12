@@ -58,6 +58,21 @@ describe("buildLesson", () => {
     expect(new Set(ids).size).toBe(ids.length);
   });
 
+  // Edge case: 0 cues — must throw; upstream assessTranscriptQuality prevents this in production
+  test("throws when given 0 cues", () => {
+    expect(() => buildLesson(meta, [])).toThrow("requires at least 1 cue");
+  });
+
+  // Edge case: 4 cues (below quality threshold) — buildLesson must not crash; quality gate happens upstream
+  test("handles 4 cues without crashing and still produces 6 cards", () => {
+    const cues = makeCues(4, 600);
+    const lesson = buildLesson(meta, cues);
+    expect(lesson.cards).toHaveLength(6);
+    expect(lesson.quiz).toHaveLength(3);
+    const ids = lesson.cards.map((c) => c.id);
+    expect(new Set(ids).size).toBe(ids.length);
+  });
+
   // pickCards: fewer than 6 distinct cues in middle band triggers padding path
   test("produces 6 cards even when fewer than 6 cues fall in the middle 70% band", () => {
     // All cues are in the first 10% — all outside the middle band
