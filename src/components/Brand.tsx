@@ -4,7 +4,7 @@ import mascot from "@/assets/mascot.png";
 export function Brand({ size = "md" }: { size?: "sm" | "md" }) {
   const dim = size === "sm" ? "h-8 w-8" : "h-10 w-10";
   return (
-    <Link to="/" className="inline-flex items-center gap-2.5 group">
+    <Link to="/" className="inline-flex min-h-[44px] items-center gap-2.5 group">
       <img
         src={mascot}
         alt=""
