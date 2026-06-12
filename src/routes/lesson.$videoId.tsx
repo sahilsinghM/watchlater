@@ -11,7 +11,9 @@ import { VerdictBadge } from "@/components/VerdictBadge";
 import { WaitlistCard } from "@/components/WaitlistCard";
 import { LessonHeroSkeleton } from "@/components/LessonSkeleton";
 import { lessonQueryOptions } from "@/lib/lessonQuery";
-import { fmtRange, fmtTime, type Tone } from "@/lib/lessonSchema";
+import { fmtRange, fmtTime, type Lesson, type Tone } from "@/lib/lessonSchema";
+
+const SITE = "https://watchlater-sigma.vercel.app";
 
 export const Route = createFileRoute("/lesson/$videoId")({
   loader: ({ context, params }) =>
