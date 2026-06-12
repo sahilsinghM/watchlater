@@ -141,6 +141,29 @@ export function createSupabaseStore(): MvpStore {
       return parseProcessingJob(data!);
     },
 
+    async upsertVideo({ youtubeId, url, title, channel, thumbnailUrl, durationSeconds, language }) {
+      const supabase = getSupabaseAdmin();
+      const { data } = await supabase
+        .from("videos")
+        .upsert(
+          {
+            youtube_id: youtubeId,
+            url,
+            title,
+            channel,
+            thumbnail_url: thumbnailUrl,
+            duration_seconds: durationSeconds,
+            language,
+            support_status: "supported",
+            metadata: {},
+          },
+          { onConflict: "youtube_id" },
+        )
+        .select("id")
+        .single();
+      return data!.id;
+    },
+
     async saveKeyFrames(frames) {
       const supabase = getSupabaseAdmin();
       const rows = frames.map((f) => ({

@@ -133,6 +133,15 @@ export type MvpStore = {
   // side failure look like a stuck queue to the UI.
   getLatestJobByYoutubeId(youtubeId: string): Promise<ProcessingJob | null>;
   updateProcessingJob(id: string, patch: Partial<ProcessingJob>): Promise<ProcessingJob>;
+  upsertVideo(input: {
+    youtubeId: string;
+    url: string;
+    title: string;
+    channel: string;
+    thumbnailUrl: string;
+    durationSeconds: number;
+    language: string;
+  }): Promise<string>; // returns video UUID
   saveKeyFrames(frames: KeyFrame[]): Promise<KeyFrame[]>;
   saveLesson(input: { youtubeId: string; lesson: Lesson }): Promise<Lesson>;
   getLessonByYoutubeId(youtubeId: string): Promise<Lesson | null>;
@@ -215,6 +224,9 @@ export function createMemoryMvpStore(): MvpStore {
       const updated = { ...existing, ...patch, updatedAt: now() };
       jobs.set(jobId, updated);
       return updated;
+    },
+    async upsertVideo({ youtubeId }) {
+      return `video_${youtubeId}`;
     },
     async saveKeyFrames(frames) {
       return frames;
