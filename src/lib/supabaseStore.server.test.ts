@@ -60,6 +60,117 @@ function makeClientSpy(
   return { client, getCaptured: () => captured };
 }
 
+// ─── createProcessingJob ─────────────────────────────────────────────────────
+
+describe("createProcessingJob", () => {
+  const jobRow = {
+    id: "job-uuid-1",
+    session_id: "sess-1",
+    youtube_id: "dQw4w9WgXcQ",
+    status: "queued",
+    current_step: "queued",
+    error_code: null,
+    error_detail: null,
+    created_at: "2026-06-01T00:00:00Z",
+    updated_at: "2026-06-01T00:00:00Z",
+  };
+
+  test("inserts with queued status and returns a shaped ProcessingJob", async () => {
+    const { client, getCaptured } = makeClientSpy(jobRow);
+    const store = createSupabaseStore(() => client);
+
+    const result = await store.createProcessingJob({
+      sessionId: "sess-1",
+      youtubeId: "dQw4w9WgXcQ",
+      rawInput: "https://www.youtube.com/watch?v=dQw4w9WgXcQ",
+    });
+
+    const captured = getCaptured();
+    expect(captured?.table).toBe("processing_jobs");
+    expect(captured?.insert).toMatchObject({ session_id: "sess-1", youtube_id: "dQw4w9WgXcQ", status: "queued" });
+    expect(result.id).toBe("job-uuid-1");
+    expect(result.status).toBe("queued");
+    expect(result.youtubeId).toBe("dQw4w9WgXcQ");
+    // rawInput is stitched in after the insert (not persisted to DB)
+    expect(result.input).toBe("https://www.youtube.com/watch?v=dQw4w9WgXcQ");
+  });
+
+  test("throws when Supabase returns an error (fail-loud, not silent null)", async () => {
+    const { client } = makeClientSpy({}, { message: "foreign key violation" });
+    const store = createSupabaseStore(() => client);
+
+    await expect(
+      store.createProcessingJob({ sessionId: "sess-1", youtubeId: "abc", rawInput: "https://..." }),
+    ).rejects.toThrow("createProcessingJob failed");
+  });
+});
+
+// ─── updateProcessingJob ──────────────────────────────────────────────────────
+
+describe("updateProcessingJob", () => {
+  const updatedRow = {
+    id: "job-uuid-1",
+    session_id: "sess-1",
+    youtube_id: "dQw4w9WgXcQ",
+    status: "ready",
+    current_step: "ready",
+    error_code: null,
+    error_detail: null,
+    created_at: "2026-06-01T00:00:00Z",
+    updated_at: "2026-06-01T00:01:00Z",
+  };
+
+  test("applies a status patch and returns the updated ProcessingJob", async () => {
+    const { client } = makeClientSpy(updatedRow);
+    const store = createSupabaseStore(() => client);
+
+    const result = await store.updateProcessingJob("job-uuid-1", { status: "ready", currentStep: "ready" });
+
+    expect(result.id).toBe("job-uuid-1");
+    expect(result.status).toBe("ready");
+  });
+
+  test("throws when Supabase returns an error (fail-loud, not silent null)", async () => {
+    const { client } = makeClientSpy({}, { message: "row not found" });
+    const store = createSupabaseStore(() => client);
+
+    await expect(
+      store.updateProcessingJob("missing-id", { status: "ready" }),
+    ).rejects.toThrow("updateProcessingJob failed");
+  });
+});
+
+// ─── upsertAnonymousSession ───────────────────────────────────────────────────
+
+describe("upsertAnonymousSession", () => {
+  const sessionRow = {
+    id: "sess-uuid-1",
+    session_key: "browser-key-abc",
+    first_seen_at: "2026-06-01T00:00:00Z",
+    last_seen_at: "2026-06-01T00:01:00Z",
+  };
+
+  test("upserts atomically and returns it shaped as AnonymousSession", async () => {
+    const { client, getCaptured } = makeClientSpy(sessionRow);
+    const store = createSupabaseStore(() => client);
+
+    const result = await store.upsertAnonymousSession("browser-key-abc");
+
+    const captured = getCaptured();
+    expect(captured?.table).toBe("anonymous_sessions");
+    expect(captured?.upsertOpts).toEqual({ onConflict: "session_key" });
+    expect(result.id).toBe("sess-uuid-1");
+    expect(result.sessionKey).toBe("browser-key-abc");
+  });
+
+  test("throws when Supabase returns an error (fail-loud, not silent null)", async () => {
+    const { client } = makeClientSpy({}, { message: "unique violation" });
+    const store = createSupabaseStore(() => client);
+
+    await expect(store.upsertAnonymousSession("new-key")).rejects.toThrow("upsertAnonymousSession failed");
+  });
+});
+
 // ─── saveQuizResult ───────────────────────────────────────────────────────────
 
 describe("saveQuizResult", () => {

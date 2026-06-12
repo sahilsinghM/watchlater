@@ -126,6 +126,56 @@ describe("fetchTranscript (Supadata)", () => {
 
     expect(await codeOf(() => fetchTranscript("abcdefghijk"))).toBe("NO_CAPTIONS");
   });
+
+  test("raises UNKNOWN when a 200 body fails schema validation (parsed.kind=error branch)", async () => {
+    // Supadata 200 but body doesn't match SupadataSyncResponseSchema →
+    // parseSupadataResponse returns kind='error' → fetchTranscript must throw IngestError UNKNOWN
+    stubFetch(() => ({
+      body: { unexpected_field: "some value" }, // no 'content' key → schema violation
+    }));
+    expect(await codeOf(() => fetchTranscript("abcdefghijk"))).toBe("UNKNOWN");
+  });
+
+  test("raises UNKNOWN when the async job poll response has an unexpected schema", async () => {
+    globalThis.setTimeout = ((fn: () => void) => {
+      fn();
+      return 0 as unknown as ReturnType<typeof setTimeout>;
+    }) as typeof setTimeout;
+
+    stubFetch((url) => {
+      if (url.includes("/transcript/job-bad-schema")) {
+        // SupadataJobResultSchema rejects this (status must be a known literal)
+        return { body: { status: "unknown_status_value" } };
+      }
+      return { status: 202, body: { jobId: "job-bad-schema" } };
+    });
+
+    expect(await codeOf(() => fetchTranscript("abcdefghijk"))).toBe("UNKNOWN");
+  });
+
+  test("raises NO_CAPTIONS when the async job completes but all segments are whitespace-only", async () => {
+    globalThis.setTimeout = ((fn: () => void) => {
+      fn();
+      return 0 as unknown as ReturnType<typeof setTimeout>;
+    }) as typeof setTimeout;
+
+    stubFetch((url) => {
+      if (url.includes("/transcript/job-whitespace")) {
+        return {
+          body: {
+            status: "completed",
+            content: [
+              { text: "   ", offset: 0, duration: 2000, lang: "en" },
+              { text: "\t", offset: 2000, duration: 1000, lang: "en" },
+            ],
+          },
+        };
+      }
+      return { status: 202, body: { jobId: "job-whitespace" } };
+    });
+
+    expect(await codeOf(() => fetchTranscript("abcdefghijk"))).toBe("NO_CAPTIONS");
+  });
 });
 
 describe("fetchOEmbed (metadata)", () => {
