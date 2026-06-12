@@ -8,9 +8,13 @@ import { ToneToggle } from "@/components/ToneToggle";
 import { TutorPanel } from "@/components/TutorPanel";
 import { ShareButton } from "@/components/ShareButton";
 import { VerdictBadge } from "@/components/VerdictBadge";
+import { languageLabel } from "@/lib/language";
 import { WaitlistCard } from "@/components/WaitlistCard";
+import { LessonHeroSkeleton } from "@/components/LessonSkeleton";
 import { lessonQueryOptions } from "@/lib/lessonQuery";
-import { fmtRange, fmtTime, type Tone } from "@/lib/lessonSchema";
+import { fmtRange, fmtTime, type Lesson, type Tone } from "@/lib/lessonSchema";
+
+const SITE = "https://watchlater-sigma.vercel.app";
 
 export const Route = createFileRoute("/lesson/$videoId")({
   loader: ({ context, params }) =>
@@ -18,6 +22,12 @@ export const Route = createFileRoute("/lesson/$videoId")({
   head: () => ({
     meta: [{ title: "Lesson · WatchLater" }],
   }),
+  // Cold loads get the layout-matched skeleton; cache hits resolve inside the
+  // 150ms window so fast loads never flash it, and once shown it holds 300ms
+  // so it never blinks out either.
+  pendingComponent: LessonHeroSkeleton,
+  pendingMs: 150,
+  pendingMinMs: 300,
   component: LessonHero,
 });
 
@@ -55,6 +65,9 @@ function LessonHero() {
             <div className="order-1 space-y-3">
               <span className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground">
                 {lesson.video.channel} · {fmtTime(lesson.video.duration)}
+                {lesson.video.language && !lesson.video.language.toLowerCase().startsWith("en")
+                  ? ` · ${languageLabel(lesson.video.language)}`
+                  : null}
               </span>
               <h1 className="font-display text-3xl sm:text-4xl md:text-5xl font-extrabold leading-[1.05] line-clamp-2 sm:line-clamp-none">
                 {lesson.video.title}

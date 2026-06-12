@@ -77,20 +77,31 @@ export type SupadataErrorResponse = z.infer<typeof SupadataErrorResponseSchema>;
 export type ParsedSupadataResponse =
   | { kind: "sync"; data: SupadataSyncResponse }
   | { kind: "async"; data: SupadataAsyncResponse }
+  | { kind: "unavailable"; status: 206; data: SupadataErrorResponse; raw: unknown }
   | { kind: "error"; status: number; data: SupadataErrorResponse; raw: unknown };
 
 /**
  * Parse and validate a raw Supadata API response at the network boundary.
  * Returns a discriminated union — callers match on `.kind`.
  */
-export function parseSupadataResponse(
-  status: number,
-  body: unknown,
-): ParsedSupadataResponse {
+export function parseSupadataResponse(status: number, body: unknown): ParsedSupadataResponse {
   if (status === 202) {
     const result = SupadataAsyncResponseSchema.safeParse(body);
     if (!result.success) return { kind: "error", status, data: {}, raw: body };
     return { kind: "async", data: result.data };
+  }
+
+  // 206 is Supadata's documented "transcript unavailable" answer — the body is
+  // error-shaped ({ error: "transcript-unavailable", message, ... }) even
+  // though the status is 2xx. It must not fall through to the sync schema.
+  if (status === 206) {
+    const errParsed = SupadataErrorResponseSchema.safeParse(body);
+    return {
+      kind: "unavailable",
+      status,
+      data: errParsed.success ? errParsed.data : {},
+      raw: body,
+    };
   }
 
   if (status >= 200 && status < 300) {

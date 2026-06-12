@@ -49,6 +49,17 @@ const ERROR_FIXTURE_MESSAGE = { message: "Unauthorized", statusCode: 401 };
 const ERROR_FIXTURE_ERROR = { error: "Video not found", statusCode: 404 };
 const ERROR_FIXTURE_UNKNOWN = { unexpected_field: "some_value", code: "WEIRD" };
 
+// HTTP 206 — Supadata's "transcript unavailable" response. The 206 status was
+// hit in production 2026-06-12 (job d1c907ab, video with no native captions);
+// the body mirrors the error format documented at docs.supadata.ai
+// (error / message / details / documentationUrl).
+const UNAVAILABLE_FIXTURE = {
+  error: "transcript-unavailable",
+  message: "Transcript Unavailable",
+  details: "No transcript is available for this video.",
+  documentationUrl: "https://docs.supadata.ai/errors/transcript-unavailable",
+};
+
 // ─── SupadataSegmentSchema ────────────────────────────────────────────────────
 
 describe("SupadataSegmentSchema", () => {
@@ -73,15 +84,15 @@ describe("SupadataSegmentSchema", () => {
   });
 
   test("rejects when offset is a string rather than a number", () => {
-    expect(
-      SupadataSegmentSchema.safeParse({ ...SEGMENT_FIXTURE, offset: "1200" }).success,
-    ).toBe(false);
+    expect(SupadataSegmentSchema.safeParse({ ...SEGMENT_FIXTURE, offset: "1200" }).success).toBe(
+      false,
+    );
   });
 
   test("rejects when duration is a string rather than a number", () => {
-    expect(
-      SupadataSegmentSchema.safeParse({ ...SEGMENT_FIXTURE, duration: "3400" }).success,
-    ).toBe(false);
+    expect(SupadataSegmentSchema.safeParse({ ...SEGMENT_FIXTURE, duration: "3400" }).success).toBe(
+      false,
+    );
   });
 
   test("offset and duration are preserved as numbers (milliseconds, not seconds)", () => {
@@ -294,5 +305,21 @@ describe("parseSupadataResponse", () => {
     expect(result.kind).toBe("error");
     if (result.kind !== "error") return;
     expect(result.status).toBe(202);
+  });
+
+  test("routes HTTP 206 (transcript unavailable) to kind='unavailable', not a schema error", () => {
+    const result = parseSupadataResponse(206, UNAVAILABLE_FIXTURE);
+    expect(result.kind).toBe("unavailable");
+    if (result.kind !== "unavailable") return;
+    expect(result.data.error).toBe("transcript-unavailable");
+    expect(result.data.message).toBe("Transcript Unavailable");
+  });
+
+  test("a 206 with an unrecognised body is still kind='unavailable' with raw preserved", () => {
+    const weird = { something: "else" };
+    const result = parseSupadataResponse(206, weird);
+    expect(result.kind).toBe("unavailable");
+    if (result.kind !== "unavailable") return;
+    expect(result.raw).toEqual(weird);
   });
 });

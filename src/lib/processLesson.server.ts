@@ -1,11 +1,12 @@
 import type { ProcessingJob } from "./mvpFlow";
-import { assessTranscriptQuality } from "./mvpFlow";
+import { assessTranscriptQuality, persistKeyFrames } from "./mvpFlow";
 import { getMvpStore } from "./mvpRuntime.server";
 import { getServerConfig } from "./config.server";
 import { fetchOEmbed, fetchTranscript, IngestError } from "./transcript.server";
 import { generateAnthropicLesson } from "./anthropicLesson.server";
 import { generateOpenAILesson } from "./openaiLesson.server";
 import { buildLesson } from "./buildLesson";
+import { detectVisualDependency } from "./visualContext";
 
 // In-process lesson pipeline. This is the canonical ingest path now that
 // Supadata removes the datacenter-IP blocking that previously forced this work
@@ -73,7 +74,6 @@ export async function processLesson(youtubeId: string, jobId: string): Promise<v
 
     const quality = assessTranscriptQuality({
       durationSeconds: duration,
-      language: languageCode,
       cues,
     });
     if (!quality.ok) throw new IngestError(quality.code, quality.detail);
@@ -103,6 +103,7 @@ export async function processLesson(youtubeId: string, jobId: string): Promise<v
           meta,
           cues,
           durationSeconds: duration,
+          languageCode,
         });
       } else if (config.openaiApiKey) {
         // Fallback: OpenRouter, if no Anthropic key is configured.
@@ -112,6 +113,7 @@ export async function processLesson(youtubeId: string, jobId: string): Promise<v
           model: config.openaiModel,
           meta,
           cues,
+          languageCode,
         });
       } else {
         // No LLM key at all — templated, density-based lesson (no AI).
@@ -145,8 +147,35 @@ export async function processLesson(youtubeId: string, jobId: string): Promise<v
         channel: meta.channel,
         thumbnail: meta.thumbnail,
         duration,
+        language: languageCode,
       },
     };
+
+    // Upsert a videos row so key-frame screenshots have a valid FK target.
+    const videoId = await store.upsertVideo({
+      youtubeId,
+      url: `https://www.youtube.com/watch?v=${youtubeId}`,
+      title: meta.title,
+      channel: meta.channel,
+      thumbnailUrl: meta.thumbnail,
+      durationSeconds: duration,
+      language: languageCode,
+    });
+
+    // Capture is not available server-side (no headless browser). Whether the
+    // lesson degrades gracefully or is marked low-confidence depends on whether
+    // the video is visually dependent.
+    const { isVisuallyDependent } = detectVisualDependency(lesson.segments);
+    const frameResult = await persistKeyFrames(store, {
+      videoId,
+      youtubeId,
+      moments: lesson.keyMoments,
+      captureAvailable: false,
+      visualsEssential: isVisuallyDependent,
+    });
+    const visualContextStatus: "captured" | "degraded" | "unavailable" =
+      frameResult.status === "failed" ? "unavailable" : frameResult.status;
+    lesson = { ...lesson, visualContextStatus };
 
     await store.saveLesson({ youtubeId, lesson });
     await store.updateProcessingJob(jobId, { status: "ready", currentStep: "ready" });

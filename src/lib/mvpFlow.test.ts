@@ -49,7 +49,6 @@ describe("MVP flow", () => {
   test("rejects low-quality transcript data before generation", () => {
     const quality = assessTranscriptQuality({
       durationSeconds: 30 * 60,
-      language: "en",
       cues: [
         { start: 0, dur: 2, text: "intro" },
         { start: 60, dur: 2, text: "intro" },
@@ -71,7 +70,6 @@ describe("MVP flow", () => {
     }));
     const quality = assessTranscriptQuality({
       durationSeconds: 30 * 60,
-      language: "en",
       cues: syntheticCues,
     });
     expect(quality.ok).toBe(false);
@@ -79,8 +77,10 @@ describe("MVP flow", () => {
     expect(quality.code).toBe("TRANSCRIPT_TOO_NOISY");
   });
 
-  // H1: NON_ENGLISH detection — the quality function supports it, ingest must pass the real language
-  test("rejects non-English transcript when actual language code is passed", () => {
+  // The NON_ENGLISH gate is retired (owner decision 2026-06-12): the quality
+  // function judges density/coverage/noise only — language is no longer its
+  // business. Dense non-English transcripts must pass.
+  test("accepts dense non-English transcripts", () => {
     const denseCues = Array.from({ length: 30 }, (_, i) => ({
       start: i * 60,
       dur: 55,
@@ -88,12 +88,9 @@ describe("MVP flow", () => {
     }));
     const quality = assessTranscriptQuality({
       durationSeconds: 30 * 60,
-      language: "ko",
       cues: denseCues,
     });
-    expect(quality.ok).toBe(false);
-    if (quality.ok) throw new Error("expected a failed quality result");
-    expect(quality.code).toBe("NON_ENGLISH");
+    expect(quality.ok).toBe(true);
   });
 
   test("persists minimal key frames and records degraded visual context", async () => {
@@ -113,6 +110,35 @@ describe("MVP flow", () => {
     expect(frames.status).toBe("degraded");
     expect(frames.frames).toHaveLength(3);
     expect(frames.frames[0].storagePath).toContain("dQw4w9WgXcQ");
+  });
+
+  test("marks frames as captured when capture is available", async () => {
+    const store = createMemoryMvpStore();
+    const frames = await persistKeyFrames(store, {
+      videoId: "video_1",
+      youtubeId: "dQw4w9WgXcQ",
+      moments: [{ timestamp: 60, caption: "intro" }],
+      captureAvailable: true,
+      visualsEssential: false,
+    });
+
+    expect(frames.status).toBe("captured");
+    expect(frames.frames[0].status).toBe("captured");
+  });
+
+  test("returns failed status when visuals are essential but capture is unavailable", async () => {
+    const store = createMemoryMvpStore();
+    const frames = await persistKeyFrames(store, {
+      videoId: "video_1",
+      youtubeId: "dQw4w9WgXcQ",
+      moments: [{ timestamp: 60, caption: "demo" }],
+      captureAvailable: false,
+      visualsEssential: true,
+    });
+
+    expect(frames.status).toBe("failed");
+    expect(frames.frames).toHaveLength(0);
+    expect(frames.detail).toBeTruthy();
   });
 
   test("persists only schema-valid generated lessons", async () => {

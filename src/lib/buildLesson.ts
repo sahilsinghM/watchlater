@@ -1,3 +1,7 @@
+// NOTE: this templated fallback only runs when no LLM key is configured (a
+// dev/no-key environment — see processLesson.server.ts). For non-English
+// transcripts it intentionally emits English scaffolding around
+// transcript-language excerpts; the LLM paths handle language properly.
 import type { Lesson, Segment, LessonCard, CardKind } from "./lessonSchema";
 import { Lesson as LessonSchema, fmtRange } from "./lessonSchema";
 
@@ -60,7 +64,8 @@ function trimTo(text: string, max: number): string {
 }
 
 export function buildLesson(meta: Meta, cues: Cue[]): Lesson {
-  if (cues.length === 0) throw new Error("buildLesson requires at least 1 cue — run assessTranscriptQuality first");
+  if (cues.length === 0)
+    throw new Error("buildLesson requires at least 1 cue — run assessTranscriptQuality first");
   const duration = cues.length
     ? Math.max(60, Math.ceil(cues[cues.length - 1].start + (cues[cues.length - 1].dur || 4)))
     : 600;

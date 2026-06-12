@@ -17,6 +17,8 @@ export type MvpErrorCode =
   | "NO_TRANSCRIPT"
   | "TOO_SHORT"
   | "TOO_LONG"
+  // Retired gate (owner decision 2026-06-12: any-language support) — kept so
+  // legacy failed job rows still type-check and render their stored errorCode.
   | "NON_ENGLISH"
   | "TRANSCRIPT_TOO_SPARSE"
   | "TRANSCRIPT_TOO_NOISY"
@@ -53,7 +55,6 @@ export type TranscriptCue = {
 
 export type TranscriptQualityInput = {
   durationSeconds: number;
-  language?: string;
   cues: TranscriptCue[];
 };
 
@@ -133,6 +134,15 @@ export type MvpStore = {
   // side failure look like a stuck queue to the UI.
   getLatestJobByYoutubeId(youtubeId: string): Promise<ProcessingJob | null>;
   updateProcessingJob(id: string, patch: Partial<ProcessingJob>): Promise<ProcessingJob>;
+  upsertVideo(input: {
+    youtubeId: string;
+    url: string;
+    title: string;
+    channel: string;
+    thumbnailUrl: string;
+    durationSeconds: number;
+    language: string;
+  }): Promise<string>; // returns video UUID
   saveKeyFrames(frames: KeyFrame[]): Promise<KeyFrame[]>;
   saveLesson(input: { youtubeId: string; lesson: Lesson }): Promise<Lesson>;
   getLessonByYoutubeId(youtubeId: string): Promise<Lesson | null>;
@@ -215,6 +225,9 @@ export function createMemoryMvpStore(): MvpStore {
       const updated = { ...existing, ...patch, updatedAt: now() };
       jobs.set(jobId, updated);
       return updated;
+    },
+    async upsertVideo({ youtubeId }) {
+      return `video_${youtubeId}`;
     },
     async saveKeyFrames(frames) {
       return frames;
@@ -334,16 +347,6 @@ export function assessTranscriptQuality(input: TranscriptQualityInput): Transcri
   const latestCueEnd = cues.reduce((max, cue) => Math.max(max, cue.start + cue.dur), 0);
   const coverageRatio = input.durationSeconds > 0 ? latestCueEnd / input.durationSeconds : 0;
   const cueDensity = input.durationSeconds > 0 ? cues.length / (input.durationSeconds / 60) : 0;
-
-  if (input.language && !input.language.toLowerCase().startsWith("en")) {
-    return {
-      ok: false,
-      code: "NON_ENGLISH",
-      detail: "Only English videos are supported for the MVP.",
-      coverageRatio,
-      cueDensity,
-    };
-  }
 
   if (cues.length < 12 || cueDensity < 1 || coverageRatio < 0.25) {
     return {

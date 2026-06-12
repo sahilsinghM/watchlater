@@ -62,7 +62,10 @@ export function createSupabaseStore(
       // race that would throw a constraint violation under concurrent SSR requests.
       const { data, error } = await supabase
         .from("anonymous_sessions")
-        .upsert({ session_key: sessionKey, last_seen_at: new Date().toISOString() }, { onConflict: "session_key" })
+        .upsert(
+          { session_key: sessionKey, last_seen_at: new Date().toISOString() },
+          { onConflict: "session_key" },
+        )
         .select("*")
         .single();
       if (error || !data) throw new Error("upsertAnonymousSession failed");
@@ -136,6 +139,29 @@ export function createSupabaseStore(
         .single();
       if (error || !data) throw new Error("updateProcessingJob failed");
       return parseProcessingJob(data);
+    },
+
+    async upsertVideo({ youtubeId, url, title, channel, thumbnailUrl, durationSeconds, language }) {
+      const supabase = getSupabaseAdmin();
+      const { data } = await supabase
+        .from("videos")
+        .upsert(
+          {
+            youtube_id: youtubeId,
+            url,
+            title,
+            channel,
+            thumbnail_url: thumbnailUrl,
+            duration_seconds: durationSeconds,
+            language,
+            support_status: "supported",
+            metadata: {},
+          },
+          { onConflict: "youtube_id" },
+        )
+        .select("id")
+        .single();
+      return data!.id;
     },
 
     async saveKeyFrames(frames) {

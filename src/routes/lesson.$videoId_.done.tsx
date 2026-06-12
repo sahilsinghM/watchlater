@@ -5,7 +5,8 @@ import { useEffect, useState } from "react";
 import { Brand, mascot } from "@/components/Brand";
 import { ShareButton } from "@/components/ShareButton";
 import { lessonQueryOptions } from "@/lib/lessonQuery";
-import { fmtRange } from "@/lib/lessonSchema";
+import { fmtRange, fmtTime } from "@/lib/lessonSchema";
+import { MasteryCelebration } from "@/components/MasteryCelebration";
 import { getBrowserSessionKey } from "@/lib/anonymousSession";
 import { submitFeedback } from "@/lib/feedback.functions";
 import { captureLead, hasCapturedLead, isLikelyEmail } from "@/lib/lead";
@@ -27,8 +28,6 @@ function Done() {
   const { videoId } = Route.useParams();
   const { score, total } = Route.useSearch();
   const { data: lesson } = useSuspenseQuery(lessonQueryOptions(videoId));
-  const pct = Math.round((score / total) * 100);
-  const label = pct >= 80 ? "Mastered" : pct >= 50 ? "Solid grasp" : "Worth a re-read";
   const [feedbackState, setFeedbackState] = useState<"idle" | "saving" | "saved" | "error">("idle");
   const [reason, setReason] = useState("");
   const [name, setName] = useState("");
@@ -87,19 +86,15 @@ function Done() {
           Lesson complete.
         </h1>
         <p className="text-muted-foreground">
-          You moved through a {Math.floor(lesson.video.duration / 60)}-minute video in 5 minutes.
+          You moved through {fmtTime(lesson.video.duration)} of video in 5 minutes.
         </p>
 
-        <div className="rounded-[32px] brutal-border bg-card p-5 sm:p-8 brutal-shadow space-y-3">
-          <div className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground">
-            Mastery
-          </div>
-          <div className="font-display text-6xl font-extrabold text-primary">{pct}%</div>
-          <div className="font-display text-lg font-bold">{label}</div>
-          <p className="text-sm text-muted-foreground">
-            You got {score} of {total} correct.
-          </p>
-        </div>
+        <MasteryCelebration
+          score={score}
+          total={total}
+          videoTitle={lesson.video.title}
+          sharePath={`/lesson/${videoId}`}
+        />
 
         <div className="rounded-3xl brutal-border bg-card p-5 sm:p-6 text-left space-y-3 brutal-shadow-sm">
           <div className="font-mono text-[10px] uppercase tracking-widest text-primary font-bold">
@@ -203,7 +198,7 @@ function Done() {
           <ShareButton
             path={`/lesson/${videoId}`}
             title={lesson.video.title}
-            text="Learn this video in 5 minutes with VideoSense."
+            text="Learn this video in 5 minutes with WatchLater."
             className="text-sm"
           />
           <Link

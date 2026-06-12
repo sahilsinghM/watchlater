@@ -252,9 +252,11 @@ const ERROR_COPY: Record<IngestErrorCode, { title: string; body: string }> = {
     title: "This video is too long",
     body: "WatchLater supports videos up to 12 hours. If your video is longer than that, we're impressed you were going to watch it.",
   },
+  // Retired gate — only legacy failed job rows still carry this code. A retry
+  // rebuilds the lesson: requestLesson treats a failed latest job as stale.
   NON_ENGLISH: {
-    title: "This video is not English",
-    body: "The MVP only supports English videos with usable English transcripts.",
+    title: "This lesson was built before language support",
+    body: "WatchLater now supports videos in any language. Paste the link again to rebuild this lesson.",
   },
   TRANSCRIPT_TOO_SPARSE: {
     title: "The transcript is too thin",
