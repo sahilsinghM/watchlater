@@ -62,7 +62,7 @@ export function LessonCardView({ card, tone, onSeek }: Props) {
             <button
               type="button"
               onClick={() => onSeek(card.timestamp!)}
-              className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground hover:text-primary transition"
+              className="inline-flex min-h-[44px] items-center font-mono text-[10px] uppercase tracking-widest text-muted-foreground hover:text-primary transition"
             >
               @ {fmtTime(card.timestamp)} ↗
             </button>
