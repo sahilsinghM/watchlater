@@ -9,6 +9,7 @@ import { TutorPanel } from "@/components/TutorPanel";
 import { ShareButton } from "@/components/ShareButton";
 import { VerdictBadge } from "@/components/VerdictBadge";
 import { WaitlistCard } from "@/components/WaitlistCard";
+import { LessonHeroSkeleton } from "@/components/LessonSkeleton";
 import { lessonQueryOptions } from "@/lib/lessonQuery";
 import { fmtRange, fmtTime, type Tone } from "@/lib/lessonSchema";
 
@@ -18,6 +19,12 @@ export const Route = createFileRoute("/lesson/$videoId")({
   head: () => ({
     meta: [{ title: "Lesson · WatchLater" }],
   }),
+  // Cold loads get the layout-matched skeleton; cache hits resolve inside the
+  // 150ms window so fast loads never flash it, and once shown it holds 300ms
+  // so it never blinks out either.
+  pendingComponent: LessonHeroSkeleton,
+  pendingMs: 150,
+  pendingMinMs: 300,
   component: LessonHero,
 });
 
