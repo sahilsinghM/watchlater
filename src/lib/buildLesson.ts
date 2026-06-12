@@ -48,7 +48,7 @@ function pickCards(cues: Cue[], duration: number): Cue[] {
   const out: Cue[] = [];
   const stride = Math.max(1, Math.floor(sorted.length / 6));
   for (let i = 0; out.length < 6 && i < sorted.length; i += stride) out.push(sorted[i]);
-  // Pad if we still don't have 6
+  // Pad with real cues when fewer than 6 fall in the quality band.
   while (out.length < 6 && cues.length > 0)
     out.push(cues[Math.min(cues.length - 1, out.length * 10)]);
   return out.slice(0, 6);
@@ -60,6 +60,7 @@ function trimTo(text: string, max: number): string {
 }
 
 export function buildLesson(meta: Meta, cues: Cue[]): Lesson {
+  if (cues.length === 0) throw new Error("buildLesson requires at least 1 cue — run assessTranscriptQuality first");
   const duration = cues.length
     ? Math.max(60, Math.ceil(cues[cues.length - 1].start + (cues[cues.length - 1].dur || 4)))
     : 600;

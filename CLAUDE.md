@@ -2,6 +2,12 @@
 
 Guidance for any agent working in this repo. **Read before touching UI.**
 
+## Content Integrity
+
+Never invent or fabricate content. If source material (chapter text, essay
+file, transcript) is empty or truncated, **STOP and report this to the user**
+rather than generating content to fill the gap.
+
 ## What this is
 
 WatchLater turns a long YouTube video into a playful, interactive **5-minute
@@ -71,7 +77,31 @@ aesthetic; soft shadows on chrome; glass/neumorphism; mascot-free identity;
 replacing the fonts or palette; decorative emoji. Any of these is a design
 regression — flag it instead of shipping it.
 
-## Workflow notes
+## Development Workflow
 
 - Package manager: `bun` (`bun install`, `bun run dev`, `bun run build`, `bun test`, `bun run lint`).
 - Keep the four signal colours semantically consistent: skip→muted, watch→blue, core→amber, demo/correct→green, wrong/error→red.
+- **Strict TDD for all feature work:** write failing tests first, implement to
+  make them pass, then run the full test suite (`bun test`) and build
+  (`bun run build`) before opening a PR.
+- Follow the pipeline: **PRD → issues → TDD → QA → review → ship**.
+
+## Security checklist
+
+- Before every commit, verify `.env` and any secrets files are gitignored.
+  Never commit real credentials or service-role keys (one leaked to the public
+  repo before — do not repeat this).
+- Confirm DB migrations are applied to the **remote** database before declaring
+  a persistence feature complete. Local-only migration = unshipped feature.
+
+## Known Issues / Gotchas
+
+- **YouTube transcript ingestion fails on datacenter IPs** (Vercel, Replicate,
+  etc.) due to IP blocking — this is not a code bug. Route through a proxy
+  (Supadata) rather than re-attempting headless Chrome scraping.
+
+## QA / Browser Testing
+
+- When generating screenshots or mockups for the user, capture to `/tmp` and
+  serve over HTTP so the user can actually view them — do not render only in
+  your own view.

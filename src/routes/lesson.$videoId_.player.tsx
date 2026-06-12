@@ -6,6 +6,7 @@ import { LessonCardView } from "@/components/LessonCard";
 import { YouTubeEmbed, type YouTubePlayerHandle } from "@/components/YouTubeEmbed";
 import { ToneToggle } from "@/components/ToneToggle";
 import { TutorPanel } from "@/components/TutorPanel";
+import { LessonPlayerSkeleton } from "@/components/LessonSkeleton";
 import { lessonQueryOptions } from "@/lib/lessonQuery";
 import { fmtTime, type Tone } from "@/lib/lessonSchema";
 
@@ -13,6 +14,10 @@ export const Route = createFileRoute("/lesson/$videoId_/player")({
   loader: ({ context, params }) =>
     context.queryClient.ensureQueryData(lessonQueryOptions(params.videoId)),
   head: () => ({ meta: [{ title: "Lesson · WatchLater" }] }),
+  // Same flash guard as the hero route: skeleton only past 150ms, then holds.
+  pendingComponent: LessonPlayerSkeleton,
+  pendingMs: 150,
+  pendingMinMs: 300,
   component: Player,
 });
 

@@ -12,6 +12,10 @@ import type { Lesson } from "./lessonSchema";
 import { getSupabaseAdmin } from "./supabase-admin.server";
 import type { Database } from "./database.types";
 
+// Minimal structural type for the Supabase client used internally.
+// Exported so tests can build a compatible spy without importing the real client.
+export type SupabaseClientLike = ReturnType<typeof getSupabaseAdmin>;
+
 // Generated row shapes — the compile-checked boundary between Postgres and
 // the domain types. Regenerate after migrations with `bun run gen:db-types`.
 type Tables = Database["public"]["Tables"];
@@ -48,34 +52,25 @@ function parseProcessingJob(row: JobRow & { input?: string }): ProcessingJob {
   };
 }
 
-export function createSupabaseStore(): MvpStore {
+export function createSupabaseStore(
+  getClient: () => SupabaseClientLike = getSupabaseAdmin,
+): MvpStore {
   return {
     async upsertAnonymousSession(sessionKey) {
-      const supabase = getSupabaseAdmin();
-      const { data: existing } = await supabase
+      const supabase = getClient();
+      // Atomic upsert on the unique session_key — avoids a SELECT-then-INSERT
+      // race that would throw a constraint violation under concurrent SSR requests.
+      const { data, error } = await supabase
         .from("anonymous_sessions")
-        .select("*")
-        .eq("session_key", sessionKey)
-        .maybeSingle();
-      if (existing) {
-        const { data } = await supabase
-          .from("anonymous_sessions")
-          .update({ last_seen_at: new Date().toISOString() })
-          .eq("id", existing.id)
-          .select("*")
-          .single();
-        return parseAnonymousSession(data ?? existing);
-      }
-      const { data } = await supabase
-        .from("anonymous_sessions")
-        .insert({ session_key: sessionKey })
+        .upsert({ session_key: sessionKey, last_seen_at: new Date().toISOString() }, { onConflict: "session_key" })
         .select("*")
         .single();
-      return parseAnonymousSession(data!);
+      if (error || !data) throw new Error("upsertAnonymousSession failed");
+      return parseAnonymousSession(data);
     },
 
     async getAnonymousSession(sessionKey) {
-      const supabase = getSupabaseAdmin();
+      const supabase = getClient();
       const { data } = await supabase
         .from("anonymous_sessions")
         .select("*")
@@ -85,8 +80,8 @@ export function createSupabaseStore(): MvpStore {
     },
 
     async createProcessingJob({ sessionId, youtubeId, rawInput }) {
-      const supabase = getSupabaseAdmin();
-      const { data } = await supabase
+      const supabase = getClient();
+      const { data, error } = await supabase
         .from("processing_jobs")
         .insert({
           session_id: sessionId,
@@ -96,12 +91,13 @@ export function createSupabaseStore(): MvpStore {
         })
         .select("*")
         .single();
-      const row = { ...data!, input: rawInput };
+      if (error || !data) throw new Error("createProcessingJob failed");
+      const row = { ...data, input: rawInput };
       return parseProcessingJob(row);
     },
 
     async getProcessingJob(id) {
-      const supabase = getSupabaseAdmin();
+      const supabase = getClient();
       const { data } = await supabase
         .from("processing_jobs")
         .select("*")
@@ -111,7 +107,7 @@ export function createSupabaseStore(): MvpStore {
     },
 
     async getLatestJobByYoutubeId(youtubeId) {
-      const supabase = getSupabaseAdmin();
+      const supabase = getClient();
       // No status filter: failed jobs must be visible so the processing page
       // can show their dedicated error copy instead of spinning to a generic
       // timeout (see MvpStore.getLatestJobByYoutubeId).
@@ -126,23 +122,24 @@ export function createSupabaseStore(): MvpStore {
     },
 
     async updateProcessingJob(id, patch) {
-      const supabase = getSupabaseAdmin();
+      const supabase = getClient();
       const updates: Tables["processing_jobs"]["Update"] = { updated_at: new Date().toISOString() };
       if (patch.status) updates.status = patch.status;
       if (patch.currentStep) updates.current_step = patch.currentStep;
       if (patch.errorCode !== undefined) updates.error_code = patch.errorCode;
       if (patch.errorDetail !== undefined) updates.error_detail = patch.errorDetail;
-      const { data } = await supabase
+      const { data, error } = await supabase
         .from("processing_jobs")
         .update(updates)
         .eq("id", id)
         .select("*")
         .single();
-      return parseProcessingJob(data!);
+      if (error || !data) throw new Error("updateProcessingJob failed");
+      return parseProcessingJob(data);
     },
 
     async saveKeyFrames(frames) {
-      const supabase = getSupabaseAdmin();
+      const supabase = getClient();
       const rows = frames.map((f) => ({
         video_id: f.videoId,
         timestamp_seconds: f.timestamp,
@@ -163,8 +160,7 @@ export function createSupabaseStore(): MvpStore {
     },
 
     async saveLesson({ youtubeId, lesson }) {
-      const supabase = getSupabaseAdmin();
-      const videoId = `${youtubeId}_v1`;
+      const supabase = getClient();
       const { data: existingLesson } = await supabase
         .from("lessons")
         .select("id, video_id")
@@ -191,7 +187,7 @@ export function createSupabaseStore(): MvpStore {
     },
 
     async getLessonByYoutubeId(youtubeId) {
-      const supabase = getSupabaseAdmin();
+      const supabase = getClient();
       const { data } = await supabase
         .from("lessons")
         .select("lesson_json, updated_at")
@@ -203,8 +199,8 @@ export function createSupabaseStore(): MvpStore {
     },
 
     async saveQuizResult(input) {
-      const supabase = getSupabaseAdmin();
-      const { data } = await supabase
+      const supabase = getClient();
+      const { data, error } = await supabase
         .from("quiz_results")
         .insert({
           lesson_id: null, // UUID FK — we don't expose the DB UUID; lesson_video_id is the lookup key
@@ -216,20 +212,21 @@ export function createSupabaseStore(): MvpStore {
         })
         .select("*")
         .single();
+      if (error || !data) throw new Error("saveQuizResult failed");
       return {
-        id: data!.id,
-        lessonId: data!.lesson_video_id ?? input.lessonId,
-        sessionId: data!.session_id ?? "",
-        answers: (data!.answers as number[] | null) ?? [],
-        score: data!.score,
-        total: data!.total,
-        completedAt: data!.completed_at,
+        id: data.id,
+        lessonId: data.lesson_video_id ?? input.lessonId,
+        sessionId: data.session_id ?? "",
+        answers: (data.answers as number[] | null) ?? [],
+        score: data.score,
+        total: data.total,
+        completedAt: data.completed_at,
       };
     },
 
     async saveFeedback(input) {
-      const supabase = getSupabaseAdmin();
-      const { data } = await supabase
+      const supabase = getClient();
+      const { data, error } = await supabase
         .from("feedback")
         .insert({
           lesson_id: null, // UUID FK — lesson_video_id is the lookup key
@@ -243,20 +240,21 @@ export function createSupabaseStore(): MvpStore {
         })
         .select("*")
         .single();
+      if (error || !data) throw new Error("saveFeedback failed");
       return {
-        id: data!.id,
-        lessonId: data!.lesson_video_id ?? input.lessonId,
-        sessionId: data!.session_id ?? "",
-        useful: data!.useful,
-        reason: data!.reason ?? undefined,
-        name: data!.name ?? undefined,
-        email: data!.email ?? undefined,
-        source: data!.source as Feedback["source"],
-        createdAt: data!.created_at,
+        id: data.id,
+        lessonId: data.lesson_video_id ?? input.lessonId,
+        sessionId: data.session_id ?? "",
+        useful: data.useful,
+        reason: data.reason ?? undefined,
+        name: data.name ?? undefined,
+        email: data.email ?? undefined,
+        source: data.source as Feedback["source"],
+        createdAt: data.created_at,
       };
     },
     async saveLead(input) {
-      const supabase = getSupabaseAdmin();
+      const supabase = getClient();
       // Upsert on the unique email so the same person is captured once; a later
       // touch refreshes source/session/video but keeps the original row.
       const { data, error } = await supabase
