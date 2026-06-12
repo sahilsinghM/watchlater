@@ -1,4 +1,5 @@
 import { Lesson as LessonSchema, type Lesson } from "./lessonSchema";
+import { languageDirective } from "./lessonPrompt";
 import type { Cue, Meta } from "./buildLesson";
 
 function transcriptExcerpt(cues: Cue[]): string {
@@ -17,6 +18,7 @@ export async function generateOpenAILesson(input: {
   model?: string;
   meta: Meta;
   cues: Cue[];
+  languageCode: string;
 }): Promise<Lesson> {
   const model = input.model ?? "gpt-4.1-mini";
   const response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
@@ -33,7 +35,8 @@ export async function generateOpenAILesson(input: {
         {
           role: "system",
           content:
-            "You generate trustworthy WatchLater lessons. Return only valid JSON. Do not wrap it in markdown. Ground major claims in transcript timestamps. Be blunt but not snarky about low-value videos.",
+            "You generate trustworthy WatchLater lessons. Return only valid JSON. Do not wrap it in markdown. Ground major claims in transcript timestamps. Be blunt but not snarky about low-value videos. " +
+            languageDirective(input.languageCode),
         },
         {
           role: "user",
@@ -66,6 +69,7 @@ export async function generateOpenAILesson(input: {
               tutorSeed: "source-grounded suggested Q/A pairs",
             },
             meta: input.meta,
+            transcriptLanguage: input.languageCode,
             transcript: transcriptExcerpt(input.cues),
           }),
         },

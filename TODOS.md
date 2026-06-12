@@ -26,6 +26,11 @@ Deferred scope from /autoplan review (2026-06-05, commit fed6eeb).
 - [ ] **Watch/Skim/Archive/Not-relevant decisions** — captured to Supabase for taste model seeding
 - [ ] **Phase B.2: account creation** — optional email to persist decision history across browsers
 
+## Multilingual follow-ups (any-language support shipped 2026-06-12)
+
+- [ ] **Tutor heuristic is English-tokenized** — `mvpFlow.ts` `answerTutorQuestion` matches `\b(watch|worth|skip|...)\b` and splits on `\W+`; CJK questions tokenize to nothing and always get the English fallback answer. Fix belongs with a future live-tutor server fn (`lesson.video.language` is the hook).
+- [ ] **OG image fonts are Latin-only** — `ogImage.server.ts` loads Plus Jakarta Sans + Inter only; CJK/Devanagari titles render tofu. Subset a Noto fallback or serve the generic brand card for non-Latin titles.
+
 ## Ingest reliability
 
 - [ ] **saveLesson silently swallows DB errors** — `supabaseStore.server.ts:saveLesson` — both the `update` and `insert` branches discard the Supabase `error` return; a failed lesson save appears successful, job status goes `completed`, then the lesson page returns 404. Add `if (error || !data) throw new Error("saveLesson failed")` to both branches (pre-existing, out of scope for chore/test-debt-and-chrome-fixes).

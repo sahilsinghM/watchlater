@@ -57,6 +57,9 @@ export const Lesson = z.object({
     duration: z.number(), // seconds
     publishedAt: z.string().optional(),
     thumbnail: z.string(),
+    // Transcript language (BCP-47-ish code from Supadata). Optional: lessons
+    // persisted before any-language support (2026-06-12) don't carry it.
+    language: z.string().optional(),
   }),
   watchScore: z.number(), // 0-10
   scoreReason: z.string(),

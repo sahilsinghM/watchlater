@@ -1,3 +1,7 @@
+// NOTE: this templated fallback only runs when no LLM key is configured (a
+// dev/no-key environment — see processLesson.server.ts). For non-English
+// transcripts it intentionally emits English scaffolding around
+// transcript-language excerpts; the LLM paths handle language properly.
 import type { Lesson, Segment, LessonCard, CardKind } from "./lessonSchema";
 import { Lesson as LessonSchema, fmtRange } from "./lessonSchema";
 

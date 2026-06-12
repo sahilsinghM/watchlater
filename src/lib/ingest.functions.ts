@@ -12,6 +12,8 @@ export type IngestErrorCode =
   | "NOT_FOUND"
   | "TOO_SHORT"
   | "TOO_LONG"
+  // Retired gate (any-language support, 2026-06-12) — legacy failed job rows
+  // still carry this code, so ERROR_COPY keeps an entry for it.
   | "NON_ENGLISH"
   | "TRANSCRIPT_TOO_SPARSE"
   | "TRANSCRIPT_TOO_NOISY"

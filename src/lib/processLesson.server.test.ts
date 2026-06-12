@@ -15,6 +15,7 @@ const realAnthropic = { ...anthropicNs };
 const realOpenAI = { ...openaiNs };
 import { IngestError } from "./transcript.server";
 import type { Cue } from "./buildLesson";
+import { sampleLesson } from "@/data/sampleLesson";
 
 // processLesson is the inline ingest orchestrator. Its observable contract is
 // the sequence of job-status transitions it drives and the errorCode it
@@ -42,7 +43,7 @@ function shortCues(): Cue[] {
 
 function makeStore() {
   const updates: Array<Record<string, unknown>> = [];
-  const saved: Array<{ youtubeId: string }> = [];
+  const saved: Array<{ youtubeId: string; lesson?: Record<string, unknown> }> = [];
   return {
     updates,
     saved,
@@ -52,7 +53,7 @@ function makeStore() {
       },
       upsertVideo: async () => "video_test_id",
       saveKeyFrames: async (frames: unknown[]) => frames,
-      saveLesson: async (x: { youtubeId: string }) => {
+      saveLesson: async (x: { youtubeId: string; lesson?: Record<string, unknown> }) => {
         saved.push(x);
       },
     },
@@ -62,7 +63,7 @@ function makeStore() {
 type Scenario = {
   fetchTranscript: () => Promise<{ cues: Cue[]; languageCode: string }>;
   config: Record<string, unknown>;
-  anthropic: () => Promise<unknown>;
+  anthropic: (input?: Record<string, unknown>) => Promise<unknown>;
   store: ReturnType<typeof makeStore>["store"];
 };
 
@@ -90,7 +91,7 @@ beforeEach(() => {
   mock.module("./config.server", () => ({ getServerConfig: () => scenario.config }));
   mock.module("./mvpRuntime.server", () => ({ getMvpStore: () => scenario.store }));
   mock.module("./anthropicLesson.server", () => ({
-    generateAnthropicLesson: () => scenario.anthropic(),
+    generateAnthropicLesson: (input: Record<string, unknown>) => scenario.anthropic(input),
   }));
   mock.module("./openaiLesson.server", () => ({
     generateOpenAILesson: async () => {
@@ -161,6 +162,37 @@ describe("processLesson", () => {
     expect(lastUpdate().status).toBe("failed");
     expect(lastUpdate().errorCode).toBe("GENERATION_FAILURE");
     expect(bag.saved).toHaveLength(0);
+  });
+
+  // NON_ENGLISH is retired: a dense Korean transcript flows through the same
+  // pipeline as English and reaches ready (templated path here — no LLM keys).
+  test("a non-English transcript proceeds to ready", async () => {
+    scenario.fetchTranscript = async () => ({
+      cues: denseCues().map((c, i) => ({ ...c, text: `한국어 자막 줄 ${i} 내용입니다` })),
+      languageCode: "ko",
+    });
+    const { processLesson } = await import("./processLesson.server");
+    await processLesson("abcdefghijk", "job_1");
+
+    expect(lastUpdate().status).toBe("ready");
+    expect(bag.saved).toHaveLength(1);
+  });
+
+  test("languageCode flows into Anthropic generation and onto the saved lesson", async () => {
+    scenario.fetchTranscript = async () => ({ cues: denseCues(), languageCode: "ko" });
+    scenario.config = { anthropicApiKey: "k" };
+    let capturedInput: Record<string, unknown> | undefined;
+    scenario.anthropic = async (input) => {
+      capturedInput = input;
+      return sampleLesson;
+    };
+    const { processLesson } = await import("./processLesson.server");
+    await processLesson("abcdefghijk", "job_1");
+
+    expect(lastUpdate().status).toBe("ready");
+    expect(capturedInput?.languageCode).toBe("ko");
+    const savedLesson = bag.saved[0].lesson as { video: { language?: string } };
+    expect(savedLesson.video.language).toBe("ko");
   });
 
   test("an off-schema generation (zod issues) maps to GENERATION_SCHEMA_INVALID", async () => {
