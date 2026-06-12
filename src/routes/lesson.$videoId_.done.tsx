@@ -6,6 +6,7 @@ import { Brand, mascot } from "@/components/Brand";
 import { ShareButton } from "@/components/ShareButton";
 import { lessonQueryOptions } from "@/lib/lessonQuery";
 import { fmtRange, fmtTime } from "@/lib/lessonSchema";
+import { masteryResult } from "@/lib/mastery";
 import { MasteryCelebration } from "@/components/MasteryCelebration";
 import { getBrowserSessionKey } from "@/lib/anonymousSession";
 import { submitFeedback } from "@/lib/feedback.functions";
@@ -27,6 +28,7 @@ export const Route = createFileRoute("/lesson/$videoId_/done")({
 function Done() {
   const { videoId } = Route.useParams();
   const { score, total } = Route.useSearch();
+  const mastery = masteryResult(score, total);
   const { data: lesson } = useSuspenseQuery(lessonQueryOptions(videoId));
   const [feedbackState, setFeedbackState] = useState<"idle" | "saving" | "saved" | "error">("idle");
   const [reason, setReason] = useState("");
@@ -89,27 +91,52 @@ function Done() {
           You moved through {fmtTime(lesson.video.duration)} of video in 5 minutes.
         </p>
 
-        <MasteryCelebration
-          score={score}
-          total={total}
-          videoTitle={lesson.video.title}
-          sharePath={`/lesson/${videoId}`}
-        />
+        <div className="animate-card-in" style={{ animationDelay: "0ms" }}>
+          <MasteryCelebration
+            score={score}
+            total={total}
+            videoTitle={lesson.video.title}
+            sharePath={`/lesson/${videoId}`}
+          />
+        </div>
 
-        <div className="rounded-3xl brutal-border bg-card p-5 sm:p-6 text-left space-y-3 brutal-shadow-sm">
+        {mastery.tier === "low" && (
+          <div className="rounded-[32px] brutal-border bg-secondary/10 p-5 sm:p-6 text-left space-y-4 brutal-shadow-sm animate-card-in" style={{ animationDelay: "100ms" }}>
+            <div className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground font-bold">
+              Worth another try
+            </div>
+            <p className="font-display text-xl font-extrabold">
+              You got {score}/{total}. Want to try again?
+            </p>
+            <Link
+              to="/lesson/$videoId/quiz"
+              params={{ videoId }}
+              className="inline-flex items-center min-h-[44px] rounded-2xl bg-secondary text-secondary-foreground brutal-border px-5 py-3 font-display font-bold brutal-shadow-sm hover:-translate-y-0.5 hover:-translate-x-0.5 active:translate-x-0 active:translate-y-0.5 transition"
+            >
+              Try the quiz again →
+            </Link>
+          </div>
+        )}
+
+        <div className="rounded-3xl brutal-border bg-card p-5 sm:p-6 text-left space-y-3 brutal-shadow-sm animate-card-in" style={{ animationDelay: "200ms" }}>
           <div className="font-mono text-[10px] uppercase tracking-widest text-primary font-bold">
             If you want more
           </div>
           <p className="text-base">
             Watch{" "}
-            <span className="font-bold">
+            <Link
+              to="/lesson/$videoId/player"
+              params={{ videoId }}
+              search={{ t: lesson.bestPart.start }}
+              className="font-bold underline decoration-primary hover:text-primary transition"
+            >
               {fmtRange(lesson.bestPart.start, lesson.bestPart.end)}
-            </span>{" "}
+            </Link>{" "}
             in the video. That's the section where the argument really lands.
           </p>
         </div>
 
-        <div className="rounded-3xl brutal-border bg-card p-5 sm:p-6 text-left space-y-4 brutal-shadow-sm">
+        <div className="rounded-3xl brutal-border bg-card p-5 sm:p-6 text-left space-y-4 brutal-shadow-sm animate-card-in" style={{ animationDelay: "300ms" }}>
           <div className="font-mono text-[10px] uppercase tracking-widest text-primary font-bold">
             Was this useful?
           </div>
@@ -117,7 +144,7 @@ function Done() {
             value={reason}
             onChange={(event) => setReason(event.target.value)}
             placeholder="Optional note"
-            className="min-h-20 w-full resize-none rounded-2xl border-2 border-foreground/15 bg-background px-4 py-3 text-sm outline-none focus:border-foreground"
+            className="min-h-20 w-full resize-none rounded-2xl brutal-border bg-background px-4 py-3 text-sm outline-none focus:ring-0 focus:shadow-[4px_4px_0_var(--foreground)]"
           />
           <div className="space-y-2">
             <div className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground font-bold">
@@ -131,7 +158,7 @@ function Done() {
                   onChange={(event) => setName(event.target.value)}
                   placeholder="Your name (optional)"
                   autoComplete="name"
-                  className="w-full rounded-2xl border-2 border-foreground/15 bg-background px-4 py-3 text-sm outline-none focus:border-foreground"
+                  className="w-full rounded-2xl brutal-border bg-background px-4 py-3 text-sm outline-none focus:ring-0 focus:shadow-[4px_4px_0_var(--foreground)]"
                 />
                 <p className="self-center font-display text-sm font-extrabold">
                   <span className="text-accent">✓</span> You're on the early-access list.
@@ -146,7 +173,7 @@ function Done() {
                     onChange={(event) => setName(event.target.value)}
                     placeholder="Your name (optional)"
                     autoComplete="name"
-                    className="w-full rounded-2xl border-2 border-foreground/15 bg-background px-4 py-3 text-sm outline-none focus:border-foreground"
+                    className="w-full rounded-2xl brutal-border bg-background px-4 py-3 text-sm outline-none focus:ring-0 focus:shadow-[4px_4px_0_var(--foreground)]"
                   />
                   <input
                     type="email"
@@ -157,41 +184,42 @@ function Done() {
                     }}
                     placeholder="you@email.com (optional)"
                     autoComplete="email"
-                    className="w-full rounded-2xl border-2 border-foreground/15 bg-background px-4 py-3 text-sm outline-none focus:border-foreground"
+                    className="w-full rounded-2xl brutal-border bg-background px-4 py-3 text-sm outline-none focus:ring-0 focus:shadow-[4px_4px_0_var(--foreground)]"
                   />
                 </div>
                 {emailError && <p className="text-sm text-destructive font-medium">{emailError}</p>}
               </>
             )}
           </div>
-          <div className="flex flex-wrap gap-3">
-            <button
-              type="button"
-              onClick={() => leaveFeedback(true)}
-              disabled={feedbackState === "saving" || feedbackState === "saved"}
-              className="rounded-2xl bg-accent text-accent-foreground brutal-border px-5 py-3 font-display font-bold brutal-shadow-sm disabled:opacity-50"
-            >
-              Useful
-            </button>
-            <button
-              type="button"
-              onClick={() => leaveFeedback(false)}
-              disabled={feedbackState === "saving" || feedbackState === "saved"}
-              className="rounded-2xl bg-card brutal-border px-5 py-3 font-bold disabled:opacity-50"
-            >
-              Not useful
-            </button>
-            {feedbackState === "saved" && (
-              <span className="self-center font-mono text-[10px] uppercase tracking-widest text-accent font-bold">
-                Saved
-              </span>
-            )}
-            {feedbackState === "error" && (
-              <span className="self-center font-mono text-[10px] uppercase tracking-widest text-destructive font-bold">
-                Could not save
-              </span>
-            )}
-          </div>
+          {feedbackState === "saved" ? (
+            <div className="rounded-2xl bg-accent/10 brutal-border p-3 font-mono text-[10px] uppercase tracking-widest text-accent font-bold">
+              ✓ Feedback received — thanks
+            </div>
+          ) : (
+            <div className="flex flex-wrap gap-3">
+              <button
+                type="button"
+                onClick={() => leaveFeedback(true)}
+                disabled={feedbackState === "saving"}
+                className="min-h-[44px] rounded-2xl bg-accent text-accent-foreground brutal-border px-5 py-3 font-display font-bold brutal-shadow-sm hover:-translate-y-0.5 hover:-translate-x-0.5 active:translate-x-0 active:translate-y-0.5 transition disabled:opacity-50 disabled:hover:translate-x-0 disabled:hover:translate-y-0"
+              >
+                Useful
+              </button>
+              <button
+                type="button"
+                onClick={() => leaveFeedback(false)}
+                disabled={feedbackState === "saving"}
+                className="min-h-[44px] rounded-2xl bg-card brutal-border px-5 py-3 font-bold brutal-shadow-sm hover:-translate-y-0.5 hover:-translate-x-0.5 hover:bg-foreground hover:text-background active:translate-x-0 active:translate-y-0.5 transition disabled:opacity-50 disabled:hover:translate-x-0 disabled:hover:translate-y-0"
+              >
+                Not useful
+              </button>
+              {feedbackState === "error" && (
+                <span className="self-center font-mono text-[10px] uppercase tracking-widest text-destructive font-bold">
+                  Could not save
+                </span>
+              )}
+            </div>
+          )}
         </div>
 
         <div className="flex flex-wrap justify-center gap-3 pt-2">
@@ -204,13 +232,13 @@ function Done() {
           <Link
             to="/lesson/$videoId"
             params={{ videoId }}
-            className="inline-flex items-center rounded-2xl bg-card brutal-border px-5 py-3 font-bold text-sm hover:-translate-y-0.5 transition"
+            className="inline-flex items-center min-h-[44px] rounded-2xl bg-card brutal-border px-5 py-3 font-bold text-sm hover:-translate-y-0.5 hover:-translate-x-0.5 transition"
           >
             ← Back to lesson hero
           </Link>
           <Link
             to="/"
-            className="inline-flex items-center rounded-2xl bg-primary text-primary-foreground brutal-border px-5 py-3 font-display font-bold brutal-shadow-sm hover:-translate-y-0.5 hover:-translate-x-0.5 transition"
+            className="inline-flex items-center min-h-[44px] rounded-2xl bg-primary text-primary-foreground brutal-border px-5 py-3 font-display font-bold brutal-shadow-sm hover:-translate-y-0.5 hover:-translate-x-0.5 transition"
           >
             Process another video →
           </Link>

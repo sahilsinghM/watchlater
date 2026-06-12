@@ -1,4 +1,5 @@
 import { createFileRoute, useNavigate, Link } from "@tanstack/react-router";
+import { z } from "zod";
 import { useRef, useState } from "react";
 import { useSuspenseQuery } from "@tanstack/react-query";
 import { Brand } from "@/components/Brand";
@@ -11,6 +12,7 @@ import { lessonQueryOptions } from "@/lib/lessonQuery";
 import { fmtTime, type Tone } from "@/lib/lessonSchema";
 
 export const Route = createFileRoute("/lesson/$videoId_/player")({
+  validateSearch: z.object({ t: z.number().int().min(0).default(0) }),
   loader: ({ context, params }) =>
     context.queryClient.ensureQueryData(lessonQueryOptions(params.videoId)),
   head: () => ({ meta: [{ title: "Lesson · WatchLater" }] }),
@@ -23,6 +25,7 @@ export const Route = createFileRoute("/lesson/$videoId_/player")({
 
 function Player() {
   const { videoId } = Route.useParams();
+  const { t: seekTo } = Route.useSearch();
   const navigate = useNavigate();
   const { data: lesson } = useSuspenseQuery(lessonQueryOptions(videoId));
   const playerRef = useRef<YouTubePlayerHandle>(null);
@@ -80,16 +83,16 @@ function Player() {
           onSeek={(s) => playerRef.current?.seekTo(s)}
         />
 
-        {card.timestamp !== undefined && (
+        {(card.timestamp !== undefined || seekTo > 0) && (
           <div className="space-y-2">
             <div className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground px-1">
-              See it in the video · {fmtTime(card.timestamp)}
+              See it in the video · {fmtTime(card.timestamp ?? seekTo)}
             </div>
             <YouTubeEmbed
               key={card.id}
               ref={playerRef}
               videoId={lesson.video.youtubeId}
-              startSeconds={card.timestamp}
+              startSeconds={card.timestamp ?? seekTo}
             />
           </div>
         )}

@@ -29,4 +29,8 @@ describe("masteryResult", () => {
   test("a zero total can't divide-by-zero", () => {
     expect(masteryResult(0, 0).pct).toBe(0);
   });
+
+  test("49% is Worth a re-read — one below the mid boundary", () => {
+    expect(masteryResult(49, 100)).toEqual({ pct: 49, label: "Worth a re-read", tier: "low" });
+  });
 });
