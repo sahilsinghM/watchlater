@@ -8,6 +8,7 @@ import { ToneToggle } from "@/components/ToneToggle";
 import { TutorPanel } from "@/components/TutorPanel";
 import { ShareButton } from "@/components/ShareButton";
 import { VerdictBadge } from "@/components/VerdictBadge";
+import { languageLabel } from "@/lib/language";
 import { WaitlistCard } from "@/components/WaitlistCard";
 import { LessonHeroSkeleton } from "@/components/LessonSkeleton";
 import { lessonQueryOptions } from "@/lib/lessonQuery";
@@ -64,6 +65,9 @@ function LessonHero() {
             <div className="order-1 space-y-3">
               <span className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground">
                 {lesson.video.channel} · {fmtTime(lesson.video.duration)}
+                {lesson.video.language && !lesson.video.language.toLowerCase().startsWith("en")
+                  ? ` · ${languageLabel(lesson.video.language)}`
+                  : null}
               </span>
               <h1 className="font-display text-3xl sm:text-4xl md:text-5xl font-extrabold leading-[1.05] line-clamp-2 sm:line-clamp-none">
                 {lesson.video.title}

@@ -3,6 +3,19 @@
 All notable changes to WatchLater are documented here.
 Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
+## [Unreleased]
+
+### Added
+
+- **Any-language video support** — the NON_ENGLISH gate is retired (owner
+  decision 2026-06-12). Lessons are generated in the video's own language via a
+  shared `languageDirective()` prompt rule (`src/lib/lessonPrompt.ts`) on both
+  the Anthropic and OpenRouter paths; schema enum values and product chrome
+  stay English. `Lesson.video.language` (optional) records the transcript
+  language, and the lesson hero eyebrow shows a source-language label
+  (e.g. `· KOREAN`) for non-English lessons. Legacy NON_ENGLISH-failed jobs
+  render updated copy inviting a rebuild.
+
 ## [0.0.1.0] - 2026-06-12
 
 ### Added

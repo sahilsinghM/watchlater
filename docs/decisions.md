@@ -12,7 +12,13 @@ This document locks the decisions that should not be re-litigated during MVP imp
 ## Supported Video Policy
 
 - Supported source: public YouTube videos only.
-- Language: English only.
+- Language: any language with usable native captions (owner decision 2026-06-12;
+  supersedes "English only"). Lesson prose is generated in the transcript's
+  language; product chrome, schema enum values (difficulty, watchVerdict,
+  kinds), and error copy remain English. Supadata is still called with
+  `lang=en` as a PREFERENCE — a video carrying an English track gets an
+  English lesson; otherwise the native track is used and the lesson page shows
+  a source-language eyebrow.
 - Duration: 5 to 90 minutes inclusive.
 - Transcript: required. A video without an available transcript must fail clearly.
 - Shorts: not supported.

@@ -1,5 +1,6 @@
 import Anthropic from "@anthropic-ai/sdk";
 import { Lesson as LessonSchema, type Lesson } from "./lessonSchema";
+import { languageDirective } from "./lessonPrompt";
 import type { Cue, Meta } from "./buildLesson";
 
 // Claude-backed lesson generation. Uses the official Anthropic SDK with Sonnet
@@ -115,6 +116,7 @@ export async function generateAnthropicLesson(input: {
   meta: Meta;
   cues: Cue[];
   durationSeconds: number;
+  languageCode: string;
 }): Promise<Lesson> {
   // 120s SDK timeout (bounds connection + time-to-first-event; default is
   // 10 min). Multi-hour transcripts mean ~100k+ tokens of prefill, so first
@@ -139,7 +141,8 @@ export async function generateAnthropicLesson(input: {
     thinking: { type: "disabled" },
     output_config: { effort: "low" },
     system:
-      "You generate trustworthy WatchLater lessons: a colour-coded attention map (segments), exactly six tappable lesson cards (thesis, key concept, mechanism, example/analogy, nuance, recap), a 3-question quiz (main idea, a supporting detail, an application), and a transcript-grounded tutor seed. Ground every major claim in transcript timestamps. TIME FORMAT RULE: numeric timestamp FIELDS are raw seconds, but any time you mention inside prose text (scoreReason, reallyAbout, recommendation, why, blurb, body, captions, explanations, tutor answers) must be written as a clock time exactly as the YouTube player shows it — '12:26' or '1:05:30' — NEVER raw seconds like '746s' or '(82–1400s)'. Be blunt but not snarky about low-value videos. Your response text must be a SINGLE valid JSON object matching requiredShape EXACTLY — use those exact field names and enum values, no markdown fences, no preamble, no commentary.",
+      "You generate trustworthy WatchLater lessons: a colour-coded attention map (segments), exactly six tappable lesson cards (thesis, key concept, mechanism, example/analogy, nuance, recap), a 3-question quiz (main idea, a supporting detail, an application), and a transcript-grounded tutor seed. Ground every major claim in transcript timestamps. TIME FORMAT RULE: numeric timestamp FIELDS are raw seconds, but any time you mention inside prose text (scoreReason, reallyAbout, recommendation, why, blurb, body, captions, explanations, tutor answers) must be written as a clock time exactly as the YouTube player shows it — '12:26' or '1:05:30' — NEVER raw seconds like '746s' or '(82–1400s)'. Be blunt but not snarky about low-value videos. Your response text must be a SINGLE valid JSON object matching requiredShape EXACTLY — use those exact field names and enum values, no markdown fences, no preamble, no commentary. " +
+      languageDirective(input.languageCode),
     messages: [
       {
         role: "user",
@@ -148,6 +151,7 @@ export async function generateAnthropicLesson(input: {
           requiredShape: REQUIRED_SHAPE,
           meta: input.meta,
           durationSeconds: Math.floor(input.durationSeconds),
+          transcriptLanguage: input.languageCode,
           transcript: transcriptText(input.cues, input.durationSeconds),
         }),
       },

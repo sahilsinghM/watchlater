@@ -74,7 +74,6 @@ export async function processLesson(youtubeId: string, jobId: string): Promise<v
 
     const quality = assessTranscriptQuality({
       durationSeconds: duration,
-      language: languageCode,
       cues,
     });
     if (!quality.ok) throw new IngestError(quality.code, quality.detail);
@@ -104,6 +103,7 @@ export async function processLesson(youtubeId: string, jobId: string): Promise<v
           meta,
           cues,
           durationSeconds: duration,
+          languageCode,
         });
       } else if (config.openaiApiKey) {
         // Fallback: OpenRouter, if no Anthropic key is configured.
@@ -113,6 +113,7 @@ export async function processLesson(youtubeId: string, jobId: string): Promise<v
           model: config.openaiModel,
           meta,
           cues,
+          languageCode,
         });
       } else {
         // No LLM key at all — templated, density-based lesson (no AI).
@@ -146,6 +147,7 @@ export async function processLesson(youtubeId: string, jobId: string): Promise<v
         channel: meta.channel,
         thumbnail: meta.thumbnail,
         duration,
+        language: languageCode,
       },
     };
 
