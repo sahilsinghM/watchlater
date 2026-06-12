@@ -14,7 +14,8 @@
     "lint": "eslint .",
     "format": "prettier --write .",
     "gen:db-types": "supabase gen types typescript --project-id uxczumklefbdmxilshro > src/lib/database.types.ts",
-    "ops:jobs": "bun run scripts/job-stats.ts"
+    "ops:jobs": "bun run scripts/job-stats.ts",
+    "ops:rebuild": "bun run scripts/rebuild-lessons.ts"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.101.0",
