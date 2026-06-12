@@ -10,7 +10,7 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 - **Supadata API adapter** (`src/lib/supadata-adapter.ts`): Zod schemas for every
   Supadata response shape; `parseSupadataResponse()` returns a typed discriminated
   union (`kind: "sync" | "async" | "error"`) so schema drift in the upstream API
-  surfaces as a structured error instead of a silent TypeErrror mid-pipeline.
+  surfaces as a structured error instead of a silent TypeError mid-pipeline.
 - **54 new tests** — Supadata contract tests pin the exact field names and types the
   live API must return; Supabase store contract tests cover field mapping (regression
   guard for the `lesson_video_id` / `lesson_id` FK bug), correct domain-type shapes,
