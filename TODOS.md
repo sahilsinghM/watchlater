@@ -26,6 +26,11 @@ Deferred scope from /autoplan review (2026-06-05, commit fed6eeb).
 - [ ] **Watch/Skim/Archive/Not-relevant decisions** — captured to Supabase for taste model seeding
 - [ ] **Phase B.2: account creation** — optional email to persist decision history across browsers
 
+## Ingest reliability
+
+- [ ] **saveLesson silently swallows DB errors** — `supabaseStore.server.ts:saveLesson` — both the `update` and `insert` branches discard the Supabase `error` return; a failed lesson save appears successful, job status goes `completed`, then the lesson page returns 404. Add `if (error || !data) throw new Error("saveLesson failed")` to both branches (pre-existing, out of scope for chore/test-debt-and-chrome-fixes).
+- [ ] **Supadata poll timeout can overrun Vercel function limit** — `transcript.server.ts:pollSupadataJob` — worst-case: 30s (initial fetch) + 60s (poll deadline) + 15s (last-poll overrun) = 105s, exceeding the 60s Pro Vercel limit. Reduce the poll deadline to ≤ 25s, or move transcript fetching to a background queue. Investigate Vercel `maxDuration` config.
+
 ## Test debt
 
 - [x] Add tests for synthetic cue path (all-`[Music]` transcript → TRANSCRIPT_TOO_NOISY) **Completed: chore/test-debt-and-chrome-fixes**
