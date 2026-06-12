@@ -10,14 +10,37 @@ import { ShareButton } from "@/components/ShareButton";
 import { VerdictBadge } from "@/components/VerdictBadge";
 import { WaitlistCard } from "@/components/WaitlistCard";
 import { lessonQueryOptions } from "@/lib/lessonQuery";
-import { fmtRange, fmtTime, type Tone } from "@/lib/lessonSchema";
+import { fmtRange, fmtTime, type Lesson, type Tone } from "@/lib/lessonSchema";
+
+const SITE = "https://watchlater-sigma.vercel.app";
 
 export const Route = createFileRoute("/lesson/$videoId")({
   loader: ({ context, params }) =>
     context.queryClient.ensureQueryData(lessonQueryOptions(params.videoId)),
-  head: () => ({
-    meta: [{ title: "Lesson · WatchLater" }],
-  }),
+  head: ({ params, loaderData }) => {
+    const lesson = loaderData as Lesson | undefined;
+    const title = lesson ? `${lesson.video.title} · WatchLater` : "Lesson · WatchLater";
+    const description = lesson
+      ? `${lesson.video.channel} · Learn this video in 5 minutes.`
+      : "Learn any YouTube video in 5 minutes.";
+    const ogImage = `${SITE}/api/og/${params.videoId}`;
+    return {
+      meta: [
+        { title },
+        { name: "description", content: description },
+        { property: "og:title", content: title },
+        { property: "og:description", content: description },
+        { property: "og:image", content: ogImage },
+        { property: "og:image:width", content: "1200" },
+        { property: "og:image:height", content: "630" },
+        { property: "og:type", content: "website" },
+        { name: "twitter:card", content: "summary_large_image" },
+        { name: "twitter:title", content: title },
+        { name: "twitter:description", content: description },
+        { name: "twitter:image", content: ogImage },
+      ],
+    };
+  },
   component: LessonHero,
 });
 
