@@ -35,7 +35,8 @@ t=0  fetchTranscript ──┘ → resolve together (~10-30s)
           scalar fields           (~8-12s)
           (~15-20s)
                    │                       │
-            partial_ready ──→       patch → ready
+            ↓ partial save         ↓ patch + persistKeyFrames
+            partial_ready ──→           ready
             (redirect user)
 ```
 
@@ -45,11 +46,51 @@ t=0  fetchTranscript ──┘ → resolve together (~10-30s)
 
 **`generateSecondary`** produces: `quiz`, `keyMoments`.
 
+Both receive the **full transcript** (same `transcriptText` helper). Haiku
+input is cheap enough (~$0.25/MTok) that doubling input tokens is worth the
+quality benefit of full coverage.
+
 `tutorSeed` is parked — no longer generated. Old cached lessons keep their
 existing data; new lessons get `null`.
 
-Both generation calls fire with `Promise.allSettled` so a secondary failure
-does not kill the core lesson.
+The OpenAI/OpenRouter fallback path keeps the **old single-call pattern**
+unchanged. The parallel split only applies when `anthropicApiKey` is set.
+
+---
+
+## Concurrency pattern
+
+Use chained `.then` on each promise so saves happen immediately when each
+call resolves, not after both settle:
+
+```ts
+const corePromise = generateCore(...).then(async (core) => {
+  const lesson = { ...core, quiz: null, keyMoments: null, tutorSeed: null };
+  await store.saveLesson({ youtubeId, lesson });
+  await store.updateProcessingJob(jobId, { status: "partial_ready", currentStep: "partial_ready" });
+  return lesson;
+});
+
+const secondaryPromise = generateSecondary(...).then(async ({ quiz, keyMoments }) => {
+  const { isVisuallyDependent } = detectVisualDependency(coreLesson.segments);
+  const frameResult = await persistKeyFrames(store, {
+    videoId, youtubeId, moments: keyMoments,
+    captureAvailable: false,
+    visualsEssential: isVisuallyDependent,
+  });
+  const visualContextStatus = frameResult.status === "failed" ? "unavailable" : frameResult.status;
+  await store.patchLesson(youtubeId, { quiz, keyMoments, visualContextStatus });
+  await store.updateProcessingJob(jobId, { status: "ready", currentStep: "ready" });
+});
+
+// Wait for both before returning — keeps the Vercel function alive
+await Promise.allSettled([corePromise, secondaryPromise]);
+```
+
+If `generateSecondary` rejects: `persistKeyFrames` is skipped entirely, the
+lesson remains `partial_ready`, and `visualContextStatus` stays `"unavailable"`
+(the default already set by the core save). The lesson page's 60s timeout
+guard handles the fallback UI.
 
 ---
 
@@ -65,8 +106,8 @@ quiz:        z.array(QuizQuestion).nullable().default(null),    // partial state
 keyMoments:  z.array(KeyMoment).nullable().default(null),       // partial state
 ```
 
-No DB migration needed. The lessons table stores a JSON blob; nullable fields
-are forward-compatible with existing cached lessons.
+No DB migration needed. The lessons table stores a `jsonb` blob; nullable
+fields are forward-compatible with existing cached lessons.
 
 ### `IngestPhase`
 
@@ -80,56 +121,67 @@ export type IngestPhase =
 ```
 
 `getIngestStatus` returns `partial_ready` when the job row has that status.
+The `status` column is unconstrained `text` — no DB migration needed.
 
-### Store — new method
+### Store — new methods
+
+**`patchLesson`** — merges secondary fields into the existing `jsonb` row
+using Postgres's `||` merge operator (single round-trip, atomic):
 
 ```ts
-patchLesson(youtubeId: string, patch: { quiz: QuizQuestion[]; keyMoments: KeyMoment[] }): Promise<void>
+patchLesson(
+  youtubeId: string,
+  patch: { quiz: QuizQuestion[]; keyMoments: KeyMoment[]; visualContextStatus: string }
+): Promise<void>
+// → UPDATE lessons SET lesson_json = lesson_json || $patch WHERE youtube_id = $id
 ```
 
-Merges `quiz` and `keyMoments` into the existing lesson row without
-overwriting core fields. Called once `generateSecondary` resolves.
+**`touchJob`** — bumps `updated_at` only, no status change. Used by the
+heartbeat so it doesn't overwrite `partial_ready` back to `generating_lesson`:
+
+```ts
+touchJob(jobId: string): Promise<void>
+// → UPDATE processing_jobs SET updated_at = now() WHERE id = $id
+```
 
 ---
 
 ## `processLesson.server.ts` changes
 
-1. Replace sequential `fetchOEmbed` / `fetchTranscript` awaits with
-   `Promise.all([fetchOEmbed(youtubeId), fetchTranscript(youtubeId)])`.
+1. `Promise.all([fetchOEmbed(youtubeId), fetchTranscript(youtubeId)])` replaces
+   the two sequential awaits.
 
-2. Fire `generateCore` and `generateSecondary` concurrently with
-   `Promise.allSettled`.
+2. Heartbeat calls `store.touchJob(jobId)` instead of `updateProcessingJob` —
+   prevents overwriting `partial_ready` status. Heartbeat stays alive until
+   `Promise.allSettled` resolves (covers both generation calls).
 
-3. When `generateCore` resolves:
-   - Merge video facts into lesson (same overwrite logic as today).
-   - `store.saveLesson({ youtubeId, lesson })` — lesson has `quiz: null`,
-     `keyMoments: null`, `tutorSeed: null`.
-   - `store.updateProcessingJob(jobId, { status: "partial_ready", currentStep: "partial_ready" })`.
+3. Chained `.then` pattern (see Concurrency pattern section above).
 
-4. When `generateSecondary` resolves (or rejects):
-   - If resolved: `store.patchLesson(youtubeId, { quiz, keyMoments })` then
-     `status: "ready"`.
-   - If rejected: log the failure, leave lesson as-is. The job stays
-     `partial_ready`; the UI timeout (see below) handles the fallback.
-
-5. The heartbeat interval covers both calls — no change needed there.
+4. `detectVisualDependency` + `persistKeyFrames` move into the secondary
+   `.then` chain (they require `keyMoments`). If secondary fails, both are
+   skipped.
 
 ---
 
 ## `anthropicLesson.server.ts` changes
 
-Split into two exported functions in the same file:
+Split the existing `generateAnthropicLesson` into two exported functions:
 
-**`generateCore(input)`** — Sonnet 4.6, `max_tokens: 8000`, prompt asks for
-segments + cards + all scalar fields, explicitly omits quiz/keyMoments/tutorSeed.
+**`generateCore(input)`** — Sonnet 4.6, `max_tokens: 8000`. Prompt explicitly
+omits `quiz`, `keyMoments`, `tutorSeed`.
 
 **`generateSecondary(input)`** — Haiku 4.5, `max_tokens: 3000`, SDK
-`timeout: 60_000` (Haiku is fast; a 60s hang means something is wrong),
-prompt asks for quiz + keyMoments only, receives the same transcript. No
-Anthropic key fallback needed — if Haiku is unavailable the
-`Promise.allSettled` rejection path handles it.
+`timeout: 60_000`. Prompt asks for `quiz` + `keyMoments` only. Parses against
+a local (non-exported) `SecondaryOutputSchema`:
 
-Both functions share the same `transcriptText` helper and `languageDirective`.
+```ts
+const SecondaryOutputSchema = z.object({
+  quiz: z.array(QuizQuestion),
+  keyMoments: z.array(KeyMoment),
+});
+```
+
+Both share `transcriptText`, `languageDirective`, and `stripJsonFence`.
 
 ---
 
@@ -137,28 +189,48 @@ Both functions share the same `transcriptText` helper and `languageDirective`.
 
 ### Processing page (`processing.$videoId.tsx`)
 
-No change to the polling logic. The existing `getIngestStatus` poll fires every
-2s. When it returns `partial_ready`, redirect to the lesson page — same
-behaviour as `ready`.
+Two small changes:
+- `refetchInterval` stops on `partial_ready` (same as `ready`)
+- Navigate effect fires on `partial_ready` (same destination: `/lesson/$videoId`)
 
 ### Lesson page (`lesson.$videoId.tsx`)
 
-On mount, check `lesson.quiz === null`:
+On mount, `lesson.quiz === null` drives a polling query:
 
-- If null: start polling `getIngestStatus` every 2s. When `phase === "ready"`,
-  call `getLessonByYoutubeId` to refetch and swap in `quiz` + `keyMoments`.
-  Reuse the existing hook — no new infrastructure.
-- Quiz section renders a skeleton + "Quiz loading…" label (`.vs-label` mono
-  eyebrow style) while null.
-- **Timeout guard:** if after 60s of polling `quiz` is still null, stop
-  polling and render "Quiz unavailable" in place of the skeleton. Same copy
-  voice as other error states; no mascot needed here.
+```ts
+const lesson = useLoaderData({ from: '/lesson/$videoId' });
 
-### Tutor panel (`TutorPanel.tsx`)
+const statusQuery = useQuery({
+  queryKey: ['ingest-status', videoId],
+  queryFn: () => getIngestStatus({ data: { youtubeId: videoId } }),
+  enabled: lesson.quiz === null,        // no-op for already-complete lessons
+  refetchInterval: (q) => {
+    if (lesson.quiz !== null) return false;
+    const phase = q.state.data?.phase;
+    return phase === 'ready' || phase === 'failed' ? false : 2000;
+  },
+});
 
-When `lesson.tutorSeed === null`, the panel hides itself entirely (returns
-`null`). No "coming soon" copy — just absent. This is consistent with the
-existing conditional-render pattern in the component.
+useEffect(() => {
+  if (statusQuery.data?.phase === 'ready') router.invalidate();
+}, [statusQuery.data?.phase]);
+```
+
+After `router.invalidate()`, the loader re-runs, `lesson.quiz` becomes
+non-null, `enabled` flips false, and the poll stops automatically.
+
+**Timeout guard:** if after 60s of polling `quiz` is still null, stop
+polling and render "Quiz unavailable" in place of the skeleton. Same copy
+voice as other error states; no mascot.
+
+### UI null states
+
+- **Quiz section** — skeleton + "QUIZ LOADING" `.vs-label` eyebrow while
+  `lesson.quiz === null`; "Quiz unavailable" on timeout
+- **`keyMoments`** — not rendered in any UI component (server-side only, used
+  by `persistKeyFrames`)
+- **`TutorPanel`** — returns `null` when `lesson.tutorSeed === null`; no copy,
+  just absent
 
 ---
 
@@ -166,30 +238,35 @@ existing conditional-render pattern in the component.
 
 | Failure point | Behaviour |
 |---|---|
-| `fetchOEmbed` or `fetchTranscript` throws | Same as today — job fails with appropriate `IngestErrorCode` |
+| `fetchOEmbed` or `fetchTranscript` throws | Job fails with appropriate `IngestErrorCode` — same as today |
 | `generateCore` throws | Job fails with `GENERATION_FAILURE` — no partial save |
-| `generateSecondary` throws | Core lesson is saved as `partial_ready`; lesson page times out after 60s and shows "Quiz unavailable" |
+| `generateSecondary` throws | Core lesson stays `partial_ready`; `persistKeyFrames` skipped; lesson page times out after 60s → "Quiz unavailable" |
 | `patchLesson` throws | Log error; lesson stays partial; same 60s UI timeout |
+| `touchJob` throws | Swallow — heartbeat failure is non-fatal; `isJobStale` will eventually time out if the job truly hangs |
 
 ---
 
 ## Testing
 
-- Unit tests for `generateCore` and `generateSecondary` prompt builders (same
-  pattern as existing `lessonPrompt.test.ts`).
-- Unit test for `patchLesson` store method.
-- Schema tests for nullable `quiz`, `keyMoments`, `tutorSeed` — ensure Zod
-  accepts both null and populated arrays.
-- Integration test for the `partial_ready → ready` job lifecycle (mock both
-  generation calls).
-- TutorPanel snapshot test: renders null when `tutorSeed` is null.
+- Unit tests for `generateCore` and `generateSecondary` prompt shape (pattern:
+  `lessonPrompt.test.ts`)
+- `SecondaryOutputSchema` parse tests — valid and invalid shapes
+- Schema tests: `quiz`, `keyMoments`, `tutorSeed` accept both `null` and
+  populated arrays
+- `patchLesson` store unit test — verifies jsonb merge doesn't overwrite core fields
+- `touchJob` store unit test
+- Integration test: `partial_ready → ready` job lifecycle with both generation
+  calls mocked
+- Processing page: redirects on `partial_ready`
+- Lesson page: quiz skeleton renders when null; poll stops after `router.invalidate()`
+- TutorPanel: renders null when `tutorSeed` is null
 
 ---
 
 ## Out of scope
 
-- SSE / websockets — polling is sufficient for this phase.
-- Quiz streaming mid-generation — Haiku is fast enough that skeleton-then-swap
-  is indistinguishable from streaming at the output token rate.
-- Re-enabling `tutorSeed` generation — separate feature, separate spec.
-- Progressive reveal for cards (cards are in the core call, already fast).
+- SSE / websockets — polling is sufficient
+- Quiz streaming mid-generation — skeleton-then-swap is imperceptible at Haiku's output rate
+- Re-enabling `tutorSeed` generation — separate spec
+- Progressive reveal for cards — cards are in the core call, already fast
+- OpenAI path parallelisation — fallback only, not worth the complexity
