@@ -98,7 +98,7 @@ function LessonHero() {
                   ? ` · ${languageLabel(lesson.video.language)}`
                   : null}
               </span>
-              <h1 className="font-display text-3xl sm:text-4xl md:text-5xl font-extrabold leading-[1.05] line-clamp-2 sm:line-clamp-none">
+              <h1 className="font-display text-2xl sm:text-4xl md:text-5xl font-extrabold leading-[1.05]">
                 {lesson.video.title}
               </h1>
             </div>
