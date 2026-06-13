@@ -113,7 +113,7 @@ function Processing() {
     queryFn: () => getIngestStatus({ data: { youtubeId: videoId } }),
     refetchInterval: (q) => {
       const phase = q.state.data?.phase;
-      if (phase === "ready" || failedIsFinal(phase)) return false;
+      if (phase === "ready" || phase === "partial_ready" || failedIsFinal(phase)) return false;
       return 2000;
     },
     enabled: true,
@@ -122,7 +122,8 @@ function Processing() {
 
   // Navigate as soon as lesson is ready
   useEffect(() => {
-    if (statusQuery.data?.phase === "ready") {
+    const phase = statusQuery.data?.phase;
+    if (phase === "ready" || phase === "partial_ready") {
       const t = setTimeout(() => navigate({ to: "/lesson/$videoId", params: { videoId } }), 400);
       return () => clearTimeout(t);
     }
@@ -140,7 +141,8 @@ function Processing() {
   }
 
   const currentStep = statusQuery.data?.phase === "processing" ? statusQuery.data.step : "queued";
-  const isReady = statusQuery.data?.phase === "ready";
+  const isReady =
+    statusQuery.data?.phase === "ready" || statusQuery.data?.phase === "partial_ready";
 
   // Guard against an indefinite hang: if we've waited past the timeout without
   // a lesson, surface a recoverable error rather than polling forever.
