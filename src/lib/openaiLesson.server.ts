@@ -3,7 +3,7 @@ import { languageDirective } from "./lessonPrompt";
 import type { Cue, Meta } from "./buildLesson";
 
 function transcriptExcerpt(cues: Cue[]): string {
-  const maxChars = 45_000;
+  const maxChars = 150_000;
   let out = "";
   for (const cue of cues) {
     const line = `[${Math.floor(cue.start)}s] ${cue.text.replace(/\s+/g, " ").trim()}\n`;
@@ -20,7 +20,7 @@ export async function generateOpenAILesson(input: {
   cues: Cue[];
   languageCode: string;
 }): Promise<Lesson> {
-  const model = input.model ?? "gpt-4.1-mini";
+  const model = input.model ?? "meta-llama/llama-3.3-70b-instruct";
   const response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
     method: "POST",
     headers: {
