@@ -7,6 +7,7 @@ export type ProcessingStatus =
   | "reading_transcript"
   | "capturing_visuals"
   | "generating_lesson"
+  | "partial_ready"
   | "ready"
   | "failed";
 
@@ -145,7 +146,16 @@ export type MvpStore = {
   }): Promise<string>; // returns video UUID
   saveKeyFrames(frames: KeyFrame[]): Promise<KeyFrame[]>;
   saveLesson(input: { youtubeId: string; lesson: Lesson }): Promise<Lesson>;
+  patchLesson(
+    youtubeId: string,
+    patch: {
+      quiz: NonNullable<Lesson["quiz"]>;
+      keyMoments: NonNullable<Lesson["keyMoments"]>;
+      visualContextStatus: "captured" | "degraded" | "unavailable";
+    },
+  ): Promise<void>;
   getLessonByYoutubeId(youtubeId: string): Promise<Lesson | null>;
+  touchJob(jobId: string): Promise<void>;
   saveQuizResult(input: Omit<QuizResult, "id" | "completedAt">): Promise<QuizResult>;
   saveFeedback(input: Omit<Feedback, "id" | "createdAt">): Promise<Feedback>;
   saveLead(input: Omit<Lead, "id" | "createdAt">): Promise<Lead>;
@@ -236,8 +246,18 @@ export function createMemoryMvpStore(): MvpStore {
       lessons.set(youtubeId, lesson);
       return lesson;
     },
+    async patchLesson(youtubeId, patch) {
+      const existing = lessons.get(youtubeId);
+      if (!existing) return;
+      lessons.set(youtubeId, { ...existing, ...patch });
+    },
     async getLessonByYoutubeId(youtubeId) {
       return lessons.get(youtubeId) ?? null;
+    },
+    async touchJob(jobId) {
+      const existing = jobs.get(jobId);
+      if (!existing) return;
+      jobs.set(jobId, { ...existing, updatedAt: now() });
     },
     async saveQuizResult(input) {
       const result: QuizResult = {

@@ -212,6 +212,15 @@ export function createSupabaseStore(
       return lesson;
     },
 
+    async patchLesson(youtubeId, patch) {
+      const supabase = getClient();
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      await (supabase.rpc as any)("patch_lesson_secondary", {
+        p_youtube_id: youtubeId,
+        p_patch: JSON.parse(JSON.stringify(patch)),
+      });
+    },
+
     async getLessonByYoutubeId(youtubeId) {
       const supabase = getClient();
       const { data } = await supabase
@@ -222,6 +231,14 @@ export function createSupabaseStore(
         .maybeSingle();
       if (!data) return null;
       return data.lesson_json as unknown as Lesson;
+    },
+
+    async touchJob(jobId) {
+      const supabase = getClient();
+      await supabase
+        .from("processing_jobs")
+        .update({ updated_at: new Date().toISOString() })
+        .eq("id", jobId);
     },
 
     async saveQuizResult(input) {

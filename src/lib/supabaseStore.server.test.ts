@@ -13,8 +13,11 @@
  */
 
 import { describe, expect, test } from "bun:test";
+import { createMemoryMvpStore } from "./mvpFlow";
 import { createSupabaseStore } from "./supabaseStore.server";
 import type { SupabaseClientLike } from "./supabaseStore.server";
+import type { Lesson } from "./lessonSchema";
+import { sampleLesson } from "@/data/sampleLesson";
 
 // ─── Supabase client spy ──────────────────────────────────────────────────────
 
@@ -56,10 +59,20 @@ function makeClientSpy(
     return c;
   }
 
+  let rpcCaptured: { fn: string; args: Record<string, unknown> } | null = null;
+
+  const rpc = (fn: string, args: Record<string, unknown>) => {
+    rpcCaptured = { fn, args };
+    return Promise.resolve({ data: null, error: returnError });
+  };
+
   // The spy is intentionally minimal, so it doesn't structurally overlap the
   // real SupabaseClient — route the cast through unknown (TS2352 otherwise).
-  const client = { from: (table: string) => chain(table) } as unknown as SupabaseClientLike;
-  return { client, getCaptured: () => captured };
+  const client = {
+    from: (table: string) => chain(table),
+    rpc,
+  } as unknown as SupabaseClientLike;
+  return { client, getCaptured: () => captured, getRpcCaptured: () => rpcCaptured };
 }
 
 // ─── createProcessingJob ─────────────────────────────────────────────────────
@@ -413,5 +426,92 @@ describe("saveLead", () => {
     await expect(
       store.saveLead({ sessionId: "sess-1", email: "x@example.com", source: "done" }),
     ).rejects.toThrow("saveLead failed");
+  });
+});
+
+// ─── patchLesson ──────────────────────────────────────────────────────────────
+
+const partialLesson: Lesson = { ...sampleLesson, quiz: null, keyMoments: null, tutorSeed: null };
+
+describe("patchLesson (memory store — behavior)", () => {
+  test("merges quiz and keyMoments without overwriting core lesson fields", async () => {
+    const store = createMemoryMvpStore();
+    await store.saveLesson({ youtubeId: "abc123", lesson: partialLesson });
+
+    await store.patchLesson("abc123", {
+      quiz: sampleLesson.quiz!,
+      keyMoments: sampleLesson.keyMoments!,
+      visualContextStatus: "unavailable",
+    });
+
+    const updated = await store.getLessonByYoutubeId("abc123");
+    expect(updated?.quiz).toEqual(sampleLesson.quiz);
+    expect(updated?.keyMoments).toEqual(sampleLesson.keyMoments);
+    expect(updated?.watchScore).toBe(partialLesson.watchScore);
+    expect(updated?.segments).toEqual(partialLesson.segments);
+  });
+
+  test("no-ops gracefully if lesson row does not exist", async () => {
+    const store = createMemoryMvpStore();
+    await expect(
+      store.patchLesson("nonexistent", {
+        quiz: [],
+        keyMoments: [],
+        visualContextStatus: "unavailable",
+      }),
+    ).resolves.toBeUndefined();
+  });
+});
+
+describe("patchLesson (Supabase store — query shape)", () => {
+  test("calls patch_lesson_secondary rpc with youtube_id and patch payload", async () => {
+    const { client, getRpcCaptured } = makeClientSpy({});
+    const store = createSupabaseStore(() => client);
+
+    await store.patchLesson("abc123", {
+      quiz: sampleLesson.quiz!,
+      keyMoments: sampleLesson.keyMoments!,
+      visualContextStatus: "unavailable",
+    });
+
+    const rpc = getRpcCaptured();
+    expect(rpc?.fn).toBe("patch_lesson_secondary");
+    expect(rpc?.args).toMatchObject({ p_youtube_id: "abc123" });
+  });
+});
+
+// ─── touchJob ─────────────────────────────────────────────────────────────────
+
+describe("touchJob (memory store — behavior)", () => {
+  test("bumps updatedAt without changing status or currentStep", async () => {
+    const store = createMemoryMvpStore();
+    const job = await store.createProcessingJob({
+      sessionId: "sess-1",
+      youtubeId: "abc123",
+      rawInput: "https://youtube.com/watch?v=abc123",
+    });
+    await store.updateProcessingJob(job.id, { status: "partial_ready" as never });
+    const before = await store.getProcessingJob(job.id);
+
+    await new Promise((r) => setTimeout(r, 2)); // ensure timestamp advances
+    await store.touchJob(job.id);
+
+    const after = await store.getProcessingJob(job.id);
+    expect(after?.status).toBe("partial_ready");
+    expect(after?.currentStep).toBe("queued");
+    expect(after?.updatedAt).not.toBe(before?.updatedAt);
+  });
+});
+
+describe("touchJob (Supabase store — query shape)", () => {
+  test("updates only updated_at on processing_jobs", async () => {
+    const { client, getCaptured } = makeClientSpy({ id: "job-1" });
+    const store = createSupabaseStore(() => client);
+
+    await store.touchJob("job-1");
+
+    const captured = getCaptured();
+    expect(captured?.table).toBe("processing_jobs");
+    expect(Object.keys(captured?.insert ?? {})).toEqual(["updated_at"]);
   });
 });
