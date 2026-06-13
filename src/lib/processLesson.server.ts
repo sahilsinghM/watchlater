@@ -169,7 +169,7 @@ export async function processLesson(youtubeId: string, jobId: string): Promise<v
     const frameResult = await persistKeyFrames(store, {
       videoId,
       youtubeId,
-      moments: lesson.keyMoments,
+      moments: lesson.keyMoments ?? [],
       captureAvailable: false,
       visualsEssential: isVisuallyDependent,
     });

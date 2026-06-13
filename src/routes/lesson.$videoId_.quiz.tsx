@@ -17,6 +17,12 @@ function Quiz() {
   const { videoId } = Route.useParams();
   const navigate = useNavigate();
   const { data: lesson } = useSuspenseQuery(lessonQueryOptions(videoId));
+
+  if (!lesson.quiz) {
+    navigate({ to: "/lesson/$videoId", params: { videoId } });
+    return null;
+  }
+
   const [idx, setIdx] = useState(0);
   const [answers, setAnswers] = useState<number[]>([]);
   const [picked, setPicked] = useState<number | null>(null);
@@ -30,7 +36,7 @@ function Quiz() {
     setAnswers(next);
     setPicked(null);
     if (idx + 1 >= total) {
-      const score = next.reduce((s, a, i) => s + (a === lesson.quiz[i].correctIndex ? 1 : 0), 0);
+      const score = next.reduce((s, a, i) => s + (a === lesson.quiz![i].correctIndex ? 1 : 0), 0);
       try {
         await submitQuizResult({
           data: {

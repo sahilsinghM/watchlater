@@ -72,9 +72,9 @@ export const Lesson = z.object({
   visualContextStatus: z.enum(["captured", "degraded", "unavailable"]).optional(),
   segments: z.array(Segment),
   cards: z.array(LessonCard),
-  keyMoments: z.array(KeyMoment),
-  quiz: z.array(QuizQuestion),
-  tutorSeed: z.array(TutorSeedQA),
+  keyMoments: z.array(KeyMoment).nullable().default(null),
+  quiz: z.array(QuizQuestion).nullable().default(null),
+  tutorSeed: z.array(TutorSeedQA).nullable().default(null),
 });
 export type Lesson = z.infer<typeof Lesson>;
 

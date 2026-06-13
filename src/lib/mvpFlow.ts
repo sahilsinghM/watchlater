@@ -494,7 +494,7 @@ export function buildTutorContext(lesson: Lesson): TutorContext {
     ...lesson.cards.flatMap((card) =>
       [card.title, card.body, card.analogy, card.quote].filter(Boolean),
     ),
-    ...lesson.tutorSeed.flatMap((seed) => [seed.q, seed.a]),
+    ...(lesson.tutorSeed ?? []).flatMap((seed) => [seed.q, seed.a]),
   ]
     .join(" ")
     .toLowerCase();
@@ -537,7 +537,7 @@ export function answerTutorQuestion(
     };
   }
 
-  const seed = context.lesson.tutorSeed.find((item) =>
+  const seed = context.lesson.tutorSeed?.find((item) =>
     words.some(
       (word) => item.q.toLowerCase().includes(word) || item.a.toLowerCase().includes(word),
     ),

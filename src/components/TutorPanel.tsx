@@ -5,6 +5,7 @@ import { answerTutorQuestion, buildTutorContext } from "@/lib/mvpFlow";
 type Msg = { role: "user" | "tutor"; text: string };
 
 export function TutorPanel({ lesson }: { lesson: Lesson }) {
+  if (!lesson.tutorSeed) return null;
   const [open, setOpen] = useState(false);
   const [messages, setMessages] = useState<Msg[]>([
     {
