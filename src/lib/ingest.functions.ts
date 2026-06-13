@@ -22,11 +22,12 @@ export type IngestErrorCode =
   | "TIMEOUT"
   | "UNKNOWN";
 
-export type IngestPhase = "idle" | "processing" | "ready" | "failed";
+export type IngestPhase = "idle" | "processing" | "partial_ready" | "ready" | "failed";
 
 export type IngestStatus =
   | { phase: "idle" }
   | { phase: "processing"; step: string }
+  | { phase: "partial_ready" }
   | { phase: "ready" }
   | { phase: "failed"; code: IngestErrorCode; detail: string };
 
@@ -97,6 +98,7 @@ export const getIngestStatus = createServerFn({ method: "GET" })
     if (!job) return { phase: "idle" };
 
     if (job.status === "ready") return { phase: "ready" };
+    if (job.status === "partial_ready") return { phase: "partial_ready" };
 
     if (job.status === "failed") {
       return {

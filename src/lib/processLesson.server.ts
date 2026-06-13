@@ -3,45 +3,35 @@ import { assessTranscriptQuality, persistKeyFrames } from "./mvpFlow";
 import { getMvpStore } from "./mvpRuntime.server";
 import { getServerConfig } from "./config.server";
 import { fetchOEmbed, fetchTranscript, IngestError } from "./transcript.server";
-import { generateAnthropicLesson } from "./anthropicLesson.server";
+import { generateCore, generateSecondary } from "./anthropicLesson.server";
 import { generateOpenAILesson } from "./openaiLesson.server";
 import { buildLesson } from "./buildLesson";
 import { detectVisualDependency } from "./visualContext";
 
-// In-process lesson pipeline. This is the canonical ingest path now that
-// Supadata removes the datacenter-IP blocking that previously forced this work
-// onto a separate residential-proxy worker. It writes straight to the shared
-// MvpStore. See docs/decisions.md → Ingest Architecture.
+// In-process lesson pipeline. Parallelised in two phases:
+//   Phase 1: fetchOEmbed + fetchTranscript run concurrently (both need only youtubeId)
+//   Phase 2: generateCore (Sonnet) + generateSecondary (Haiku) run concurrently
+//
+// generateCore resolves first → partial lesson saved → job set to partial_ready
+// → processing page redirects user to lesson page immediately.
+// generateSecondary resolves → quiz + keyMoments patched in → job set to ready.
 //
 // IMPORTANT: this MUST be awaited by the request that triggers it (see
 // requestLesson in ingest.functions.ts). Fire-and-forget via `waitUntil` does
-// NOT survive in the TanStack Start / Nitro serverFn environment on Vercel — the
-// function freezes after returning and the background promise is dropped, which
-// left jobs stuck at "fetching video details" forever.
+// NOT survive in the TanStack Start / Nitro serverFn environment on Vercel.
 
 const MIN_DURATION = 5 * 60;
-// 12h covers even marathon podcasts (Lex Fridman #438 is 8h44m). The cost and
-// latency of long videos are bounded by the transcript char budget in
-// anthropicLesson.server.ts, not by this cap.
 const MAX_DURATION = 12 * 60 * 60;
 
-// While Claude generates, the job row isn't otherwise touched. isJobStale's
-// window is 2 minutes, and long-video generation can exceed that — without a
-// heartbeat the UI would misreport an in-flight build as TIMEOUT and a retry
-// would spawn a duplicate job. Keep updated_at fresh while we work.
+// Heartbeat keeps updated_at fresh so isJobStale's 2-minute window doesn't
+// fire during long-video generation. Uses touchJob (not updateProcessingJob)
+// so it doesn't overwrite partial_ready back to generating_lesson.
 const HEARTBEAT_MS = 45_000;
 
-// We persist the worker-style error codes (NO_CAPTIONS, TOO_SHORT, …) because
-// the processing page's ERROR_COPY is keyed by IngestErrorCode. The store types
-// errorCode as MvpErrorCode, so a cast is needed for the codes that only live in
-// the ingest vocabulary.
 function failCode(code: string): ProcessingJob["errorCode"] {
   return code as ProcessingJob["errorCode"];
 }
 
-// Single-line JSON lifecycle events, filterable in Vercel log search with
-// `"tag":"ingest"`. The ops report (scripts/job-stats.ts) reads the jobs
-// table; these logs are the per-job drill-down.
 function logIngest(event: Record<string, unknown>) {
   console.log(JSON.stringify({ tag: "ingest", ts: new Date().toISOString(), ...event }));
 }
@@ -51,18 +41,17 @@ export async function processLesson(youtubeId: string, jobId: string): Promise<v
   const startedAt = Date.now();
   let transcriptChars = 0;
   let model = "templated";
+
   try {
+    // Phase 1: parallel fetch — both only need youtubeId, no dependency between them.
     await store.updateProcessingJob(jobId, {
       status: "fetching_metadata",
       currentStep: "fetching_metadata",
     });
-    const meta = await fetchOEmbed(youtubeId);
-
-    await store.updateProcessingJob(jobId, {
-      status: "reading_transcript",
-      currentStep: "reading_transcript",
-    });
-    const { cues, languageCode } = await fetchTranscript(youtubeId);
+    const [meta, { cues, languageCode }] = await Promise.all([
+      fetchOEmbed(youtubeId),
+      fetchTranscript(youtubeId),
+    ]);
     transcriptChars = cues.reduce((n, c) => n + c.text.length, 0);
 
     const last = cues[cues.length - 1];
@@ -72,10 +61,7 @@ export async function processLesson(youtubeId: string, jobId: string): Promise<v
     if (duration > MAX_DURATION)
       throw new IngestError("TOO_LONG", "Video is longer than the 12-hour maximum");
 
-    const quality = assessTranscriptQuality({
-      durationSeconds: duration,
-      cues,
-    });
+    const quality = assessTranscriptQuality({ durationSeconds: duration, cues });
     if (!quality.ok) throw new IngestError(quality.code, quality.detail);
 
     await store.updateProcessingJob(jobId, {
@@ -84,30 +70,126 @@ export async function processLesson(youtubeId: string, jobId: string): Promise<v
     });
 
     const config = getServerConfig();
-    let lesson;
-    const heartbeat = setInterval(() => {
-      store
-        .updateProcessingJob(jobId, {
-          status: "generating_lesson",
-          currentStep: "generating_lesson",
-        })
-        .catch(() => {});
-    }, HEARTBEAT_MS);
-    try {
-      if (config.anthropicApiKey) {
-        // Preferred: Claude generation.
-        model = config.anthropicModel ?? "claude-sonnet-4-6";
-        lesson = await generateAnthropicLesson({
-          apiKey: config.anthropicApiKey,
-          model: config.anthropicModel,
-          meta,
-          cues,
-          durationSeconds: duration,
-          languageCode,
+
+    if (config.anthropicApiKey) {
+      // Phase 2: parallel generation.
+      model = config.anthropicModel ?? "claude-sonnet-4-6";
+
+      const heartbeat = setInterval(() => {
+        store.touchJob(jobId).catch(() => {});
+      }, HEARTBEAT_MS);
+
+      // upsertVideo only needs meta + duration — start it in parallel with generation.
+      const videoIdPromise = store.upsertVideo({
+        youtubeId,
+        url: `https://www.youtube.com/watch?v=${youtubeId}`,
+        title: meta.title,
+        channel: meta.channel,
+        thumbnailUrl: meta.thumbnail,
+        durationSeconds: duration,
+        language: languageCode,
+      });
+
+      const genInput = {
+        apiKey: config.anthropicApiKey,
+        model: config.anthropicModel,
+        meta,
+        cues,
+        durationSeconds: duration,
+        languageCode,
+      };
+
+      // corePromise: generate → overwrite video facts → partial save → partial_ready
+      const corePromise = generateCore(genInput).then(async (core) => {
+        const lesson = {
+          ...core,
+          video: {
+            ...core.video,
+            youtubeId,
+            url: `https://www.youtube.com/watch?v=${youtubeId}`,
+            title: meta.title,
+            channel: meta.channel,
+            thumbnail: meta.thumbnail,
+            duration,
+            language: languageCode,
+          },
+        };
+        await store.saveLesson({ youtubeId, lesson });
+        await store.updateProcessingJob(jobId, {
+          status: "partial_ready",
+          currentStep: "partial_ready",
         });
-      } else if (config.openaiApiKey) {
-        // Fallback: OpenRouter, if no Anthropic key is configured.
-        model = config.openaiModel ?? "openrouter-default";
+        logIngest({ event: "partial_ready", jobId, youtubeId, durationMs: Date.now() - startedAt });
+        return lesson;
+      });
+
+      // secondaryPromise: generate → persistKeyFrames (needs core.segments + videoId) → patch → ready
+      const secondaryPromise = generateSecondary({
+        apiKey: config.anthropicApiKey,
+        meta,
+        cues,
+        durationSeconds: duration,
+        languageCode,
+      }).then(async ({ quiz, keyMoments }) => {
+        const [coreLesson, videoId] = await Promise.all([corePromise, videoIdPromise]);
+        const { isVisuallyDependent } = detectVisualDependency(coreLesson.segments);
+        const frameResult = await persistKeyFrames(store, {
+          videoId,
+          youtubeId,
+          moments: keyMoments,
+          captureAvailable: false,
+          visualsEssential: isVisuallyDependent,
+        });
+        const visualContextStatus: "captured" | "degraded" | "unavailable" =
+          frameResult.status === "failed" ? "unavailable" : frameResult.status;
+        await store.patchLesson(youtubeId, { quiz, keyMoments, visualContextStatus });
+        await store.updateProcessingJob(jobId, { status: "ready", currentStep: "ready" });
+      });
+
+      const [coreResult, secondaryResult] = await Promise.allSettled([
+        corePromise,
+        secondaryPromise,
+      ]);
+      clearInterval(heartbeat);
+
+      if (coreResult.status === "rejected") {
+        const e = coreResult.reason;
+        const schemaInvalid = !!e && typeof e === "object" && "issues" in e;
+        throw new IngestError(
+          schemaInvalid ? "GENERATION_SCHEMA_INVALID" : "GENERATION_FAILURE",
+          schemaInvalid
+            ? "Generated lesson did not match the required schema."
+            : `Lesson generation failed: ${e instanceof Error ? e.message : String(e)}`,
+        );
+      }
+
+      if (secondaryResult.status === "rejected") {
+        logIngest({
+          event: "secondary_failed",
+          jobId,
+          youtubeId,
+          error: String(secondaryResult.reason),
+          durationMs: Date.now() - startedAt,
+          model,
+        });
+        // Core lesson is already saved as partial_ready — lesson page timeout handles UI fallback.
+        return;
+      }
+
+      logIngest({
+        event: "done",
+        jobId,
+        youtubeId,
+        outcome: "ready",
+        durationMs: Date.now() - startedAt,
+        transcriptChars,
+        model,
+      });
+    } else if (config.openaiApiKey) {
+      // Fallback: OpenRouter — unchanged single-call path, no parallel split.
+      model = config.openaiModel ?? "openrouter-default";
+      let lesson;
+      try {
         lesson = await generateOpenAILesson({
           apiKey: config.openaiApiKey,
           model: config.openaiModel,
@@ -115,79 +197,78 @@ export async function processLesson(youtubeId: string, jobId: string): Promise<v
           cues,
           languageCode,
         });
-      } else {
-        // No LLM key at all — templated, density-based lesson (no AI).
-        lesson = buildLesson(meta, cues);
+      } catch (e: unknown) {
+        const schemaInvalid = !!e && typeof e === "object" && "issues" in e;
+        throw new IngestError(
+          schemaInvalid ? "GENERATION_SCHEMA_INVALID" : "GENERATION_FAILURE",
+          schemaInvalid
+            ? "Generated lesson did not match the required schema."
+            : `Lesson generation failed: ${e instanceof Error ? e.message : String(e)}`,
+        );
       }
-    } catch (e: unknown) {
-      // A zod failure means the model returned an off-schema lesson; anything
-      // else is a generation/transport failure. Both map to UI error copy.
-      const schemaInvalid = !!e && typeof e === "object" && "issues" in e;
-      throw new IngestError(
-        schemaInvalid ? "GENERATION_SCHEMA_INVALID" : "GENERATION_FAILURE",
-        schemaInvalid
-          ? "Generated lesson did not match the required schema."
-          : `Lesson generation failed: ${e instanceof Error ? e.message : String(e)}`,
-      );
-    } finally {
-      clearInterval(heartbeat);
-    }
 
-    // The video facts are ours, not the model's. Left to the model, duration
-    // gets reported as far as the transcript it saw (a 63-min video once
-    // shipped as "50.5 min" because of excerpt truncation) and titles/urls can
-    // drift. Overwrite with the values we fetched and computed.
-    lesson = {
-      ...lesson,
-      video: {
-        ...lesson.video,
+      lesson = {
+        ...lesson,
+        video: {
+          ...lesson.video,
+          youtubeId,
+          url: `https://www.youtube.com/watch?v=${youtubeId}`,
+          title: meta.title,
+          channel: meta.channel,
+          thumbnail: meta.thumbnail,
+          duration,
+          language: languageCode,
+        },
+      };
+
+      const videoId = await store.upsertVideo({
         youtubeId,
         url: `https://www.youtube.com/watch?v=${youtubeId}`,
         title: meta.title,
         channel: meta.channel,
-        thumbnail: meta.thumbnail,
-        duration,
+        thumbnailUrl: meta.thumbnail,
+        durationSeconds: duration,
         language: languageCode,
-      },
-    };
+      });
 
-    // Upsert a videos row so key-frame screenshots have a valid FK target.
-    const videoId = await store.upsertVideo({
-      youtubeId,
-      url: `https://www.youtube.com/watch?v=${youtubeId}`,
-      title: meta.title,
-      channel: meta.channel,
-      thumbnailUrl: meta.thumbnail,
-      durationSeconds: duration,
-      language: languageCode,
-    });
+      const { isVisuallyDependent } = detectVisualDependency(lesson.segments);
+      const frameResult = await persistKeyFrames(store, {
+        videoId,
+        youtubeId,
+        moments: lesson.keyMoments ?? [],
+        captureAvailable: false,
+        visualsEssential: isVisuallyDependent,
+      });
+      const visualContextStatus: "captured" | "degraded" | "unavailable" =
+        frameResult.status === "failed" ? "unavailable" : frameResult.status;
+      lesson = { ...lesson, visualContextStatus };
 
-    // Capture is not available server-side (no headless browser). Whether the
-    // lesson degrades gracefully or is marked low-confidence depends on whether
-    // the video is visually dependent.
-    const { isVisuallyDependent } = detectVisualDependency(lesson.segments);
-    const frameResult = await persistKeyFrames(store, {
-      videoId,
-      youtubeId,
-      moments: lesson.keyMoments ?? [],
-      captureAvailable: false,
-      visualsEssential: isVisuallyDependent,
-    });
-    const visualContextStatus: "captured" | "degraded" | "unavailable" =
-      frameResult.status === "failed" ? "unavailable" : frameResult.status;
-    lesson = { ...lesson, visualContextStatus };
-
-    await store.saveLesson({ youtubeId, lesson });
-    await store.updateProcessingJob(jobId, { status: "ready", currentStep: "ready" });
-    logIngest({
-      event: "done",
-      jobId,
-      youtubeId,
-      outcome: "ready",
-      durationMs: Date.now() - startedAt,
-      transcriptChars,
-      model,
-    });
+      await store.saveLesson({ youtubeId, lesson });
+      await store.updateProcessingJob(jobId, { status: "ready", currentStep: "ready" });
+      logIngest({
+        event: "done",
+        jobId,
+        youtubeId,
+        outcome: "ready",
+        durationMs: Date.now() - startedAt,
+        transcriptChars,
+        model,
+      });
+    } else {
+      // No LLM key — templated density-based lesson.
+      const lesson = buildLesson(meta, cues);
+      await store.saveLesson({ youtubeId, lesson });
+      await store.updateProcessingJob(jobId, { status: "ready", currentStep: "ready" });
+      logIngest({
+        event: "done",
+        jobId,
+        youtubeId,
+        outcome: "ready",
+        durationMs: Date.now() - startedAt,
+        transcriptChars,
+        model,
+      });
+    }
   } catch (e: unknown) {
     const code = e instanceof IngestError ? e.code : "UNKNOWN";
     const detail = e instanceof Error ? e.message : "Ingest failed";

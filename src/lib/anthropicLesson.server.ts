@@ -1,28 +1,26 @@
 import Anthropic from "@anthropic-ai/sdk";
-import { Lesson as LessonSchema, type Lesson } from "./lessonSchema";
+import { z } from "zod";
+import { QuizQuestion, KeyMoment, Lesson as LessonSchema, type Lesson } from "./lessonSchema";
 import { languageDirective } from "./lessonPrompt";
 import type { Cue, Meta } from "./buildLesson";
 
-// Claude-backed lesson generation. Uses the official Anthropic SDK with Sonnet
-// 4.6 by default, thinking disabled, and effort=low — a single-shot structured
-// JSON task needs speed and a guaranteed text block, not reasoning (see the
-// thinking comment on the request below). Streamed because the transcript is
-// long input, which avoids request timeouts (see the claude-api skill). The prompt
-// enumerates the exact Lesson field names so the output parses against
-// LessonSchema — the SDK's structured-outputs helper requires Zod v4 and this
-// project is on Zod v3.
+// Claude-backed lesson generation, split into two concurrent calls:
+//   generateCore  — Sonnet 4.6, produces segments + cards + scalar verdict fields
+//   generateSecondary — Haiku 4.5, produces quiz + keyMoments
+//
+// Both receive the full transcript. Running them in parallel (see processLesson)
+// cuts wall-clock generation time by ~50% compared to the old single call.
 //
 // SPEED MATTERS: the whole ingest pipeline runs inline inside one Vercel
-// function with a 300s budget (platform default; there is no external worker —
-// see docs/decisions.md → Ingest Architecture). Sonnet 4.6 + bounded
-// max_tokens keeps generation at ~1-2 min even for 12-hour videos. Do NOT
-// raise these to Opus / 32k tokens — Opus with a big budget routinely overran
-// the function and was killed mid-write, leaving the job stuck and the user on
-// a spinner. Override the model per-deploy with ANTHROPIC_MODEL only with
-// measured headroom.
+// function with a 300s budget. Do NOT raise Sonnet to Opus / raise max_tokens
+// beyond these values — Opus with a big budget routinely overran the function
+// and was killed mid-write. Override the model per-deploy with ANTHROPIC_MODEL
+// only with measured headroom.
 
-// Mirrors src/lib/lessonSchema.ts exactly — keep in sync if the schema changes.
-const REQUIRED_SHAPE = {
+// ─── Prompt shapes ────────────────────────────────────────────────────────────
+// Exported so tests can assert exactly which fields each call requests.
+
+export const CORE_REQUIRED_SHAPE = {
   video: {
     id: "string",
     youtubeId: "string",
@@ -62,7 +60,9 @@ const REQUIRED_SHAPE = {
       timestamp: "number sec (optional)",
     },
   ],
-  keyMoments: [{ timestamp: "number (sec)", caption: "string" }],
+} as const;
+
+export const SECONDARY_REQUIRED_SHAPE = {
   quiz: [
     {
       id: "string",
@@ -72,21 +72,22 @@ const REQUIRED_SHAPE = {
       explanation: "string",
     },
   ],
-  tutorSeed: [{ q: "string", a: "string" }],
+  keyMoments: [{ timestamp: "number (sec)", caption: "string" }],
 } as const;
 
-// Render the FULL transcript. Sonnet 4.6 has a 1M-token context; even a
-// 12-hour podcast transcript is ~650k chars (~170k tokens), so whole-video
-// coverage costs well under $1 of input and needs no map-reduce machinery.
-// The previous 45k-char cap silently amputated everything past ~50 minutes
-// of speech — the lesson then claimed the video *was* that long.
-//
-// The budget below is a safety rail for pathological transcripts, sized so it
-// can only trip beyond the 12h duration cap. If it ever trips, the model is
-// told exactly where coverage stops so it doesn't fabricate the tail.
+// Local parse boundary for the secondary call — a malformed Haiku response
+// fails cleanly here rather than corrupting the lesson row.
+export const SecondaryOutputSchema = z.object({
+  quiz: z.array(QuizQuestion),
+  keyMoments: z.array(KeyMoment),
+});
+export type SecondaryOutput = z.infer<typeof SecondaryOutputSchema>;
+
+// ─── Shared helpers ───────────────────────────────────────────────────────────
+
 const TRANSCRIPT_CHAR_BUDGET = 700_000;
 
-function transcriptText(cues: Cue[], durationSeconds: number): string {
+export function transcriptText(cues: Cue[], durationSeconds: number): string {
   let out = "";
   for (const cue of cues) {
     const line = `[${Math.floor(cue.start)}s] ${cue.text.replace(/\s+/g, " ").trim()}\n`;
@@ -99,7 +100,6 @@ function transcriptText(cues: Cue[], durationSeconds: number): string {
   return out;
 }
 
-// Strip an accidental ```json fence so a stray wrapper doesn't fail a valid lesson.
 function stripJsonFence(text: string): string {
   const t = text.trim();
   return t.startsWith("```")
@@ -110,7 +110,19 @@ function stripJsonFence(text: string): string {
     : t;
 }
 
-export async function generateAnthropicLesson(input: {
+async function streamToText(stream: ReturnType<Anthropic["messages"]["stream"]>): Promise<string> {
+  const message = await stream.finalMessage();
+  const text = message.content
+    .filter((b: Anthropic.ContentBlock): b is Anthropic.TextBlock => b.type === "text")
+    .map((b: Anthropic.TextBlock) => b.text)
+    .join("");
+  if (!text.trim()) throw new Error("Anthropic returned an empty response");
+  return text;
+}
+
+// ─── Core generation — Sonnet 4.6 ─────────────────────────────────────────────
+
+export async function generateCore(input: {
   apiKey: string;
   model?: string;
   meta: Meta;
@@ -118,37 +130,23 @@ export async function generateAnthropicLesson(input: {
   durationSeconds: number;
   languageCode: string;
 }): Promise<Lesson> {
-  // 120s SDK timeout (bounds connection + time-to-first-event; default is
-  // 10 min). Multi-hour transcripts mean ~100k+ tokens of prefill, so first
-  // byte can take tens of seconds — but a run that hasn't STARTED after 120s
-  // should abort as a clean GENERATION_FAILURE while the Vercel function
-  // (300s budget) still has time to write the failure to the job row. With
-  // maxRetries:1 the worst case is ~240s before our catch runs — inside cap.
   const client = new Anthropic({ apiKey: input.apiKey, timeout: 120_000, maxRetries: 1 });
   const model = input.model ?? "claude-sonnet-4-6";
 
   const stream = client.messages.stream({
     model,
-    // Bounded headroom for the lesson JSON (~3-4k tokens). Big enough to avoid
-    // truncating mid-array, small enough to stay fast.
-    max_tokens: 12000,
-    // Thinking must stay OFF for this call. Adaptive thinking shares the
-    // max_tokens budget with the visible output; on long transcripts the model
-    // could spend the entire 12k budget thinking and end at max_tokens with
-    // zero text blocks — surfacing as "Anthropic returned an empty response"
-    // (GENERATION_FAILURE) after minutes of streaming. The SDK timeout does not
-    // guard against this: it bounds time-to-first-byte, not an active stream.
+    max_tokens: 8000,
     thinking: { type: "disabled" },
     output_config: { effort: "low" },
     system:
-      "You generate trustworthy WatchLater lessons: a colour-coded attention map (segments), exactly six tappable lesson cards (thesis, key concept, mechanism, example/analogy, nuance, recap), a 3-question quiz (main idea, a supporting detail, an application), and a transcript-grounded tutor seed. Ground every major claim in transcript timestamps. TIME FORMAT RULE: numeric timestamp FIELDS are raw seconds, but any time you mention inside prose text (scoreReason, reallyAbout, recommendation, why, blurb, body, captions, explanations, tutor answers) must be written as a clock time exactly as the YouTube player shows it — '12:26' or '1:05:30' — NEVER raw seconds like '746s' or '(82–1400s)'. Be blunt but not snarky about low-value videos. Your response text must be a SINGLE valid JSON object matching requiredShape EXACTLY — use those exact field names and enum values, no markdown fences, no preamble, no commentary. " +
+      "You generate trustworthy WatchLater lessons: a colour-coded attention map (segments), exactly six tappable lesson cards (thesis, key concept, mechanism, example/analogy, nuance, recap). Ground every major claim in transcript timestamps. TIME FORMAT RULE: numeric timestamp FIELDS are raw seconds, but any time you mention inside prose text must be written as a clock time exactly as the YouTube player shows it — '12:26' or '1:05:30' — NEVER raw seconds like '746s'. Be blunt but not snarky about low-value videos. Your response text must be a SINGLE valid JSON object matching requiredShape EXACTLY — use those exact field names and enum values, no markdown fences, no preamble, no commentary. " +
       languageDirective(input.languageCode),
     messages: [
       {
         role: "user",
         content: JSON.stringify({
           task: "Create a six-card interactive lesson for this YouTube video, grounded in the transcript below. Return JSON exactly matching requiredShape (timestamps in seconds). segments must cover the FULL video duration.",
-          requiredShape: REQUIRED_SHAPE,
+          requiredShape: CORE_REQUIRED_SHAPE,
           meta: input.meta,
           durationSeconds: Math.floor(input.durationSeconds),
           transcriptLanguage: input.languageCode,
@@ -158,18 +156,56 @@ export async function generateAnthropicLesson(input: {
     ],
   });
 
-  const message = await stream.finalMessage();
-  const text = message.content
-    .filter((b): b is Anthropic.TextBlock => b.type === "text")
-    .map((b) => b.text)
-    .join("");
-  if (!text.trim()) throw new Error("Anthropic returned an empty response");
-
+  const text = await streamToText(stream);
   const parsed = JSON.parse(stripJsonFence(text));
   try {
-    return LessonSchema.parse(parsed);
+    return LessonSchema.parse({ ...parsed, quiz: null, keyMoments: null, tutorSeed: null });
   } catch (e) {
-    console.error("[anthropic] schema validation failed, response text:", text.substring(0, 2000));
+    console.error("[anthropic/core] schema validation failed:", text.substring(0, 2000));
+    throw e;
+  }
+}
+
+// ─── Secondary generation — Haiku 4.5 ────────────────────────────────────────
+
+export async function generateSecondary(input: {
+  apiKey: string;
+  meta: Meta;
+  cues: Cue[];
+  durationSeconds: number;
+  languageCode: string;
+}): Promise<SecondaryOutput> {
+  const client = new Anthropic({ apiKey: input.apiKey, timeout: 60_000, maxRetries: 1 });
+
+  const stream = client.messages.stream({
+    model: "claude-haiku-4-5-20251001",
+    max_tokens: 3000,
+    thinking: { type: "disabled" },
+    output_config: { effort: "low" },
+    system:
+      "You generate the quiz and key moments for a WatchLater lesson. Ground quiz questions and key moment captions in specific transcript timestamps. TIME FORMAT RULE: inside prose text use clock format ('12:26') not raw seconds. Your response must be a SINGLE valid JSON object matching requiredShape EXACTLY — no markdown fences, no preamble. " +
+      languageDirective(input.languageCode),
+    messages: [
+      {
+        role: "user",
+        content: JSON.stringify({
+          task: "Create a 3-question quiz (main idea, a supporting detail, an application) and 3-5 key moments for this YouTube video. Return JSON exactly matching requiredShape.",
+          requiredShape: SECONDARY_REQUIRED_SHAPE,
+          meta: input.meta,
+          durationSeconds: Math.floor(input.durationSeconds),
+          transcriptLanguage: input.languageCode,
+          transcript: transcriptText(input.cues, input.durationSeconds),
+        }),
+      },
+    ],
+  });
+
+  const text = await streamToText(stream);
+  const parsed = JSON.parse(stripJsonFence(text));
+  try {
+    return SecondaryOutputSchema.parse(parsed);
+  } catch (e) {
+    console.error("[anthropic/secondary] schema validation failed:", text.substring(0, 2000));
     throw e;
   }
 }

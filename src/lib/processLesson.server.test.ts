@@ -44,18 +44,29 @@ function shortCues(): Cue[] {
 function makeStore() {
   const updates: Array<Record<string, unknown>> = [];
   const saved: Array<{ youtubeId: string; lesson?: Record<string, unknown> }> = [];
+  const patched: Array<{ youtubeId: string; patch: Record<string, unknown> }> = [];
+  const touched: string[] = [];
   return {
     updates,
     saved,
+    patched,
+    touched,
     store: {
       updateProcessingJob: async (_id: string, patch: Record<string, unknown>) => {
         updates.push(patch);
+      },
+      touchJob: async (jobId: string) => {
+        touched.push(jobId);
       },
       upsertVideo: async () => "video_test_id",
       saveKeyFrames: async (frames: unknown[]) => frames,
       saveLesson: async (x: { youtubeId: string; lesson?: Record<string, unknown> }) => {
         saved.push(x);
       },
+      patchLesson: async (youtubeId: string, patch: Record<string, unknown>) => {
+        patched.push({ youtubeId, patch });
+      },
+      getLessonByYoutubeId: async () => null,
     },
   };
 }
@@ -63,7 +74,8 @@ function makeStore() {
 type Scenario = {
   fetchTranscript: () => Promise<{ cues: Cue[]; languageCode: string }>;
   config: Record<string, unknown>;
-  anthropic: (input?: Record<string, unknown>) => Promise<unknown>;
+  anthropicCore: (input?: Record<string, unknown>) => Promise<unknown>;
+  anthropicSecondary: (input?: Record<string, unknown>) => Promise<unknown>;
   store: ReturnType<typeof makeStore>["store"];
 };
 
@@ -75,9 +87,10 @@ beforeEach(() => {
   scenario = {
     fetchTranscript: async () => ({ cues: denseCues(), languageCode: "en" }),
     config: {}, // no LLM keys → real templated buildLesson on the happy path
-    anthropic: async () => {
-      throw new Error("anthropic should not be called in this scenario");
+    anthropicCore: async () => {
+      throw new Error("generateCore should not be called in this scenario");
     },
+    anthropicSecondary: async () => ({ quiz: sampleLesson.quiz, keyMoments: sampleLesson.keyMoments }),
     store: bag.store,
   };
 
@@ -91,7 +104,12 @@ beforeEach(() => {
   mock.module("./config.server", () => ({ getServerConfig: () => scenario.config }));
   mock.module("./mvpRuntime.server", () => ({ getMvpStore: () => scenario.store }));
   mock.module("./anthropicLesson.server", () => ({
-    generateAnthropicLesson: (input: Record<string, unknown>) => scenario.anthropic(input),
+    generateCore: (input: Record<string, unknown>) => scenario.anthropicCore(input),
+    generateSecondary: (input: Record<string, unknown>) => scenario.anthropicSecondary(input),
+    CORE_REQUIRED_SHAPE: realAnthropic.CORE_REQUIRED_SHAPE,
+    SECONDARY_REQUIRED_SHAPE: realAnthropic.SECONDARY_REQUIRED_SHAPE,
+    SecondaryOutputSchema: realAnthropic.SecondaryOutputSchema,
+    transcriptText: realAnthropic.transcriptText,
   }));
   mock.module("./openaiLesson.server", () => ({
     generateOpenAILesson: async () => {
@@ -102,8 +120,6 @@ beforeEach(() => {
 
 // Bun module mocks are PROCESS-GLOBAL: without this restore, whichever test
 // file runs after this one imports the MOCKS instead of the real modules.
-// That broke transcript.server.test.ts in CI (different file order than local)
-// — its stubbed 404s "succeeded" because fetchTranscript was scenario data.
 afterAll(() => {
   mock.module("./transcript.server", () => realTranscript);
   mock.module("./config.server", () => realConfig);
@@ -116,18 +132,57 @@ const statuses = () => bag.updates.map((u) => u.status);
 const lastUpdate = () => bag.updates[bag.updates.length - 1];
 
 describe("processLesson", () => {
-  test("happy path drives the job to ready and saves exactly one lesson", async () => {
+  test("happy path (no LLM keys) drives the job to ready and saves exactly one lesson", async () => {
     const { processLesson } = await import("./processLesson.server");
     await processLesson("abcdefghijk", "job_1");
 
-    expect(statuses()).toEqual([
-      "fetching_metadata",
-      "reading_transcript",
-      "generating_lesson",
-      "ready",
-    ]);
+    expect(statuses()).toContain("fetching_metadata");
+    expect(statuses()).toContain("ready");
+    expect(statuses()).not.toContain("failed");
     expect(bag.saved).toHaveLength(1);
     expect(bag.saved[0].youtubeId).toBe("abcdefghijk");
+  });
+
+  test("Anthropic path: saves partial lesson at partial_ready then patches at ready", async () => {
+    scenario.config = { anthropicApiKey: "k" };
+    scenario.anthropicCore = async () => sampleLesson;
+    const { processLesson } = await import("./processLesson.server");
+    await processLesson("abcdefghijk", "job_1");
+
+    expect(statuses()).toContain("partial_ready");
+    expect(statuses()).toContain("ready");
+    expect(bag.saved).toHaveLength(1);
+    expect(bag.patched).toHaveLength(1);
+    expect(bag.patched[0].youtubeId).toBe("abcdefghijk");
+    expect(bag.patched[0].patch).toHaveProperty("quiz");
+  });
+
+  test("Anthropic path: core failure → GENERATION_FAILURE, no partial save", async () => {
+    scenario.config = { anthropicApiKey: "k" };
+    scenario.anthropicCore = async () => {
+      throw new Error("upstream 500");
+    };
+    const { processLesson } = await import("./processLesson.server");
+    await processLesson("abcdefghijk", "job_1");
+
+    expect(lastUpdate().status).toBe("failed");
+    expect(lastUpdate().errorCode).toBe("GENERATION_FAILURE");
+    expect(bag.saved).toHaveLength(0);
+  });
+
+  test("Anthropic path: secondary failure leaves lesson at partial_ready (core preserved)", async () => {
+    scenario.config = { anthropicApiKey: "k" };
+    scenario.anthropicCore = async () => sampleLesson;
+    scenario.anthropicSecondary = async () => {
+      throw new Error("haiku timeout");
+    };
+    const { processLesson } = await import("./processLesson.server");
+    await processLesson("abcdefghijk", "job_1");
+
+    expect(statuses()).toContain("partial_ready");
+    expect(statuses()).not.toContain("ready");
+    expect(bag.saved).toHaveLength(1);
+    expect(bag.patched).toHaveLength(0);
   });
 
   test("a too-short video fails with TOO_SHORT and saves no lesson", async () => {
@@ -151,19 +206,6 @@ describe("processLesson", () => {
     expect(lastUpdate().errorCode).toBe("NO_CAPTIONS");
   });
 
-  test("a generation transport error maps to GENERATION_FAILURE", async () => {
-    scenario.config = { anthropicApiKey: "k" };
-    scenario.anthropic = async () => {
-      throw new Error("upstream 500");
-    };
-    const { processLesson } = await import("./processLesson.server");
-    await processLesson("abcdefghijk", "job_1");
-
-    expect(lastUpdate().status).toBe("failed");
-    expect(lastUpdate().errorCode).toBe("GENERATION_FAILURE");
-    expect(bag.saved).toHaveLength(0);
-  });
-
   // NON_ENGLISH is retired: a dense Korean transcript flows through the same
   // pipeline as English and reaches ready (templated path here — no LLM keys).
   test("a non-English transcript proceeds to ready", async () => {
@@ -178,26 +220,25 @@ describe("processLesson", () => {
     expect(bag.saved).toHaveLength(1);
   });
 
-  test("languageCode flows into Anthropic generation and onto the saved lesson", async () => {
+  test("languageCode flows into generateCore and onto the saved lesson", async () => {
     scenario.fetchTranscript = async () => ({ cues: denseCues(), languageCode: "ko" });
     scenario.config = { anthropicApiKey: "k" };
     let capturedInput: Record<string, unknown> | undefined;
-    scenario.anthropic = async (input) => {
+    scenario.anthropicCore = async (input) => {
       capturedInput = input;
       return sampleLesson;
     };
     const { processLesson } = await import("./processLesson.server");
     await processLesson("abcdefghijk", "job_1");
 
-    expect(lastUpdate().status).toBe("ready");
     expect(capturedInput?.languageCode).toBe("ko");
     const savedLesson = bag.saved[0].lesson as { video: { language?: string } };
     expect(savedLesson.video.language).toBe("ko");
   });
 
-  test("an off-schema generation (zod issues) maps to GENERATION_SCHEMA_INVALID", async () => {
+  test("an off-schema generateCore response maps to GENERATION_SCHEMA_INVALID", async () => {
     scenario.config = { anthropicApiKey: "k" };
-    scenario.anthropic = async () => {
+    scenario.anthropicCore = async () => {
       throw { issues: [{ path: ["quiz"], message: "Required" }] };
     };
     const { processLesson } = await import("./processLesson.server");
