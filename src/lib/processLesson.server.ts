@@ -71,6 +71,10 @@ export async function processLesson(youtubeId: string, jobId: string): Promise<v
 
     const config = getServerConfig();
 
+    // True when Anthropic fails with an out-of-credits error and openaiApiKey
+    // is available — lets the request fall through to the OpenRouter path below.
+    let openRouterFallback = false;
+
     if (config.anthropicApiKey) {
       // Phase 2: parallel generation.
       model = config.anthropicModel ?? "claude-sonnet-4-6";
@@ -154,16 +158,22 @@ export async function processLesson(youtubeId: string, jobId: string): Promise<v
 
       if (coreResult.status === "rejected") {
         const e = coreResult.reason;
-        const schemaInvalid = !!e && typeof e === "object" && "issues" in e;
-        throw new IngestError(
-          schemaInvalid ? "GENERATION_SCHEMA_INVALID" : "GENERATION_FAILURE",
-          schemaInvalid
-            ? "Generated lesson did not match the required schema."
-            : `Lesson generation failed: ${e instanceof Error ? e.message : String(e)}`,
-        );
+        const msg = e instanceof Error ? e.message : String(e);
+        if (config.openaiApiKey && /credit balance|insufficient_credit|balance is too low/i.test(msg)) {
+          openRouterFallback = true;
+          logIngest({ event: "anthropic_credit_exhausted_fallback", jobId, youtubeId, durationMs: Date.now() - startedAt });
+        } else {
+          const schemaInvalid = !!e && typeof e === "object" && "issues" in e;
+          throw new IngestError(
+            schemaInvalid ? "GENERATION_SCHEMA_INVALID" : "GENERATION_FAILURE",
+            schemaInvalid
+              ? "Generated lesson did not match the required schema."
+              : `Lesson generation failed: ${msg}`,
+          );
+        }
       }
 
-      if (secondaryResult.status === "rejected") {
+      if (secondaryResult.status === "rejected" && !openRouterFallback) {
         logIngest({
           event: "secondary_failed",
           jobId,
@@ -176,18 +186,24 @@ export async function processLesson(youtubeId: string, jobId: string): Promise<v
         return;
       }
 
-      logIngest({
-        event: "done",
-        jobId,
-        youtubeId,
-        outcome: "ready",
-        durationMs: Date.now() - startedAt,
-        transcriptChars,
-        model,
-      });
-    } else if (config.openaiApiKey) {
-      // Fallback: OpenRouter — unchanged single-call path, no parallel split.
+      if (!openRouterFallback) {
+        logIngest({
+          event: "done",
+          jobId,
+          youtubeId,
+          outcome: "ready",
+          durationMs: Date.now() - startedAt,
+          transcriptChars,
+          model,
+        });
+      }
+    }
+
+    if (openRouterFallback || !config.anthropicApiKey) {
+    if (config.openaiApiKey) {
+      // Fallback: OpenRouter — single-call path, no parallel split.
       model = config.openaiModel ?? "openrouter-default";
+      const orHeartbeat = setInterval(() => { store.touchJob(jobId).catch(() => {}); }, HEARTBEAT_MS);
       let lesson;
       try {
         lesson = await generateOpenAILesson({
@@ -199,13 +215,18 @@ export async function processLesson(youtubeId: string, jobId: string): Promise<v
         });
       } catch (e: unknown) {
         const schemaInvalid = !!e && typeof e === "object" && "issues" in e;
-        throw new IngestError(
-          schemaInvalid ? "GENERATION_SCHEMA_INVALID" : "GENERATION_FAILURE",
-          schemaInvalid
-            ? "Generated lesson did not match the required schema."
-            : `Lesson generation failed: ${e instanceof Error ? e.message : String(e)}`,
-        );
+        let detail: string;
+        if (schemaInvalid) {
+          const zErr = e as { issues: Array<{ path: (string | number)[]; message: string }> };
+          const paths = zErr.issues.slice(0, 5).map((i) => `${i.path.join(".")}: ${i.message}`).join("; ");
+          detail = `Schema invalid — ${paths}`;
+        } else {
+          detail = `Lesson generation failed: ${e instanceof Error ? e.message : String(e)}`;
+        }
+        clearInterval(orHeartbeat);
+        throw new IngestError(schemaInvalid ? "GENERATION_SCHEMA_INVALID" : "GENERATION_FAILURE", detail);
       }
+      clearInterval(orHeartbeat);
 
       lesson = {
         ...lesson,
@@ -269,6 +290,7 @@ export async function processLesson(youtubeId: string, jobId: string): Promise<v
         model,
       });
     }
+    } // close: if (openRouterFallback || !config.anthropicApiKey)
   } catch (e: unknown) {
     const code = e instanceof IngestError ? e.code : "UNKNOWN";
     const detail = e instanceof Error ? e.message : "Ingest failed";
