@@ -17,12 +17,39 @@ import { fmtRange, fmtTime, type Lesson, type Tone } from "@/lib/lessonSchema";
 
 const SITE = "https://watchlater-sigma.vercel.app";
 
+const VERDICT_SHORT: Record<string, string> = {
+  skip: "Skip",
+  lesson_only: "Lesson only",
+  watch_core: "Watch core",
+  watch_full: "Watch full",
+};
+
 export const Route = createFileRoute("/lesson/$videoId")({
   loader: ({ context, params }) =>
     context.queryClient.ensureQueryData(lessonQueryOptions(params.videoId)),
-  head: () => ({
-    meta: [{ title: "Lesson · WatchLater" }],
-  }),
+  head: ({ loaderData: lesson }) => {
+    const title = lesson ? `${lesson.video.title} — WatchLater` : "Lesson · WatchLater";
+    const verdict = lesson ? (VERDICT_SHORT[lesson.watchVerdict] ?? "Watch core") : "";
+    const desc = lesson
+      ? `${lesson.watchScore}/10 · ${verdict} · ${lesson.reallyAbout}`
+      : "Turn long YouTube videos into playful, interactive 5-minute lessons.";
+    const image = lesson?.video.thumbnail ?? "";
+    return {
+      meta: [
+        { title },
+        { name: "description", content: desc },
+        { property: "og:title", content: title },
+        { property: "og:description", content: desc },
+        { property: "og:image", content: image },
+        { property: "og:type", content: "article" },
+        { property: "og:url", content: `${SITE}/lesson/${lesson?.video.youtubeId ?? ""}` },
+        { name: "twitter:card", content: "summary_large_image" },
+        { name: "twitter:title", content: title },
+        { name: "twitter:description", content: desc },
+        { name: "twitter:image", content: image },
+      ],
+    };
+  },
   // Cold loads get the layout-matched skeleton; cache hits resolve inside the
   // 150ms window so fast loads never flash it, and once shown it holds 300ms
   // so it never blinks out either.
