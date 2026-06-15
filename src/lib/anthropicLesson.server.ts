@@ -1,4 +1,5 @@
 import Anthropic from "@anthropic-ai/sdk";
+import { jsonrepair } from "jsonrepair";
 import { z } from "zod";
 import { QuizQuestion, KeyMoment, Lesson as LessonSchema, type Lesson } from "./lessonSchema";
 import { languageDirective } from "./lessonPrompt";
@@ -110,6 +111,16 @@ function stripJsonFence(text: string): string {
     : t;
 }
 
+function parseJsonSafe(text: string): unknown {
+  const stripped = stripJsonFence(text);
+  try {
+    return JSON.parse(stripped);
+  } catch {
+    // LLM output was truncated or malformed — attempt structural repair before giving up
+    return JSON.parse(jsonrepair(stripped));
+  }
+}
+
 async function streamToText(stream: ReturnType<Anthropic["messages"]["stream"]>): Promise<string> {
   const message = await stream.finalMessage();
   const text = message.content
@@ -135,7 +146,7 @@ export async function generateCore(input: {
 
   const stream = client.messages.stream({
     model,
-    max_tokens: 8000,
+    max_tokens: 12000,
     thinking: { type: "disabled" },
     output_config: { effort: "low" },
     system:
@@ -157,7 +168,7 @@ export async function generateCore(input: {
   });
 
   const text = await streamToText(stream);
-  const parsed = JSON.parse(stripJsonFence(text));
+  const parsed = parseJsonSafe(text);
   try {
     return LessonSchema.parse({ ...parsed, quiz: null, keyMoments: null, tutorSeed: null });
   } catch (e) {
@@ -201,7 +212,7 @@ export async function generateSecondary(input: {
   });
 
   const text = await streamToText(stream);
-  const parsed = JSON.parse(stripJsonFence(text));
+  const parsed = parseJsonSafe(text);
   try {
     return SecondaryOutputSchema.parse(parsed);
   } catch (e) {
