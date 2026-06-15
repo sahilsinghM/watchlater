@@ -1,5 +1,9 @@
 import { describe, expect, test } from "bun:test";
-import { CORE_REQUIRED_SHAPE, SECONDARY_REQUIRED_SHAPE, SecondaryOutputSchema } from "./anthropicLesson.server";
+import {
+  CORE_REQUIRED_SHAPE,
+  SECONDARY_REQUIRED_SHAPE,
+  SecondaryOutputSchema,
+} from "./anthropicLesson.server";
 import { sampleLesson } from "@/data/sampleLesson";
 
 // Prompt shape tests — verify that each generation call's requiredShape

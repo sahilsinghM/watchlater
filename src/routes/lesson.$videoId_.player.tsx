@@ -1,6 +1,7 @@
 import { createFileRoute, useNavigate, Link } from "@tanstack/react-router";
 import { z } from "zod";
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
+import { trackClick, trackSectionVisible } from "@/lib/analytics";
 import { useSuspenseQuery } from "@tanstack/react-query";
 import { Brand } from "@/components/Brand";
 import { LessonCardView } from "@/components/LessonCard";
@@ -38,16 +39,22 @@ function Player() {
   const pct = Math.round(((idx + 1) / total) * 100);
   const displaySeconds = card.timestamp ?? (idx === 0 ? seekTo : undefined);
 
+  useEffect(() => {
+    trackSectionVisible("player_card", { card_index: idx, card_type: card.kind });
+  }, [idx]);
+
   function next() {
     if (idx + 1 >= total) {
       navigate({ to: "/lesson/$videoId/quiz", params: { videoId } });
       return;
     }
+    trackClick("player_next_card", { card_index: idx + 1, card_type: lesson.cards[idx + 1]?.kind });
     setDir(1);
     setIdx((i) => i + 1);
   }
   function prev() {
     if (idx === 0) return;
+    trackClick("player_prev_card", { card_index: idx - 1, card_type: lesson.cards[idx - 1]?.kind });
     setDir(-1);
     setIdx((i) => i - 1);
   }
@@ -56,7 +63,13 @@ function Player() {
     <div className="min-h-screen bg-background">
       <header className="mx-auto max-w-5xl px-4 sm:px-6 pt-6 pb-2 flex items-center justify-between gap-4 flex-wrap">
         <Brand size="sm" />
-        <ToneToggle value={tone} onChange={setTone} />
+        <ToneToggle
+          value={tone}
+          onChange={(t) => {
+            setTone(t);
+            trackClick("player_tone_toggle", { tone: t });
+          }}
+        />
       </header>
 
       <main className="mx-auto max-w-2xl px-4 sm:px-6 pb-32 sm:pb-24 space-y-6">
@@ -100,14 +113,27 @@ function Player() {
 
         <div className="grid grid-cols-3 gap-3">
           {[
-            { emoji: "🤔", label: "Explain more", className: "hover:bg-secondary" },
-            { emoji: "✅", label: "Got it", primary: true },
-            { emoji: "🥱", label: "Too basic", className: "hover:bg-muted" },
+            {
+              emoji: "🤔",
+              label: "Explain more",
+              reaction: "explain_more" as const,
+              className: "hover:bg-secondary",
+            },
+            { emoji: "✅", label: "Got it", reaction: "got_it" as const, primary: true },
+            {
+              emoji: "🥱",
+              label: "Too basic",
+              reaction: "too_basic" as const,
+              className: "hover:bg-muted",
+            },
           ].map((b) => (
             <button
               key={b.label}
               type="button"
-              onClick={next}
+              onClick={() => {
+                trackClick("player_reaction", { reaction: b.reaction });
+                next();
+              }}
               className={
                 "flex flex-col items-center justify-center gap-1.5 rounded-2xl brutal-border py-4 transition active:translate-y-0.5 " +
                 (b.primary

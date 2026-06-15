@@ -1,8 +1,10 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useNavigate } from "@tanstack/react-router";
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { Brand, mascot } from "@/components/Brand";
 import { validateVideoInput } from "@/lib/mvpFlow";
+import { trackClick } from "@/lib/analytics";
+import { useTrackVisible } from "@/hooks/useTrackVisible";
 
 export const Route = createFileRoute("/")({
   head: () => ({
@@ -27,6 +29,13 @@ function Index() {
   const navigate = useNavigate();
   const [url, setUrl] = useState("");
   const [error, setError] = useState<string | null>(null);
+
+  const heroRef = useRef<HTMLElement>(null);
+  const whatRef = useRef<HTMLElement>(null);
+  const howRef = useRef<HTMLElement>(null);
+  useTrackVisible(heroRef, "landing_hero");
+  useTrackVisible(whatRef, "landing_what");
+  useTrackVisible(howRef, "landing_how");
 
   function submit(e: React.FormEvent) {
     e.preventDefault();
@@ -64,7 +73,10 @@ function Index() {
         </nav>
       </header>
 
-      <main className="mx-auto max-w-4xl px-4 sm:px-6 pt-16 pb-24 text-center space-y-10">
+      <main
+        ref={heroRef}
+        className="mx-auto max-w-4xl px-4 sm:px-6 pt-16 pb-24 text-center space-y-10"
+      >
         <div className="inline-flex items-center gap-2 px-3 py-1 bg-primary/10 text-primary rounded-full text-xs font-mono font-bold tracking-wider uppercase">
           <span className="size-2 bg-primary rounded-full animate-pulse" />
           Built for busy learners
@@ -94,6 +106,7 @@ function Index() {
             />
             <button
               type="submit"
+              onClick={() => trackClick("landing_generate_cta")}
               className="px-6 py-3 bg-primary text-primary-foreground font-display font-bold text-base sm:text-lg rounded-2xl cursor-pointer hover:brightness-110 active:translate-y-1 transition-all"
             >
               Generate lesson →
@@ -123,7 +136,7 @@ function Index() {
         </div>
       </main>
 
-      <section id="what" className="mx-auto max-w-5xl px-4 sm:px-6 pb-20">
+      <section id="what" ref={whatRef} className="mx-auto max-w-5xl px-4 sm:px-6 pb-20">
         <h2 className="font-display text-2xl font-extrabold text-center mb-8">
           What you get from every video
         </h2>
@@ -196,7 +209,7 @@ function Index() {
         </div>
       </section>
 
-      <section id="how" className="mx-auto max-w-3xl px-4 sm:px-6 pb-24">
+      <section id="how" ref={howRef} className="mx-auto max-w-3xl px-4 sm:px-6 pb-24">
         <h2 className="font-display text-2xl font-extrabold text-center mb-8">How it works</h2>
         <ol className="space-y-3">
           {[

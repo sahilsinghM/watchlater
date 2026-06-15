@@ -23,7 +23,7 @@ beforeEach(() => {
   globalThis.fetch = mock(async (_url: string, options?: RequestInit) => {
     capturedBody = JSON.parse((options?.body as string) ?? "{}");
     return new Response(OK_RESPONSE, { status: 200 });
-  }) as typeof fetch;
+  }) as unknown as typeof fetch;
 });
 
 afterAll(() => {

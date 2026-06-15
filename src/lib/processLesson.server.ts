@@ -159,9 +159,17 @@ export async function processLesson(youtubeId: string, jobId: string): Promise<v
       if (coreResult.status === "rejected") {
         const e = coreResult.reason;
         const msg = e instanceof Error ? e.message : String(e);
-        if (config.openaiApiKey && /credit balance|insufficient_credit|balance is too low/i.test(msg)) {
+        if (
+          config.openaiApiKey &&
+          /credit balance|insufficient_credit|balance is too low/i.test(msg)
+        ) {
           openRouterFallback = true;
-          logIngest({ event: "anthropic_credit_exhausted_fallback", jobId, youtubeId, durationMs: Date.now() - startedAt });
+          logIngest({
+            event: "anthropic_credit_exhausted_fallback",
+            jobId,
+            youtubeId,
+            durationMs: Date.now() - startedAt,
+          });
         } else {
           const schemaInvalid = !!e && typeof e === "object" && "issues" in e;
           throw new IngestError(
@@ -200,96 +208,104 @@ export async function processLesson(youtubeId: string, jobId: string): Promise<v
     }
 
     if (openRouterFallback || !config.anthropicApiKey) {
-    if (config.openaiApiKey) {
-      // Fallback: OpenRouter — single-call path, no parallel split.
-      model = config.openaiModel ?? "openrouter-default";
-      const orHeartbeat = setInterval(() => { store.touchJob(jobId).catch(() => {}); }, HEARTBEAT_MS);
-      let lesson;
-      try {
-        lesson = await generateOpenAILesson({
-          apiKey: config.openaiApiKey,
-          model: config.openaiModel,
-          meta,
-          cues,
-          languageCode,
-        });
-      } catch (e: unknown) {
-        const schemaInvalid = !!e && typeof e === "object" && "issues" in e;
-        let detail: string;
-        if (schemaInvalid) {
-          const zErr = e as { issues: Array<{ path: (string | number)[]; message: string }> };
-          const paths = zErr.issues.slice(0, 5).map((i) => `${i.path.join(".")}: ${i.message}`).join("; ");
-          detail = `Schema invalid — ${paths}`;
-        } else {
-          detail = `Lesson generation failed: ${e instanceof Error ? e.message : String(e)}`;
+      if (config.openaiApiKey) {
+        // Fallback: OpenRouter — single-call path, no parallel split.
+        model = config.openaiModel ?? "openrouter-default";
+        const orHeartbeat = setInterval(() => {
+          store.touchJob(jobId).catch(() => {});
+        }, HEARTBEAT_MS);
+        let lesson;
+        try {
+          lesson = await generateOpenAILesson({
+            apiKey: config.openaiApiKey,
+            model: config.openaiModel,
+            meta,
+            cues,
+            languageCode,
+          });
+        } catch (e: unknown) {
+          const schemaInvalid = !!e && typeof e === "object" && "issues" in e;
+          let detail: string;
+          if (schemaInvalid) {
+            const zErr = e as { issues: Array<{ path: (string | number)[]; message: string }> };
+            const paths = zErr.issues
+              .slice(0, 5)
+              .map((i) => `${i.path.join(".")}: ${i.message}`)
+              .join("; ");
+            detail = `Schema invalid — ${paths}`;
+          } else {
+            detail = `Lesson generation failed: ${e instanceof Error ? e.message : String(e)}`;
+          }
+          clearInterval(orHeartbeat);
+          throw new IngestError(
+            schemaInvalid ? "GENERATION_SCHEMA_INVALID" : "GENERATION_FAILURE",
+            detail,
+          );
         }
         clearInterval(orHeartbeat);
-        throw new IngestError(schemaInvalid ? "GENERATION_SCHEMA_INVALID" : "GENERATION_FAILURE", detail);
-      }
-      clearInterval(orHeartbeat);
 
-      lesson = {
-        ...lesson,
-        video: {
-          ...lesson.video,
+        lesson = {
+          ...lesson,
+          video: {
+            ...lesson.video,
+            youtubeId,
+            url: `https://www.youtube.com/watch?v=${youtubeId}`,
+            title: meta.title,
+            channel: meta.channel,
+            thumbnail: meta.thumbnail,
+            duration,
+            language: languageCode,
+          },
+        };
+
+        const videoId = await store.upsertVideo({
           youtubeId,
           url: `https://www.youtube.com/watch?v=${youtubeId}`,
           title: meta.title,
           channel: meta.channel,
-          thumbnail: meta.thumbnail,
-          duration,
+          thumbnailUrl: meta.thumbnail,
+          durationSeconds: duration,
           language: languageCode,
-        },
-      };
+        });
 
-      const videoId = await store.upsertVideo({
-        youtubeId,
-        url: `https://www.youtube.com/watch?v=${youtubeId}`,
-        title: meta.title,
-        channel: meta.channel,
-        thumbnailUrl: meta.thumbnail,
-        durationSeconds: duration,
-        language: languageCode,
-      });
+        const { isVisuallyDependent } = detectVisualDependency(lesson.segments);
+        const frameResult = await persistKeyFrames(store, {
+          videoId,
+          youtubeId,
+          moments: lesson.keyMoments ?? [],
+          captureAvailable: false,
+          visualsEssential: isVisuallyDependent,
+        });
+        const visualContextStatus: "captured" | "degraded" | "unavailable" =
+          frameResult.status === "failed" ? "unavailable" : frameResult.status;
+        lesson = { ...lesson, visualContextStatus };
 
-      const { isVisuallyDependent } = detectVisualDependency(lesson.segments);
-      const frameResult = await persistKeyFrames(store, {
-        videoId,
-        youtubeId,
-        moments: lesson.keyMoments ?? [],
-        captureAvailable: false,
-        visualsEssential: isVisuallyDependent,
-      });
-      const visualContextStatus: "captured" | "degraded" | "unavailable" =
-        frameResult.status === "failed" ? "unavailable" : frameResult.status;
-      lesson = { ...lesson, visualContextStatus };
-
-      await store.saveLesson({ youtubeId, lesson });
-      await store.updateProcessingJob(jobId, { status: "ready", currentStep: "ready" });
-      logIngest({
-        event: "done",
-        jobId,
-        youtubeId,
-        outcome: "ready",
-        durationMs: Date.now() - startedAt,
-        transcriptChars,
-        model,
-      });
-    } else {
-      // No LLM key — templated density-based lesson.
-      const lesson = buildLesson(meta, cues);
-      await store.saveLesson({ youtubeId, lesson });
-      await store.updateProcessingJob(jobId, { status: "ready", currentStep: "ready" });
-      logIngest({
-        event: "done",
-        jobId,
-        youtubeId,
-        outcome: "ready",
-        durationMs: Date.now() - startedAt,
-        transcriptChars,
-        model,
-      });
-    }
+        await store.saveLesson({ youtubeId, lesson });
+        await store.updateProcessingJob(jobId, { status: "ready", currentStep: "ready" });
+        logIngest({
+          event: "done",
+          jobId,
+          youtubeId,
+          outcome: "ready",
+          durationMs: Date.now() - startedAt,
+          transcriptChars,
+          model,
+        });
+      } else {
+        // No LLM key — templated density-based lesson.
+        const lesson = buildLesson(meta, cues);
+        await store.saveLesson({ youtubeId, lesson });
+        await store.updateProcessingJob(jobId, { status: "ready", currentStep: "ready" });
+        logIngest({
+          event: "done",
+          jobId,
+          youtubeId,
+          outcome: "ready",
+          durationMs: Date.now() - startedAt,
+          transcriptChars,
+          model,
+        });
+      }
     } // close: if (openRouterFallback || !config.anthropicApiKey)
   } catch (e: unknown) {
     const code = e instanceof IngestError ? e.code : "UNKNOWN";

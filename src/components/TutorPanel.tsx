@@ -1,11 +1,11 @@
 import { useState } from "react";
 import type { Lesson } from "@/lib/lessonSchema";
 import { answerTutorQuestion, buildTutorContext } from "@/lib/mvpFlow";
+import { trackClick } from "@/lib/analytics";
 
 type Msg = { role: "user" | "tutor"; text: string };
 
 export function TutorPanel({ lesson }: { lesson: Lesson }) {
-  if (!lesson.tutorSeed) return null;
   const [open, setOpen] = useState(false);
   const [messages, setMessages] = useState<Msg[]>([
     {
@@ -14,6 +14,8 @@ export function TutorPanel({ lesson }: { lesson: Lesson }) {
     },
   ]);
   const [input, setInput] = useState("");
+
+  if (!lesson.tutorSeed) return null;
 
   function ask(q: string) {
     if (!q.trim()) return;
@@ -26,7 +28,10 @@ export function TutorPanel({ lesson }: { lesson: Lesson }) {
     <>
       <button
         type="button"
-        onClick={() => setOpen(true)}
+        onClick={() => {
+          setOpen(true);
+          trackClick("hero_open_tutor");
+        }}
         aria-label="Ask the tutor"
         className="fixed bottom-5 right-5 z-40 inline-flex items-center gap-2 rounded-full p-4 sm:rounded-2xl sm:px-5 sm:py-3 sm:bottom-6 sm:right-6 bg-foreground text-background brutal-border brutal-shadow-sm font-display font-bold hover:-translate-y-0.5 hover:-translate-x-0.5 transition"
       >

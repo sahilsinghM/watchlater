@@ -14,17 +14,40 @@ function transcriptExcerpt(cues: Cue[]): string {
 }
 
 const SEGMENT_KIND_MAP: Record<string, string> = {
-  intro: "watch", introduction: "watch", conclusion: "watch", outro: "watch",
-  recap: "watch", overview: "watch", summary: "watch", transition: "watch",
-  example: "demo", demonstration: "demo", tutorial: "demo",
-  advertisement: "skip", filler: "skip", ad: "skip", boring: "skip", tangent: "skip",
-  main: "core", key: "core", important: "core", essential: "core", critical: "core",
+  intro: "watch",
+  introduction: "watch",
+  conclusion: "watch",
+  outro: "watch",
+  recap: "watch",
+  overview: "watch",
+  summary: "watch",
+  transition: "watch",
+  example: "demo",
+  demonstration: "demo",
+  tutorial: "demo",
+  advertisement: "skip",
+  filler: "skip",
+  ad: "skip",
+  boring: "skip",
+  tangent: "skip",
+  main: "core",
+  key: "core",
+  important: "core",
+  essential: "core",
+  critical: "core",
 };
 
 const CARD_KIND_MAP: Record<string, string> = {
-  thesis: "concept", mechanism: "insight", nuance: "insight",
-  key_concept: "concept", principle: "concept", theory: "concept", definition: "concept",
-  example: "analogy", comparison: "analogy", metaphor: "analogy",
+  thesis: "concept",
+  mechanism: "insight",
+  nuance: "insight",
+  key_concept: "concept",
+  principle: "concept",
+  theory: "concept",
+  definition: "concept",
+  example: "analogy",
+  comparison: "analogy",
+  metaphor: "analogy",
 };
 
 function normalizeModelOutput(obj: unknown): void {
@@ -102,16 +125,15 @@ export async function generateOpenAILesson(input: {
               bestPart: "{ start, end, why }",
               skipPart: "{ start, end, why }",
               recommendation: "explicit verdict and reason",
-              watchVerdict: '"skip" | "lesson_only" | "watch_core" | "watch_full" (use exactly one of these strings)',
+              watchVerdict:
+                '"skip" | "lesson_only" | "watch_core" | "watch_full" (use exactly one of these strings)',
               visualContextStatus: "unavailable",
               segments:
                 'array of objects: { start: number (seconds), end: number (seconds), kind: "skip"|"watch"|"core"|"demo", title: string, blurb: string }',
               cards:
                 'exactly six objects: { id: string, kind: "concept"|"analogy"|"quote"|"insight"|"recap", title: string, body: string }. Cover thesis → concept, key concept → concept, mechanism → insight, example/analogy → analogy, nuance → insight, recap → recap.',
-              keyMoments:
-                "3-5 objects: { timestamp: number (seconds), caption: string }",
-              quiz:
-                '3 objects: { id: string, prompt: string, options: string[] (exactly 4 strings), correctIndex: number (0-3), explanation: string }',
+              keyMoments: "3-5 objects: { timestamp: number (seconds), caption: string }",
+              quiz: "3 objects: { id: string, prompt: string, options: string[] (exactly 4 strings), correctIndex: number (0-3), explanation: string }",
               tutorSeed: '2-4 objects: { "q": "question string", "a": "answer string" }',
             },
             meta: input.meta,
@@ -134,13 +156,21 @@ export async function generateOpenAILesson(input: {
   const raw = payload.choices?.[0]?.message?.content ?? "";
   if (!raw) throw new Error("OpenAI returned empty response");
   // Some OpenRouter providers wrap JSON in markdown code fences despite json_object mode.
-  const text = raw.replace(/^```(?:json)?\s*\n?/i, "").replace(/\n?```\s*$/i, "").trim();
+  const text = raw
+    .replace(/^```(?:json)?\s*\n?/i, "")
+    .replace(/\n?```\s*$/i, "")
+    .trim();
   const parsed = JSON.parse(text);
   normalizeModelOutput(parsed);
   const result = LessonSchema.safeParse(parsed);
   if (!result.success) {
     const issues = result.error.issues.slice(0, 10).map((i) => `${i.path.join(".")}: ${i.message}`);
-    console.error("[openai] schema validation failed:", issues.join(" | "), "| preview:", text.substring(0, 500));
+    console.error(
+      "[openai] schema validation failed:",
+      issues.join(" | "),
+      "| preview:",
+      text.substring(0, 500),
+    );
     throw result.error;
   }
   return result.data;
