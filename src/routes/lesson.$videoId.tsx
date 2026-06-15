@@ -31,7 +31,7 @@ export const Route = createFileRoute("/lesson/$videoId")({
     context.queryClient.ensureQueryData(lessonQueryOptions(params.videoId)),
   head: ({ loaderData: lesson }) => {
     const title = lesson ? `${lesson.video.title} — WatchLater` : "Lesson · WatchLater";
-    const verdict = lesson ? (VERDICT_SHORT[lesson.watchVerdict] ?? "Watch core") : "";
+    const verdict = lesson ? (VERDICT_SHORT[lesson.watchVerdict ?? "watch_core"] ?? "Watch core") : "";
     const desc = lesson
       ? `${lesson.watchScore}/10 · ${verdict} · ${lesson.reallyAbout}`
       : "Turn long YouTube videos into playful, interactive 5-minute lessons.";

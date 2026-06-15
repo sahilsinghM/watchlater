@@ -170,7 +170,7 @@ export async function generateCore(input: {
   const text = await streamToText(stream);
   const parsed = parseJsonSafe(text);
   try {
-    return LessonSchema.parse({ ...parsed, quiz: null, keyMoments: null, tutorSeed: null });
+    return LessonSchema.parse({ ...(parsed as object), quiz: null, keyMoments: null, tutorSeed: null });
   } catch (e) {
     console.error("[anthropic/core] schema validation failed:", text.substring(0, 2000));
     throw e;
