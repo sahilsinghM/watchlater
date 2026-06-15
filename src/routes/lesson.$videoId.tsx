@@ -1,5 +1,7 @@
 import { createFileRoute, Link, useNavigate, useRouter } from "@tanstack/react-router";
 import { useEffect, useRef, useState } from "react";
+import { trackClick } from "@/lib/analytics";
+import { useTrackVisible } from "@/hooks/useTrackVisible";
 import { useQuery, useSuspenseQuery } from "@tanstack/react-query";
 import { Brand } from "@/components/Brand";
 import { AttentionTimeline } from "@/components/AttentionTimeline";
@@ -66,6 +68,13 @@ function LessonHero() {
   const { data: lesson } = useSuspenseQuery(lessonQueryOptions(videoId));
   const playerRef = useRef<YouTubePlayerHandle>(null);
   const [tone, setTone] = useState<Tone>("clear");
+
+  const summaryRef = useRef<HTMLDivElement>(null);
+  const attentionRef = useRef<HTMLElement>(null);
+  const recommendationRef = useRef<HTMLElement>(null);
+  useTrackVisible(summaryRef, "hero_summary");
+  useTrackVisible(attentionRef, "hero_attention_map");
+  useTrackVisible(recommendationRef, "hero_recommendation");
   const verdictLabel: Record<string, string> = {
     skip: "Skip it",
     lesson_only: "Do the lesson only",
@@ -138,7 +147,7 @@ function LessonHero() {
               className="order-2 sm:hidden"
             />
 
-            <div className="order-4 sm:order-2 rounded-3xl brutal-border bg-card p-5 sm:p-6 brutal-shadow-sm space-y-4">
+            <div ref={summaryRef} className="order-4 sm:order-2 rounded-3xl brutal-border bg-card p-5 sm:p-6 brutal-shadow-sm space-y-4">
               <div className="font-mono text-[10px] uppercase tracking-widest text-primary font-bold">
                 This video in 30 seconds
               </div>
@@ -163,13 +172,17 @@ function LessonHero() {
               <Link
                 to="/lesson/$videoId/player"
                 params={{ videoId }}
+                onClick={() => trackClick("hero_start_lesson")}
                 className="inline-flex items-center gap-2 rounded-2xl bg-primary text-primary-foreground brutal-border px-6 py-3.5 brutal-shadow font-display font-bold text-lg hover:-translate-y-0.5 hover:-translate-x-0.5 hover:[box-shadow:10px_10px_0_0_var(--foreground)] transition"
               >
                 Start 5-minute lesson →
               </Link>
               <button
                 type="button"
-                onClick={() => playerRef.current?.seekTo(lesson.bestPart.start)}
+                onClick={() => {
+                  playerRef.current?.seekTo(lesson.bestPart.start);
+                  trackClick("hero_watch_best_part");
+                }}
                 className="inline-flex items-center gap-2 rounded-2xl bg-card brutal-border px-5 py-3 font-bold hover:bg-foreground hover:text-background transition"
               >
                 ▶ Watch the best part
@@ -178,6 +191,7 @@ function LessonHero() {
                 path={`/lesson/${videoId}`}
                 title={lesson.video.title}
                 text="Learn this video in 5 minutes with WatchLater."
+                onClick={() => trackClick("hero_share")}
               />
             </div>
           </div>
@@ -194,7 +208,7 @@ function LessonHero() {
           </div>
         </section>
 
-        <section className="space-y-5">
+        <section ref={attentionRef} className="space-y-5">
           <div className="flex items-end justify-between gap-4 flex-wrap">
             <div>
               <h2 className="font-display text-2xl font-extrabold">Attention map</h2>
@@ -206,8 +220,9 @@ function LessonHero() {
           <AttentionTimeline
             segments={lesson.segments}
             totalDuration={lesson.video.duration}
-            onSeek={(s) => {
-              playerRef.current?.seekTo(s);
+            onSeek={(seconds, kind) => {
+              playerRef.current?.seekTo(seconds);
+              trackClick("hero_attention_segment", { segment_type: kind });
               if (typeof window !== "undefined") {
                 window.scrollTo({ top: 0, behavior: "smooth" });
               }
@@ -215,7 +230,7 @@ function LessonHero() {
           />
         </section>
 
-        <section className="rounded-3xl brutal-border bg-card p-5 sm:p-6 brutal-shadow-sm">
+        <section ref={recommendationRef} className="rounded-3xl brutal-border bg-card p-5 sm:p-6 brutal-shadow-sm">
           <div className="flex flex-wrap items-center gap-2 mb-2">
             <div className="font-mono text-[10px] uppercase tracking-widest text-primary font-bold">
               Recommendation
@@ -276,6 +291,7 @@ function QuizSection({
         <Link
           to="/lesson/$videoId/quiz"
           params={{ videoId }}
+          onClick={() => trackClick("hero_quiz_cta")}
           className="inline-flex items-center rounded-2xl bg-secondary text-secondary-foreground brutal-border px-5 py-3 font-display font-bold brutal-shadow-sm hover:-translate-y-0.5 hover:-translate-x-0.5 transition"
         >
           Take the quiz →

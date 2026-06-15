@@ -1,5 +1,6 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { z } from "zod";
+import { trackClick } from "@/lib/analytics";
 import { useSuspenseQuery } from "@tanstack/react-query";
 import { useEffect, useState } from "react";
 import { Brand, mascot } from "@/components/Brand";
@@ -111,6 +112,7 @@ function Done() {
             <Link
               to="/lesson/$videoId/quiz"
               params={{ videoId }}
+              onClick={() => trackClick("done_try_again")}
               className="inline-flex items-center min-h-[44px] rounded-2xl bg-secondary text-secondary-foreground brutal-border px-5 py-3 font-display font-bold brutal-shadow-sm hover:-translate-y-0.5 hover:-translate-x-0.5 active:translate-x-0 active:translate-y-0.5 transition"
             >
               Try the quiz again →
@@ -203,7 +205,7 @@ function Done() {
             <div className="flex flex-wrap gap-3">
               <button
                 type="button"
-                onClick={() => leaveFeedback(true)}
+                onClick={() => { trackClick("done_feedback_useful"); leaveFeedback(true); }}
                 disabled={feedbackState === "saving"}
                 className="min-h-[44px] rounded-2xl bg-accent text-accent-foreground brutal-border px-5 py-3 font-display font-bold brutal-shadow-sm hover:-translate-y-0.5 hover:-translate-x-0.5 active:translate-x-0 active:translate-y-0.5 transition disabled:opacity-50 disabled:hover:translate-x-0 disabled:hover:translate-y-0"
               >
@@ -211,7 +213,7 @@ function Done() {
               </button>
               <button
                 type="button"
-                onClick={() => leaveFeedback(false)}
+                onClick={() => { trackClick("done_feedback_not_useful"); leaveFeedback(false); }}
                 disabled={feedbackState === "saving"}
                 className="min-h-[44px] rounded-2xl bg-card brutal-border px-5 py-3 font-bold brutal-shadow-sm hover:-translate-y-0.5 hover:-translate-x-0.5 hover:bg-foreground hover:text-background active:translate-x-0 active:translate-y-0.5 transition disabled:opacity-50 disabled:hover:translate-x-0 disabled:hover:translate-y-0"
               >
@@ -232,6 +234,7 @@ function Done() {
             title={lesson.video.title}
             text="Learn this video in 5 minutes with WatchLater."
             className="text-sm"
+            onClick={() => trackClick("done_share")}
           />
           <Link
             to="/lesson/$videoId"
@@ -242,6 +245,7 @@ function Done() {
           </Link>
           <Link
             to="/"
+            onClick={() => trackClick("done_process_another")}
             className="inline-flex items-center min-h-[44px] rounded-2xl bg-primary text-primary-foreground brutal-border px-5 py-3 font-display font-bold brutal-shadow-sm hover:-translate-y-0.5 hover:-translate-x-0.5 transition"
           >
             Process another video →

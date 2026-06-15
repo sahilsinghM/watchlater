@@ -44,7 +44,7 @@ const legendOrder: Segment["kind"][] = ["watch", "core", "demo", "skip"];
 type Props = {
   segments: Segment[];
   totalDuration: number;
-  onSeek?: (seconds: number) => void;
+  onSeek?: (seconds: number, kind: Segment["kind"]) => void;
 };
 
 export function AttentionTimeline({ segments, totalDuration, onSeek }: Props) {
@@ -88,7 +88,7 @@ export function AttentionTimeline({ segments, totalDuration, onSeek }: Props) {
               key={i}
               type="button"
               onClick={() => {
-                onSeek?.(seg.start);
+                onSeek?.(seg.start, seg.kind);
                 // Phones: the bar is an index, the cards are the content —
                 // jump to the segment's card. Desktop keeps seek-only.
                 if (window.matchMedia("(max-width: 639px)").matches) {
@@ -142,7 +142,7 @@ export function AttentionTimeline({ segments, totalDuration, onSeek }: Props) {
             >
               <button
                 type="button"
-                onClick={() => onSeek?.(seg.start)}
+                onClick={() => onSeek?.(seg.start, seg.kind)}
                 className="group flex w-full items-start gap-3 rounded-3xl brutal-border bg-card p-4 text-left shadow-[4px_4px_0_0_var(--foreground)] transition-all duration-150 ease-[var(--ease-spring)] hover:-translate-x-1 hover:-translate-y-1 hover:shadow-[7px_7px_0_0_var(--foreground)] active:translate-x-0 active:translate-y-0 active:shadow-[2px_2px_0_0_var(--foreground)]"
               >
                 <span

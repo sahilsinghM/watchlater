@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { captureLead, hasCapturedLead, isLikelyEmail } from "@/lib/lead";
+import { trackClick } from "@/lib/analytics";
 
 type Props = {
   lessonVideoId?: string;
@@ -89,6 +90,7 @@ export function WaitlistCard({ lessonVideoId }: Props) {
             <button
               type="submit"
               disabled={status === "saving"}
+              onClick={() => trackClick("hero_join_waitlist")}
               className="inline-flex w-full justify-center sm:w-auto items-center gap-2 rounded-2xl bg-primary text-primary-foreground brutal-border px-5 py-3 font-display font-bold brutal-shadow-sm transition hover:-translate-y-0.5 hover:-translate-x-0.5 active:translate-x-0 active:translate-y-0 disabled:opacity-50"
             >
               {status === "saving" ? "Joining…" : "Join early access →"}

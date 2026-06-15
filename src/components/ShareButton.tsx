@@ -11,6 +11,7 @@ type Props = {
   /** Button label. Defaults to "Share". */
   label?: string;
   className?: string;
+  onClick?: () => void;
 };
 
 // Secondary control: inverts to ink on hover, sinks on press — the brand
@@ -21,10 +22,11 @@ const baseClass =
   "hover:-translate-y-0.5 hover:-translate-x-0.5 hover:bg-foreground hover:text-background " +
   "active:translate-x-0 active:translate-y-0.5";
 
-export function ShareButton({ path, title, text, label = "Share", className }: Props) {
+export function ShareButton({ path, title, text, label = "Share", className, onClick }: Props) {
   const [copied, setCopied] = useState(false);
 
   async function onShare() {
+    onClick?.();
     const url = typeof window !== "undefined" ? `${window.location.origin}${path}` : path;
 
     // Prefer the native share sheet where available (mobile).

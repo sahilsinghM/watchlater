@@ -1,5 +1,6 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useState } from "react";
+import { trackClick } from "@/lib/analytics";
 import { useSuspenseQuery } from "@tanstack/react-query";
 import { Brand } from "@/components/Brand";
 import { lessonQueryOptions } from "@/lib/lessonQuery";
@@ -103,7 +104,7 @@ function Quiz() {
                 <li key={i}>
                   <button
                     type="button"
-                    onClick={() => !revealed && setPicked(i)}
+                    onClick={() => { if (!revealed) { trackClick("quiz_answer_selected", { question_index: idx, option_index: i }); setPicked(i); } }}
                     disabled={revealed}
                     className={
                       "flex w-full items-center gap-3 rounded-2xl border-[3px] bg-card px-5 py-4 text-left font-medium transition " +
@@ -141,10 +142,8 @@ function Quiz() {
             onClick={() => {
               if (!revealed) {
                 if (picked === null) return;
-                // reveal first
-                // We use a tiny trick: setting answers via setPicked already happened; just force reveal by leaving picked set.
-                // To allow "check then next", split into two states:
               }
+              trackClick(idx + 1 === total ? "quiz_finish" : "quiz_next_question", { question_index: idx });
               submit();
             }}
             disabled={picked === null}

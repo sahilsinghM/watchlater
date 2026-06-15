@@ -6,11 +6,14 @@ import {
   useRouter,
   HeadContent,
   Scripts,
+  useRouterState,
 } from "@tanstack/react-router";
 import { useEffect, type ReactNode } from "react";
 
 import appCss from "../styles.css?url";
 import { reportLovableError } from "../lib/lovable-error-reporting";
+import { initAnalytics, trackPageView, identifySession, mapPathToPage } from "../lib/analytics";
+import { getBrowserSessionKey } from "../lib/anonymousSession";
 
 function NotFoundComponent() {
   return (
@@ -132,6 +135,16 @@ function RootShell({ children }: { children: ReactNode }) {
 
 function RootComponent() {
   const { queryClient } = Route.useRouteContext();
+  const location = useRouterState({ select: (s) => s.location });
+
+  useEffect(() => {
+    initAnalytics();
+    identifySession(getBrowserSessionKey());
+  }, []);
+
+  useEffect(() => {
+    trackPageView(mapPathToPage(location.pathname));
+  }, [location.pathname]);
 
   return (
     <QueryClientProvider client={queryClient}>
