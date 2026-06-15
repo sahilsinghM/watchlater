@@ -31,7 +31,9 @@ export const Route = createFileRoute("/lesson/$videoId")({
     context.queryClient.ensureQueryData(lessonQueryOptions(params.videoId)),
   head: ({ loaderData: lesson }) => {
     const title = lesson ? `${lesson.video.title} — WatchLater` : "Lesson · WatchLater";
-    const verdict = lesson ? (VERDICT_SHORT[lesson.watchVerdict ?? "watch_core"] ?? "Watch core") : "";
+    const verdict = lesson
+      ? (VERDICT_SHORT[lesson.watchVerdict ?? "watch_core"] ?? "Watch core")
+      : "";
     const desc = lesson
       ? `${lesson.watchScore}/10 · ${verdict} · ${lesson.reallyAbout}`
       : "Turn long YouTube videos into playful, interactive 5-minute lessons.";
@@ -147,7 +149,10 @@ function LessonHero() {
               className="order-2 sm:hidden"
             />
 
-            <div ref={summaryRef} className="order-4 sm:order-2 rounded-3xl brutal-border bg-card p-5 sm:p-6 brutal-shadow-sm space-y-4">
+            <div
+              ref={summaryRef}
+              className="order-4 sm:order-2 rounded-3xl brutal-border bg-card p-5 sm:p-6 brutal-shadow-sm space-y-4"
+            >
               <div className="font-mono text-[10px] uppercase tracking-widest text-primary font-bold">
                 This video in 30 seconds
               </div>
@@ -230,7 +235,10 @@ function LessonHero() {
           />
         </section>
 
-        <section ref={recommendationRef} className="rounded-3xl brutal-border bg-card p-5 sm:p-6 brutal-shadow-sm">
+        <section
+          ref={recommendationRef}
+          className="rounded-3xl brutal-border bg-card p-5 sm:p-6 brutal-shadow-sm"
+        >
           <div className="flex flex-wrap items-center gap-2 mb-2">
             <div className="font-mono text-[10px] uppercase tracking-widest text-primary font-bold">
               Recommendation

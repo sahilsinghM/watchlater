@@ -73,7 +73,10 @@ function Index() {
         </nav>
       </header>
 
-      <main ref={heroRef} className="mx-auto max-w-4xl px-4 sm:px-6 pt-16 pb-24 text-center space-y-10">
+      <main
+        ref={heroRef}
+        className="mx-auto max-w-4xl px-4 sm:px-6 pt-16 pb-24 text-center space-y-10"
+      >
         <div className="inline-flex items-center gap-2 px-3 py-1 bg-primary/10 text-primary rounded-full text-xs font-mono font-bold tracking-wider uppercase">
           <span className="size-2 bg-primary rounded-full animate-pulse" />
           Built for busy learners

@@ -64,10 +64,15 @@ function Admin() {
 
         {stats.videosPerDay.length > 0 && (
           <section>
-            <h2 className="font-display text-lg font-extrabold mb-4">Videos processed — last 30 days</h2>
+            <h2 className="font-display text-lg font-extrabold mb-4">
+              Videos processed — last 30 days
+            </h2>
             <div className="rounded-3xl brutal-border bg-card p-5 brutal-shadow-sm">
               <ResponsiveContainer width="100%" height={220}>
-                <BarChart data={stats.videosPerDay} margin={{ top: 4, right: 4, left: -24, bottom: 0 }}>
+                <BarChart
+                  data={stats.videosPerDay}
+                  margin={{ top: 4, right: 4, left: -24, bottom: 0 }}
+                >
                   <XAxis
                     dataKey="date"
                     tick={{ fontSize: 10, fontFamily: "JetBrains Mono, monospace" }}
@@ -76,7 +81,11 @@ function Admin() {
                   />
                   <YAxis tick={{ fontSize: 10 }} allowDecimals={false} />
                   <Tooltip
-                    contentStyle={{ fontFamily: "Inter, sans-serif", fontSize: 12, borderRadius: 12 }}
+                    contentStyle={{
+                      fontFamily: "Inter, sans-serif",
+                      fontSize: 12,
+                      borderRadius: 12,
+                    }}
                   />
                   <Bar dataKey="count" name="Videos" fill="var(--primary)" radius={[4, 4, 0, 0]} />
                 </BarChart>
@@ -88,7 +97,9 @@ function Admin() {
         <section>
           <h2 className="font-display text-lg font-extrabold mb-4">
             Emails collected{" "}
-            <span className="text-muted-foreground font-normal text-sm">({leads.length} shown)</span>
+            <span className="text-muted-foreground font-normal text-sm">
+              ({leads.length} shown)
+            </span>
           </h2>
           {leads.length === 0 ? (
             <p className="text-muted-foreground">No emails yet.</p>
@@ -113,10 +124,7 @@ function Admin() {
                 </thead>
                 <tbody>
                   {leads.map((lead, i) => (
-                    <tr
-                      key={lead.id}
-                      className={i % 2 === 0 ? "bg-card" : "bg-background/50"}
-                    >
+                    <tr key={lead.id} className={i % 2 === 0 ? "bg-card" : "bg-background/50"}>
                       <td className="px-5 py-3 font-medium">{lead.email}</td>
                       <td className="px-5 py-3">
                         <span className="rounded-lg bg-primary/10 text-primary px-2 py-0.5 font-mono text-[10px] uppercase font-bold">

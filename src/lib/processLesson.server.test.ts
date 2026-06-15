@@ -90,7 +90,10 @@ beforeEach(() => {
     anthropicCore: async () => {
       throw new Error("generateCore should not be called in this scenario");
     },
-    anthropicSecondary: async () => ({ quiz: sampleLesson.quiz, keyMoments: sampleLesson.keyMoments }),
+    anthropicSecondary: async () => ({
+      quiz: sampleLesson.quiz,
+      keyMoments: sampleLesson.keyMoments,
+    }),
     store: bag.store,
   };
 

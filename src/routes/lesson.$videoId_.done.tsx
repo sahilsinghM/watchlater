@@ -102,7 +102,10 @@ function Done() {
         </div>
 
         {mastery.tier === "low" && (
-          <div className="rounded-[32px] brutal-border bg-secondary/10 p-5 sm:p-6 text-left space-y-4 brutal-shadow-sm animate-card-in" style={{ animationDelay: "100ms" }}>
+          <div
+            className="rounded-[32px] brutal-border bg-secondary/10 p-5 sm:p-6 text-left space-y-4 brutal-shadow-sm animate-card-in"
+            style={{ animationDelay: "100ms" }}
+          >
             <div className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground font-bold">
               Worth another try
             </div>
@@ -120,7 +123,10 @@ function Done() {
           </div>
         )}
 
-        <div className="rounded-3xl brutal-border bg-card p-5 sm:p-6 text-left space-y-3 brutal-shadow-sm animate-card-in" style={{ animationDelay: "200ms" }}>
+        <div
+          className="rounded-3xl brutal-border bg-card p-5 sm:p-6 text-left space-y-3 brutal-shadow-sm animate-card-in"
+          style={{ animationDelay: "200ms" }}
+        >
           <div className="font-mono text-[10px] uppercase tracking-widest text-primary font-bold">
             If you want more
           </div>
@@ -138,7 +144,10 @@ function Done() {
           </p>
         </div>
 
-        <div className="rounded-3xl brutal-border bg-card p-5 sm:p-6 text-left space-y-4 brutal-shadow-sm animate-card-in" style={{ animationDelay: "300ms" }}>
+        <div
+          className="rounded-3xl brutal-border bg-card p-5 sm:p-6 text-left space-y-4 brutal-shadow-sm animate-card-in"
+          style={{ animationDelay: "300ms" }}
+        >
           <div className="font-mono text-[10px] uppercase tracking-widest text-primary font-bold">
             Was this useful?
           </div>
@@ -162,7 +171,7 @@ function Done() {
                   placeholder="Your name (optional)"
                   autoComplete="name"
                   disabled={feedbackState === "saved"}
-                    className="w-full rounded-2xl brutal-border bg-background px-4 py-3 text-sm outline-none focus:ring-0 focus:shadow-[4px_4px_0_var(--foreground)] disabled:opacity-50"
+                  className="w-full rounded-2xl brutal-border bg-background px-4 py-3 text-sm outline-none focus:ring-0 focus:shadow-[4px_4px_0_var(--foreground)] disabled:opacity-50"
                 />
                 <p className="self-center font-display text-sm font-extrabold">
                   <span className="text-accent">✓</span> You're on the early-access list.
@@ -205,7 +214,10 @@ function Done() {
             <div className="flex flex-wrap gap-3">
               <button
                 type="button"
-                onClick={() => { trackClick("done_feedback_useful"); leaveFeedback(true); }}
+                onClick={() => {
+                  trackClick("done_feedback_useful");
+                  leaveFeedback(true);
+                }}
                 disabled={feedbackState === "saving"}
                 className="min-h-[44px] rounded-2xl bg-accent text-accent-foreground brutal-border px-5 py-3 font-display font-bold brutal-shadow-sm hover:-translate-y-0.5 hover:-translate-x-0.5 active:translate-x-0 active:translate-y-0.5 transition disabled:opacity-50 disabled:hover:translate-x-0 disabled:hover:translate-y-0"
               >
@@ -213,7 +225,10 @@ function Done() {
               </button>
               <button
                 type="button"
-                onClick={() => { trackClick("done_feedback_not_useful"); leaveFeedback(false); }}
+                onClick={() => {
+                  trackClick("done_feedback_not_useful");
+                  leaveFeedback(false);
+                }}
                 disabled={feedbackState === "saving"}
                 className="min-h-[44px] rounded-2xl bg-card brutal-border px-5 py-3 font-bold brutal-shadow-sm hover:-translate-y-0.5 hover:-translate-x-0.5 hover:bg-foreground hover:text-background active:translate-x-0 active:translate-y-0.5 transition disabled:opacity-50 disabled:hover:translate-x-0 disabled:hover:translate-y-0"
               >

@@ -63,7 +63,13 @@ function Player() {
     <div className="min-h-screen bg-background">
       <header className="mx-auto max-w-5xl px-4 sm:px-6 pt-6 pb-2 flex items-center justify-between gap-4 flex-wrap">
         <Brand size="sm" />
-        <ToneToggle value={tone} onChange={(t) => { setTone(t); trackClick("player_tone_toggle", { tone: t }); }} />
+        <ToneToggle
+          value={tone}
+          onChange={(t) => {
+            setTone(t);
+            trackClick("player_tone_toggle", { tone: t });
+          }}
+        />
       </header>
 
       <main className="mx-auto max-w-2xl px-4 sm:px-6 pb-32 sm:pb-24 space-y-6">
@@ -107,14 +113,27 @@ function Player() {
 
         <div className="grid grid-cols-3 gap-3">
           {[
-            { emoji: "🤔", label: "Explain more", reaction: "explain_more" as const, className: "hover:bg-secondary" },
+            {
+              emoji: "🤔",
+              label: "Explain more",
+              reaction: "explain_more" as const,
+              className: "hover:bg-secondary",
+            },
             { emoji: "✅", label: "Got it", reaction: "got_it" as const, primary: true },
-            { emoji: "🥱", label: "Too basic", reaction: "too_basic" as const, className: "hover:bg-muted" },
+            {
+              emoji: "🥱",
+              label: "Too basic",
+              reaction: "too_basic" as const,
+              className: "hover:bg-muted",
+            },
           ].map((b) => (
             <button
               key={b.label}
               type="button"
-              onClick={() => { trackClick("player_reaction", { reaction: b.reaction }); next(); }}
+              onClick={() => {
+                trackClick("player_reaction", { reaction: b.reaction });
+                next();
+              }}
               className={
                 "flex flex-col items-center justify-center gap-1.5 rounded-2xl brutal-border py-4 transition active:translate-y-0.5 " +
                 (b.primary

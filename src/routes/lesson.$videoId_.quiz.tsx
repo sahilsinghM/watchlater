@@ -18,15 +18,14 @@ function Quiz() {
   const { videoId } = Route.useParams();
   const navigate = useNavigate();
   const { data: lesson } = useSuspenseQuery(lessonQueryOptions(videoId));
+  const [idx, setIdx] = useState(0);
+  const [answers, setAnswers] = useState<number[]>([]);
+  const [picked, setPicked] = useState<number | null>(null);
 
   if (!lesson.quiz) {
     navigate({ to: "/lesson/$videoId", params: { videoId } });
     return null;
   }
-
-  const [idx, setIdx] = useState(0);
-  const [answers, setAnswers] = useState<number[]>([]);
-  const [picked, setPicked] = useState<number | null>(null);
 
   const q = lesson.quiz[idx];
   const total = lesson.quiz.length;
@@ -74,7 +73,9 @@ function Quiz() {
           <span className="font-mono text-xs font-bold uppercase tracking-widest text-muted-foreground">
             Question {idx + 1} / {total}
           </span>
-          <span className="font-mono text-[10px] uppercase tracking-widest text-primary font-bold">Quiz</span>
+          <span className="font-mono text-[10px] uppercase tracking-widest text-primary font-bold">
+            Quiz
+          </span>
         </div>
         <div className="h-3 w-full bg-foreground/5 rounded-full overflow-hidden brutal-border">
           <div
@@ -104,7 +105,15 @@ function Quiz() {
                 <li key={i}>
                   <button
                     type="button"
-                    onClick={() => { if (!revealed) { trackClick("quiz_answer_selected", { question_index: idx, option_index: i }); setPicked(i); } }}
+                    onClick={() => {
+                      if (!revealed) {
+                        trackClick("quiz_answer_selected", {
+                          question_index: idx,
+                          option_index: i,
+                        });
+                        setPicked(i);
+                      }
+                    }}
                     disabled={revealed}
                     className={
                       "flex w-full items-center gap-3 rounded-2xl border-[3px] bg-card px-5 py-4 text-left font-medium transition " +
@@ -143,7 +152,9 @@ function Quiz() {
               if (!revealed) {
                 if (picked === null) return;
               }
-              trackClick(idx + 1 === total ? "quiz_finish" : "quiz_next_question", { question_index: idx });
+              trackClick(idx + 1 === total ? "quiz_finish" : "quiz_next_question", {
+                question_index: idx,
+              });
               submit();
             }}
             disabled={picked === null}
