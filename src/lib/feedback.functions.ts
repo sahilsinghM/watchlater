@@ -2,6 +2,7 @@ import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { ensureAnonymousSession, recordFeedback, recordLead, recordQuizResult } from "./mvpFlow";
 import { getMvpStore } from "./mvpRuntime.server";
+import { sendWelcomeEmail } from "./email.server";
 
 export const submitQuizResult = createServerFn({ method: "POST" })
   .inputValidator((input: unknown) =>
@@ -69,10 +70,15 @@ export const submitLead = createServerFn({ method: "POST" })
   .handler(async ({ data }) => {
     const store = getMvpStore();
     const session = await ensureAnonymousSession(store, data.sessionKey);
-    return recordLead(store, {
+    const lead = await recordLead(store, {
       sessionId: session.id,
       email: data.email,
       source: data.source,
       lessonVideoId: data.lessonVideoId,
     });
+    // Fire-and-forget: email failure must never block lead capture.
+    sendWelcomeEmail(data.email).catch((err) =>
+      console.warn("[email] welcome email failed", err),
+    );
+    return lead;
   });

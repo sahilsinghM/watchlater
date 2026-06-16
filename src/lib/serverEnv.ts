@@ -26,6 +26,7 @@ const EnvSchema = z.object({
   ALLOW_PROTOTYPE_GENERATION: nonEmpty,
   SUPABASE_URL: nonEmpty,
   SUPABASE_SECRET_KEY: nonEmpty,
+  RESEND_API_KEY: nonEmpty,
 });
 
 export type ServerConfig = {
@@ -38,6 +39,7 @@ export type ServerConfig = {
   allowPrototypeGeneration: boolean;
   supabaseUrl: string | undefined;
   supabaseSecretKey: string | undefined;
+  resendApiKey: string | undefined;
 };
 
 export function parseServerEnv(env: Record<string, string | undefined>): ServerConfig {
@@ -71,5 +73,6 @@ export function parseServerEnv(env: Record<string, string | undefined>): ServerC
     allowPrototypeGeneration: parsed.ALLOW_PROTOTYPE_GENERATION === "true",
     supabaseUrl: parsed.SUPABASE_URL,
     supabaseSecretKey: parsed.SUPABASE_SECRET_KEY,
+    resendApiKey: parsed.RESEND_API_KEY,
   };
 }
