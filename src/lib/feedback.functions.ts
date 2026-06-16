@@ -77,11 +77,14 @@ export const submitLead = createServerFn({ method: "POST" })
       lessonVideoId: data.lessonVideoId,
     });
     // Only send on first capture — prevents repeat sends on re-submissions.
-    // Fire-and-forget: email failure must never block lead capture.
+    // Awaited so Vercel doesn't kill the in-flight request before Resend fires.
+    // try/catch ensures email failure never blocks lead capture.
     if (isNew) {
-      sendWelcomeEmail(data.email).catch((err) =>
-        console.warn("[email] welcome email failed", err),
-      );
+      try {
+        await sendWelcomeEmail(data.email);
+      } catch (err) {
+        console.warn("[email] welcome email failed", err);
+      }
     }
     return lead;
   });
