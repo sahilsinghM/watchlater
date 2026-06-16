@@ -1,12 +1,54 @@
 import { createServerFn } from "@tanstack/react-start";
+import { getCookie, setCookie, setResponseStatus } from "@tanstack/react-start/server";
+import { createHmac, timingSafeEqual } from "node:crypto";
 import { z } from "zod";
 import { getSupabaseAdmin } from "./supabase-admin.server";
+
+function adminToken(secret: string) {
+  return createHmac("sha256", secret).update("admin-session").digest("hex");
+}
+
+function assertAdminAuth() {
+  const secret = process.env.ADMIN_SECRET;
+  if (!secret) {
+    setResponseStatus(403);
+    throw new Error("Forbidden");
+  }
+  const cookie = getCookie("admin_auth") ?? "";
+  const expected = adminToken(secret);
+  const valid =
+    cookie.length === expected.length &&
+    timingSafeEqual(Buffer.from(cookie), Buffer.from(expected));
+  if (!valid) {
+    setResponseStatus(403);
+    throw new Error("Forbidden");
+  }
+}
+
+export const loginAdmin = createServerFn({ method: "POST" })
+  .inputValidator((input: unknown) => z.object({ password: z.string() }).parse(input))
+  .handler(async ({ data }) => {
+    const secret = process.env.ADMIN_SECRET;
+    if (!secret || data.password !== secret) {
+      setResponseStatus(403);
+      throw new Error("Invalid password");
+    }
+    setCookie("admin_auth", adminToken(secret), {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === "production",
+      sameSite: "strict",
+      path: "/",
+      maxAge: 60 * 60 * 24 * 7,
+    });
+    return { ok: true };
+  });
 
 function toDateStr(iso: string) {
   return iso.slice(0, 10);
 }
 
 export const getAdminStats = createServerFn({ method: "GET" }).handler(async () => {
+  assertAdminAuth();
   const db = getSupabaseAdmin();
   const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString();
 
@@ -56,6 +98,7 @@ export const getAdminLeads = createServerFn({ method: "GET" })
       .parse(input),
   )
   .handler(async ({ data }) => {
+    assertAdminAuth();
     const db = getSupabaseAdmin();
     const { data: leads, error } = await db
       .from("leads")

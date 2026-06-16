@@ -1,8 +1,11 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useSuspenseQuery } from "@tanstack/react-query";
 import { queryOptions } from "@tanstack/react-query";
+import { useState } from "react";
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer } from "recharts";
-import { getAdminStats, getAdminLeads } from "@/lib/admin.functions";
+import { getAdminStats, getAdminLeads, loginAdmin } from "@/lib/admin.functions";
+import { getCookie } from "@tanstack/react-start/server";
+import { createHmac, timingSafeEqual } from "node:crypto";
 
 const statsQueryOptions = queryOptions({
   queryKey: ["admin-stats"],
@@ -17,13 +20,23 @@ const leadsQueryOptions = queryOptions({
 });
 
 export const Route = createFileRoute("/admin")({
-  loader: ({ context }) =>
-    Promise.all([
+  loader: async ({ context }) => {
+    const secret = process.env.ADMIN_SECRET;
+    const cookie = getCookie("admin_auth") ?? "";
+    const expected = secret ? createHmac("sha256", secret).update("admin-session").digest("hex") : "";
+    const authed =
+      !!secret &&
+      cookie.length === expected.length &&
+      timingSafeEqual(Buffer.from(cookie), Buffer.from(expected));
+    if (!authed) return { authed: false as const };
+    await Promise.all([
       context.queryClient.ensureQueryData(statsQueryOptions),
       context.queryClient.ensureQueryData(leadsQueryOptions),
-    ]),
+    ]);
+    return { authed: true as const };
+  },
   head: () => ({ meta: [{ title: "Admin · WatchLater" }] }),
-  component: Admin,
+  component: AdminRoute,
 });
 
 function StatCard({ label, value }: { label: string; value: string | number }) {
@@ -35,6 +48,58 @@ function StatCard({ label, value }: { label: string; value: string | number }) {
       <div className="font-display text-4xl font-extrabold">{value}</div>
     </div>
   );
+}
+
+function LoginForm() {
+  const [password, setPassword] = useState("");
+  const [error, setError] = useState("");
+  const [loading, setLoading] = useState(false);
+
+  async function handleSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    setLoading(true);
+    setError("");
+    try {
+      await loginAdmin({ data: { password } });
+      window.location.reload();
+    } catch {
+      setError("Incorrect password.");
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  return (
+    <div className="min-h-screen bg-background flex items-center justify-center p-6">
+      <div className="rounded-3xl brutal-border bg-card p-8 brutal-shadow w-full max-w-sm space-y-5">
+        <h1 className="font-display text-2xl font-extrabold">Admin access</h1>
+        <form onSubmit={handleSubmit} className="space-y-4">
+          <input
+            type="password"
+            placeholder="Password"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            className="w-full rounded-2xl brutal-border bg-background px-4 py-3 text-sm font-mono focus:outline-none focus:border-foreground"
+            autoFocus
+          />
+          {error && <p className="text-destructive text-sm font-medium">{error}</p>}
+          <button
+            type="submit"
+            disabled={loading}
+            className="w-full rounded-2xl brutal-border bg-primary text-primary-foreground font-bold py-3 brutal-shadow-sm hover:-translate-y-0.5 active:translate-y-0 transition-transform"
+          >
+            {loading ? "Checking…" : "Enter →"}
+          </button>
+        </form>
+      </div>
+    </div>
+  );
+}
+
+function AdminRoute() {
+  const { authed } = Route.useLoaderData();
+  if (!authed) return <LoginForm />;
+  return <Admin />;
 }
 
 function Admin() {
