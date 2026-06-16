@@ -158,7 +158,7 @@ export type MvpStore = {
   touchJob(jobId: string): Promise<void>;
   saveQuizResult(input: Omit<QuizResult, "id" | "completedAt">): Promise<QuizResult>;
   saveFeedback(input: Omit<Feedback, "id" | "createdAt">): Promise<Feedback>;
-  saveLead(input: Omit<Lead, "id" | "createdAt">): Promise<Lead>;
+  saveLead(input: Omit<Lead, "id" | "createdAt">): Promise<{ lead: Lead; isNew: boolean }>;
 };
 
 function now(): string {
@@ -286,7 +286,7 @@ export function createMemoryMvpStore(): MvpStore {
         existing.source = input.source;
         existing.sessionId = input.sessionId;
         existing.lessonVideoId = input.lessonVideoId;
-        return existing;
+        return { lead: existing, isNew: false };
       }
       const item: Lead = {
         ...input,
@@ -294,7 +294,7 @@ export function createMemoryMvpStore(): MvpStore {
         createdAt: now(),
       };
       leads.push(item);
-      return item;
+      return { lead: item, isNew: true };
     },
   };
 }
@@ -303,7 +303,10 @@ export function normalizeEmail(email: string): string {
   return email.trim().toLowerCase();
 }
 
-export function recordLead(store: MvpStore, input: Omit<Lead, "id" | "createdAt">): Promise<Lead> {
+export function recordLead(
+  store: MvpStore,
+  input: Omit<Lead, "id" | "createdAt">,
+): Promise<{ lead: Lead; isNew: boolean }> {
   return store.saveLead({ ...input, email: normalizeEmail(input.email) });
 }
 

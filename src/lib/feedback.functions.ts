@@ -70,15 +70,18 @@ export const submitLead = createServerFn({ method: "POST" })
   .handler(async ({ data }) => {
     const store = getMvpStore();
     const session = await ensureAnonymousSession(store, data.sessionKey);
-    const lead = await recordLead(store, {
+    const { lead, isNew } = await recordLead(store, {
       sessionId: session.id,
       email: data.email,
       source: data.source,
       lessonVideoId: data.lessonVideoId,
     });
+    // Only send on first capture — prevents repeat sends on re-submissions.
     // Fire-and-forget: email failure must never block lead capture.
-    sendWelcomeEmail(data.email).catch((err) =>
-      console.warn("[email] welcome email failed", err),
-    );
+    if (isNew) {
+      sendWelcomeEmail(data.email).catch((err) =>
+        console.warn("[email] welcome email failed", err),
+      );
+    }
     return lead;
   });

@@ -298,6 +298,14 @@ export function createSupabaseStore(
     },
     async saveLead(input) {
       const supabase = getClient();
+      // Check first so we can return an isNew flag — the email gate on the
+      // welcome send depends on it to prevent repeat sends on re-submissions.
+      const { data: existing } = await supabase
+        .from("leads")
+        .select("id")
+        .eq("email", input.email)
+        .maybeSingle();
+      const isNew = !existing;
       // Upsert on the unique email so the same person is captured once; a later
       // touch refreshes source/session/video but keeps the original row.
       const { data, error } = await supabase
@@ -319,12 +327,15 @@ export function createSupabaseStore(
         throw new Error(`saveLead failed: ${error?.message ?? "no row returned"}`);
       }
       return {
-        id: data.id,
-        sessionId: data.session_id ?? "",
-        email: data.email,
-        source: data.source as Lead["source"],
-        lessonVideoId: data.lesson_video_id ?? undefined,
-        createdAt: data.created_at,
+        lead: {
+          id: data.id,
+          sessionId: data.session_id ?? "",
+          email: data.email,
+          source: data.source as Lead["source"],
+          lessonVideoId: data.lesson_video_id ?? undefined,
+          createdAt: data.created_at,
+        },
+        isNew,
       };
     },
   };
