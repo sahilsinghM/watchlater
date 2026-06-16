@@ -3,9 +3,7 @@ import { useSuspenseQuery } from "@tanstack/react-query";
 import { queryOptions } from "@tanstack/react-query";
 import { useState } from "react";
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer } from "recharts";
-import { getAdminStats, getAdminLeads, loginAdmin } from "@/lib/admin.functions";
-import { getCookie } from "@tanstack/react-start/server";
-import { createHmac, timingSafeEqual } from "node:crypto";
+import { getAdminStats, getAdminLeads, loginAdmin, checkAdminAuth } from "@/lib/admin.functions";
 
 const statsQueryOptions = queryOptions({
   queryKey: ["admin-stats"],
@@ -21,13 +19,7 @@ const leadsQueryOptions = queryOptions({
 
 export const Route = createFileRoute("/admin")({
   loader: async ({ context }) => {
-    const secret = process.env.ADMIN_SECRET;
-    const cookie = getCookie("admin_auth") ?? "";
-    const expected = secret ? createHmac("sha256", secret).update("admin-session").digest("hex") : "";
-    const authed =
-      !!secret &&
-      cookie.length === expected.length &&
-      timingSafeEqual(Buffer.from(cookie), Buffer.from(expected));
+    const { authed } = await checkAdminAuth();
     if (!authed) return { authed: false as const };
     await Promise.all([
       context.queryClient.ensureQueryData(statsQueryOptions),
