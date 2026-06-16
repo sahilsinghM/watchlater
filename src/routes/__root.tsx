@@ -8,11 +8,11 @@ import {
   Scripts,
   useRouterState,
 } from "@tanstack/react-router";
-import { useEffect, type ReactNode } from "react";
+import { useEffect, useRef, type ReactNode } from "react";
 
 import appCss from "../styles.css?url";
 import { reportLovableError } from "../lib/lovable-error-reporting";
-import { initAnalytics, trackPageView, identifySession, mapPathToPage } from "../lib/analytics";
+import { initAnalytics, trackPageView, trackPageLeave, identifySession, mapPathToPage } from "../lib/analytics";
 import { getBrowserSessionKey } from "../lib/anonymousSession";
 
 function NotFoundComponent() {
@@ -142,7 +142,10 @@ function RootComponent() {
     identifySession(getBrowserSessionKey());
   }, []);
 
+  const prevPath = useRef<string | null>(null);
   useEffect(() => {
+    if (prevPath.current !== null) trackPageLeave();
+    prevPath.current = location.pathname;
     trackPageView(mapPathToPage(location.pathname));
   }, [location.pathname]);
 

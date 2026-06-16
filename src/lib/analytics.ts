@@ -74,6 +74,11 @@ export function trackClick(event: ClickEvent, props?: Record<string, unknown>) {
   posthog.capture(event, props);
 }
 
+export function trackPageLeave() {
+  if (typeof window === "undefined" || !initialized) return;
+  posthog.capture("$pageleave");
+}
+
 export function trackSectionVisible(section: SectionName, props?: Record<string, unknown>) {
   if (typeof window === "undefined" || !initialized) return;
   posthog.capture("section_visible", { section, ...props });
