@@ -52,6 +52,7 @@ export function initAnalytics() {
     api_host: import.meta.env.VITE_POSTHOG_HOST ?? "https://us.i.posthog.com",
     autocapture: false,
     capture_pageview: false,
+    capture_pageleave: true,
     persistence: "localStorage",
   });
   initialized = true;
