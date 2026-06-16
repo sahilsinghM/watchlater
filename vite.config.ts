@@ -14,6 +14,11 @@ export default defineConfig({
   },
   nitro: {
     preset: "vercel",
+    routeRules: {
+      "/ingest/static/**": { proxy: "https://us-assets.i.posthog.com/static/**" },
+      "/ingest/array/**": { proxy: "https://us-assets.i.posthog.com/array/**" },
+      "/ingest/**": { proxy: "https://us.i.posthog.com/**" },
+    },
     output: {
       dir: ".vercel/output",
       serverDir: ".vercel/output/functions/__server.func",

@@ -50,6 +50,7 @@ export function initAnalytics() {
   if (!key) return;
   posthog.init(key, {
     api_host: import.meta.env.VITE_POSTHOG_HOST ?? "https://us.i.posthog.com",
+    ui_host: "https://us.posthog.com",
     autocapture: false,
     capture_pageview: false,
     capture_pageleave: true,
