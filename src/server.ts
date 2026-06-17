@@ -37,8 +37,34 @@ async function normalizeCatastrophicSsrResponse(response: Response): Promise<Res
   });
 }
 
+// Proxy PostHog analytics through our domain so ad blockers don't drop events.
+// /ingest/static/** and /ingest/array/** → us-assets.i.posthog.com
+// /ingest/**                              → us.i.posthog.com
+async function posthogProxy(request: Request): Promise<Response> {
+  const url = new URL(request.url);
+  const path = url.pathname.replace(/^\/ingest/, "") + url.search;
+  const isAsset = path.startsWith("/static") || path.startsWith("/array");
+  const target = isAsset
+    ? `https://us-assets.i.posthog.com${path}`
+    : `https://us.i.posthog.com${path}`;
+  const headers = new Headers(request.headers);
+  headers.set("host", new URL(target).host);
+  return fetch(target, {
+    method: request.method,
+    headers,
+    body: request.body,
+    // @ts-expect-error duplex is required for streaming bodies in some runtimes
+    duplex: "half",
+  });
+}
+
 export default {
   async fetch(request: Request, env: unknown, ctx: unknown) {
+    const url = new URL(request.url);
+    if (url.pathname.startsWith("/ingest/")) {
+      return posthogProxy(request);
+    }
+
     try {
       const handler = await getServerEntry();
       const response = await handler.fetch(request, env, ctx);
