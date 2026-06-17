@@ -2,8 +2,9 @@
 // dev/no-key environment — see processLesson.server.ts). For non-English
 // transcripts it intentionally emits English scaffolding around
 // transcript-language excerpts; the LLM paths handle language properly.
-import type { Lesson, Segment, LessonCard, CardKind } from "./lessonSchema";
+import type { Lesson, Segment, LessonCard } from "./lessonSchema";
 import { Lesson as LessonSchema, fmtRange } from "./lessonSchema";
+import { LESSON_TEMPLATE } from "./lessonTemplate";
 
 export type Cue = { start: number; dur: number; text: string };
 export type Meta = {
@@ -38,7 +39,7 @@ const SEG_BLURBS: Record<Segment["kind"], string> = {
   demo: "Concrete examples and walkthroughs.",
 };
 
-const CARD_ORDER: CardKind[] = ["concept", "analogy", "insight", "quote", "concept", "recap"];
+const CARD_ORDER = LESSON_TEMPLATE.cardKinds;
 
 function pickCards(cues: Cue[], duration: number): Cue[] {
   // Pick 6 cues with the longest text, from middle 70% of the video.

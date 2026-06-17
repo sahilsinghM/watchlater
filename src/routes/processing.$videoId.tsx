@@ -2,12 +2,7 @@ import { createFileRoute, useNavigate, Link } from "@tanstack/react-router";
 import { useEffect, useRef, useState } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { mascot } from "@/components/Brand";
-import {
-  requestLesson,
-  getIngestStatus,
-  parseIngestError,
-  type IngestErrorCode,
-} from "@/lib/ingest.functions";
+import { requestLesson, getIngestStatus, type IngestErrorCode } from "@/lib/ingest.functions";
 
 export const Route = createFileRoute("/processing/$videoId")({
   head: () => ({
@@ -136,8 +131,7 @@ function Processing() {
     return <ErrorState code={code} detail={detail} />;
   }
   if (statusQuery.isError) {
-    const { code, detail } = parseIngestError((statusQuery.error as Error).message);
-    return <ErrorState code={code} detail={detail} />;
+    return <ErrorState code="UNKNOWN" detail={(statusQuery.error as Error).message} />;
   }
 
   const currentStep = statusQuery.data?.phase === "processing" ? statusQuery.data.step : "queued";

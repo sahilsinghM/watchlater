@@ -1,6 +1,6 @@
 import { useState } from "react";
 import type { Lesson } from "@/lib/lessonSchema";
-import { answerTutorQuestion, buildTutorContext } from "@/lib/mvpFlow";
+import { buildTutorKnowledge, answerQuestion } from "@/lib/tutorKnowledge";
 import { trackClick } from "@/lib/analytics";
 
 type Msg = { role: "user" | "tutor"; text: string };
@@ -19,8 +19,8 @@ export function TutorPanel({ lesson }: { lesson: Lesson }) {
 
   function ask(q: string) {
     if (!q.trim()) return;
-    const answer = answerTutorQuestion(buildTutorContext(lesson), q);
-    setMessages((m) => [...m, { role: "user", text: q }, { role: "tutor", text: answer.text }]);
+    const answer = answerQuestion(buildTutorKnowledge(lesson), q);
+    setMessages((m) => [...m, { role: "user", text: q }, { role: "tutor", text: answer }]);
     setInput("");
   }
 

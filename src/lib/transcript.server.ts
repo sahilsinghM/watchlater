@@ -100,15 +100,24 @@ async function pollSupadataJob(jobId: string, apiKey: string): Promise<SupadataS
   throw new IngestError("UNKNOWN", "Transcript job timed out");
 }
 
-export async function fetchTranscript(
-  youtubeId: string,
-): Promise<{ cues: Cue[]; languageCode: string }> {
-  const apiKey = getSupadataApiKey();
+export type TranscriptResult =
+  | { ok: true; cues: Cue[]; languageCode: string }
+  | { ok: false; code: string; detail: string };
+
+export async function fetchTranscript(youtubeId: string): Promise<TranscriptResult> {
+  let apiKey: string;
+  try {
+    apiKey = getSupadataApiKey();
+  } catch (e) {
+    const detail = e instanceof IngestError ? e.message : "SUPADATA_API_KEY is not set";
+    return { ok: false, code: "UNKNOWN", detail };
+  }
+
   const params = new URLSearchParams({
     url: `https://www.youtube.com/watch?v=${youtubeId}`,
-    text: "false", // timestamped chunks, not plain text
+    text: "false",
     lang: "en",
-    mode: "native", // existing captions only; no Whisper generation (locked policy)
+    mode: "native",
   });
 
   const res = await fetch(`${SUPADATA_BASE}/transcript?${params}`, {
@@ -117,42 +126,52 @@ export async function fetchTranscript(
   });
 
   if (res.status === 401 || res.status === 403) {
-    throw new IngestError("UNKNOWN", "Supadata auth failed — check SUPADATA_API_KEY");
+    return { ok: false, code: "UNKNOWN", detail: "Supadata auth failed — check SUPADATA_API_KEY" };
   }
-  if (res.status === 404) throw new IngestError("NOT_FOUND", "Video not found");
-
-  if (!res.ok) throw new IngestError("UNKNOWN", `Supadata request failed: ${res.status}`);
+  if (res.status === 404) return { ok: false, code: "NOT_FOUND", detail: "Video not found" };
+  if (!res.ok)
+    return { ok: false, code: "UNKNOWN", detail: `Supadata request failed: ${res.status}` };
 
   let responseBody: unknown;
   try {
     responseBody = await res.json();
   } catch {
-    throw new IngestError("UNKNOWN", "Supadata returned non-JSON response");
+    return { ok: false, code: "UNKNOWN", detail: "Supadata returned non-JSON response" };
   }
   const parsed = parseSupadataResponse(res.status, responseBody);
 
   if (parsed.kind === "async") {
-    const segments = await pollSupadataJob(parsed.data.jobId, apiKey);
-    const cues = segmentsToCues(segments);
-    if (cues.length === 0) throw new IngestError("NO_CAPTIONS", "Captions were empty");
-    return { cues, languageCode: segments[0]?.lang ?? "en" };
+    try {
+      const segments = await pollSupadataJob(parsed.data.jobId, apiKey);
+      const cues = segmentsToCues(segments);
+      if (cues.length === 0)
+        return { ok: false, code: "NO_CAPTIONS", detail: "Captions were empty" };
+      return { ok: true, cues, languageCode: segments[0]?.lang ?? "en" };
+    } catch (e) {
+      const ie = e instanceof IngestError ? e : null;
+      return { ok: false, code: ie?.code ?? "UNKNOWN", detail: ie?.message ?? String(e) };
+    }
   }
 
   if (parsed.kind === "unavailable") {
     const reason = parsed.data.message ?? parsed.data.error ?? "no transcript available";
-    throw new IngestError("NO_CAPTIONS", `This video has no captions (${reason})`);
+    return { ok: false, code: "NO_CAPTIONS", detail: `This video has no captions (${reason})` };
   }
 
   if (parsed.kind === "error") {
-    throw new IngestError("UNKNOWN", `Supadata response schema error (status ${parsed.status})`);
+    return {
+      ok: false,
+      code: "UNKNOWN",
+      detail: `Supadata response schema error (status ${parsed.status})`,
+    };
   }
 
   // kind === "sync"
   const { content, lang } = parsed.data;
   if (!Array.isArray(content) || content.length === 0) {
-    throw new IngestError("NO_CAPTIONS", "This video has no captions");
+    return { ok: false, code: "NO_CAPTIONS", detail: "This video has no captions" };
   }
   const cues = segmentsToCues(content);
-  if (cues.length === 0) throw new IngestError("NO_CAPTIONS", "Captions were empty");
-  return { cues, languageCode: lang ?? content[0]?.lang ?? "en" };
+  if (cues.length === 0) return { ok: false, code: "NO_CAPTIONS", detail: "Captions were empty" };
+  return { ok: true, cues, languageCode: lang ?? content[0]?.lang ?? "en" };
 }

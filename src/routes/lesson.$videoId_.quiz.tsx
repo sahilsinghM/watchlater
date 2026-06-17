@@ -116,7 +116,7 @@ function Quiz() {
                     }}
                     disabled={revealed}
                     className={
-                      "flex w-full items-center gap-3 rounded-2xl border-[3px] bg-card px-5 py-4 text-left font-medium transition " +
+                      "flex w-full items-center gap-3 rounded-2xl border-[3px] bg-card px-5 py-4 text-left font-medium transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 " +
                       state
                     }
                   >
@@ -158,7 +158,7 @@ function Quiz() {
               submit();
             }}
             disabled={picked === null}
-            className="w-full rounded-2xl bg-primary text-primary-foreground brutal-border px-5 py-3.5 font-display font-bold brutal-shadow-sm hover:-translate-y-0.5 hover:-translate-x-0.5 transition disabled:opacity-40 disabled:hover:translate-x-0 disabled:hover:translate-y-0"
+            className="w-full rounded-2xl bg-primary text-primary-foreground brutal-border px-5 py-3.5 font-display font-bold brutal-shadow-sm hover:-translate-y-0.5 hover:-translate-x-0.5 transition disabled:opacity-40 disabled:hover:translate-x-0 disabled:hover:translate-y-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2"
           >
             {idx + 1 === total ? "Finish quiz →" : "Next question →"}
           </button>

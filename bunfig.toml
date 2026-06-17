@@ -1,3 +1,6 @@
+[test]
+preload = ["./src/test-setup.ts"]
+
 [install]
 # 24h supply-chain guard: skip package versions published less than a day ago.
 minimumReleaseAge = 86400

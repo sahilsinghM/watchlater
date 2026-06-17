@@ -4,6 +4,7 @@ import { z } from "zod";
 import { QuizQuestion, KeyMoment, Lesson as LessonSchema, type Lesson } from "./lessonSchema";
 import { languageDirective } from "./lessonPrompt";
 import type { Cue, Meta } from "./buildLesson";
+import { LESSON_TEMPLATE } from "./lessonTemplate";
 
 // Claude-backed lesson generation, split into two concurrent calls:
 //   generateCore  — Sonnet 4.6, produces segments + cards + scalar verdict fields
@@ -150,7 +151,7 @@ export async function generateCore(input: {
     thinking: { type: "disabled" },
     output_config: { effort: "low" },
     system:
-      "You generate trustworthy WatchLater lessons: a colour-coded attention map (segments), exactly six tappable lesson cards (thesis, key concept, mechanism, example/analogy, nuance, recap). Ground every major claim in transcript timestamps. TIME FORMAT RULE: numeric timestamp FIELDS are raw seconds, but any time you mention inside prose text must be written as a clock time exactly as the YouTube player shows it — '12:26' or '1:05:30' — NEVER raw seconds like '746s'. Be blunt but not snarky about low-value videos. Your response text must be a SINGLE valid JSON object matching requiredShape EXACTLY — use those exact field names and enum values, no markdown fences, no preamble, no commentary. " +
+      `You generate trustworthy WatchLater lessons: a colour-coded attention map (segments), exactly ${LESSON_TEMPLATE.cardCount} tappable lesson cards (thesis, key concept, mechanism, example/analogy, nuance, recap). Ground every major claim in transcript timestamps. TIME FORMAT RULE: numeric timestamp FIELDS are raw seconds, but any time you mention inside prose text must be written as a clock time exactly as the YouTube player shows it — '12:26' or '1:05:30' — NEVER raw seconds like '746s'. Be blunt but not snarky about low-value videos. Your response text must be a SINGLE valid JSON object matching requiredShape EXACTLY — use those exact field names and enum values, no markdown fences, no preamble, no commentary. ` +
       languageDirective(input.languageCode),
     messages: [
       {

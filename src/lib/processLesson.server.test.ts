@@ -72,7 +72,9 @@ function makeStore() {
 }
 
 type Scenario = {
-  fetchTranscript: () => Promise<{ cues: Cue[]; languageCode: string }>;
+  fetchTranscript: () => Promise<
+    { ok: true; cues: Cue[]; languageCode: string } | { ok: false; code: string; detail: string }
+  >;
   config: Record<string, unknown>;
   anthropicCore: (input?: Record<string, unknown>) => Promise<unknown>;
   anthropicSecondary: (input?: Record<string, unknown>) => Promise<unknown>;
@@ -85,7 +87,7 @@ let bag: ReturnType<typeof makeStore>;
 beforeEach(() => {
   bag = makeStore();
   scenario = {
-    fetchTranscript: async () => ({ cues: denseCues(), languageCode: "en" }),
+    fetchTranscript: async () => ({ ok: true as const, cues: denseCues(), languageCode: "en" }),
     config: {}, // no LLM keys → real templated buildLesson on the happy path
     anthropicCore: async () => {
       throw new Error("generateCore should not be called in this scenario");
@@ -135,6 +137,36 @@ const statuses = () => bag.updates.map((u) => u.status);
 const lastUpdate = () => bag.updates[bag.updates.length - 1];
 
 describe("processLesson", () => {
+  test("returns { ok: true } on the happy path", async () => {
+    const { processLesson } = await import("./processLesson.server");
+    const result = await processLesson("abcdefghijk", "job_1");
+    expect(result.ok).toBe(true);
+  });
+
+  test("returns { ok: false, code } when transcript fetch fails", async () => {
+    scenario.fetchTranscript = async () => ({
+      ok: false as const,
+      code: "NO_CAPTIONS",
+      detail: "no captions",
+    });
+    const { processLesson } = await import("./processLesson.server");
+    const result = await processLesson("abcdefghijk", "job_1");
+    expect(result.ok).toBe(false);
+    if (!result.ok) expect(result.code).toBe("NO_CAPTIONS");
+  });
+
+  test("returns { ok: false, code: TOO_SHORT } for a too-short video", async () => {
+    scenario.fetchTranscript = async () => ({
+      ok: true as const,
+      cues: shortCues(),
+      languageCode: "en",
+    });
+    const { processLesson } = await import("./processLesson.server");
+    const result = await processLesson("abcdefghijk", "job_1");
+    expect(result.ok).toBe(false);
+    if (!result.ok) expect(result.code).toBe("TOO_SHORT");
+  });
+
   test("happy path (no LLM keys) drives the job to ready and saves exactly one lesson", async () => {
     const { processLesson } = await import("./processLesson.server");
     await processLesson("abcdefghijk", "job_1");
@@ -189,7 +221,11 @@ describe("processLesson", () => {
   });
 
   test("a too-short video fails with TOO_SHORT and saves no lesson", async () => {
-    scenario.fetchTranscript = async () => ({ cues: shortCues(), languageCode: "en" });
+    scenario.fetchTranscript = async () => ({
+      ok: true as const,
+      cues: shortCues(),
+      languageCode: "en",
+    });
     const { processLesson } = await import("./processLesson.server");
     await processLesson("abcdefghijk", "job_1");
 
@@ -199,9 +235,11 @@ describe("processLesson", () => {
   });
 
   test("a transcript error propagates its IngestError code (NO_CAPTIONS)", async () => {
-    scenario.fetchTranscript = async () => {
-      throw new IngestError("NO_CAPTIONS", "This video has no captions");
-    };
+    scenario.fetchTranscript = async () => ({
+      ok: false as const,
+      code: "NO_CAPTIONS",
+      detail: "This video has no captions",
+    });
     const { processLesson } = await import("./processLesson.server");
     await processLesson("abcdefghijk", "job_1");
 
@@ -213,6 +251,7 @@ describe("processLesson", () => {
   // pipeline as English and reaches ready (templated path here — no LLM keys).
   test("a non-English transcript proceeds to ready", async () => {
     scenario.fetchTranscript = async () => ({
+      ok: true as const,
       cues: denseCues().map((c, i) => ({ ...c, text: `한국어 자막 줄 ${i} 내용입니다` })),
       languageCode: "ko",
     });
@@ -224,7 +263,11 @@ describe("processLesson", () => {
   });
 
   test("languageCode flows into generateCore and onto the saved lesson", async () => {
-    scenario.fetchTranscript = async () => ({ cues: denseCues(), languageCode: "ko" });
+    scenario.fetchTranscript = async () => ({
+      ok: true as const,
+      cues: denseCues(),
+      languageCode: "ko",
+    });
     scenario.config = { anthropicApiKey: "k" };
     let capturedInput: Record<string, unknown> | undefined;
     scenario.anthropicCore = async (input) => {

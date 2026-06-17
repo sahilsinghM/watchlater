@@ -2,6 +2,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useNavigate } from "@tanstack/react-router";
 import { useRef, useState } from "react";
 import { Brand, mascot } from "@/components/Brand";
+import { HomeNav } from "@/components/HomeNav";
 import { validateVideoInput } from "@/lib/mvpFlow";
 import { trackClick } from "@/lib/analytics";
 import { useTrackVisible } from "@/hooks/useTrackVisible";
@@ -61,8 +62,9 @@ function Index() {
 
   return (
     <div className="min-h-screen bg-background text-foreground">
-      <header className="mx-auto max-w-6xl px-4 sm:px-6 pt-8 flex items-center justify-between">
+      <header className="mx-auto max-w-6xl px-4 sm:px-6 pt-8 flex items-center justify-between relative">
         <Brand />
+        {/* Desktop nav */}
         <nav className="hidden sm:flex items-center gap-6 text-sm font-medium text-muted-foreground">
           <a href="#how" className="flex items-center py-3 hover:text-foreground transition">
             How it works
@@ -71,6 +73,8 @@ function Index() {
             What you get
           </a>
         </nav>
+        {/* Mobile hamburger + dropdown */}
+        <HomeNav />
       </header>
 
       <main

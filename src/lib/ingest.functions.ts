@@ -126,12 +126,6 @@ export const getLessonByYoutubeId = createServerFn({ method: "POST" })
 
     const store = getMvpStore();
     const lesson = await store.getLessonByYoutubeId(youtubeId);
-    if (!lesson) throw new Error("INGEST:UNKNOWN:Lesson not found — ingest may still be running");
+    if (!lesson) throw new Error("Lesson not found — ingest may still be running");
     return lesson;
   });
-
-export function parseIngestError(message: string): { code: IngestErrorCode; detail: string } {
-  const m = /^INGEST:([A-Z_]+):(.*)$/.exec(message);
-  if (!m) return { code: "UNKNOWN", detail: message };
-  return { code: m[1] as IngestErrorCode, detail: m[2] };
-}

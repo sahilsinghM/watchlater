@@ -12,6 +12,7 @@ import { MasteryCelebration } from "@/components/MasteryCelebration";
 import { getBrowserSessionKey } from "@/lib/anonymousSession";
 import { submitFeedback } from "@/lib/feedback.functions";
 import { captureLead, hasCapturedLead, isLikelyEmail } from "@/lib/lead";
+import { FeedbackForm } from "@/components/FeedbackForm";
 
 const search = z.object({
   score: z.number().int().min(0).default(0),
@@ -151,96 +152,28 @@ function Done() {
           <div className="font-mono text-[10px] uppercase tracking-widest text-primary font-bold">
             Was this useful?
           </div>
-          <textarea
-            value={reason}
-            onChange={(event) => setReason(event.target.value)}
-            placeholder="Optional note"
-            disabled={feedbackState === "saved"}
-            className="min-h-20 w-full resize-none rounded-2xl brutal-border bg-background px-4 py-3 text-sm outline-none focus:ring-0 focus:shadow-[4px_4px_0_var(--foreground)] disabled:opacity-50"
+          <FeedbackForm
+            reason={reason}
+            name={name}
+            email={email}
+            emailError={emailError}
+            feedbackState={feedbackState}
+            leadCaptured={leadCaptured}
+            onReasonChange={setReason}
+            onNameChange={setName}
+            onEmailChange={(v) => {
+              setEmail(v);
+              if (emailError) setEmailError(null);
+            }}
+            onUseful={() => {
+              trackClick("done_feedback_useful");
+              leaveFeedback(true);
+            }}
+            onNotUseful={() => {
+              trackClick("done_feedback_not_useful");
+              leaveFeedback(false);
+            }}
           />
-          <div className="space-y-2">
-            <div className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground font-bold">
-              {leadCaptured ? "Early access" : "Want a reply or early access? Leave your details"}
-            </div>
-            {leadCaptured ? (
-              <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
-                <input
-                  type="text"
-                  value={name}
-                  onChange={(event) => setName(event.target.value)}
-                  placeholder="Your name (optional)"
-                  autoComplete="name"
-                  disabled={feedbackState === "saved"}
-                  className="w-full rounded-2xl brutal-border bg-background px-4 py-3 text-sm outline-none focus:ring-0 focus:shadow-[4px_4px_0_var(--foreground)] disabled:opacity-50"
-                />
-                <p className="self-center font-display text-sm font-extrabold">
-                  <span className="text-accent">✓</span> You're on the early-access list.
-                </p>
-              </div>
-            ) : (
-              <>
-                <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
-                  <input
-                    type="text"
-                    value={name}
-                    onChange={(event) => setName(event.target.value)}
-                    placeholder="Your name (optional)"
-                    autoComplete="name"
-                    disabled={feedbackState === "saved"}
-                    className="w-full rounded-2xl brutal-border bg-background px-4 py-3 text-sm outline-none focus:ring-0 focus:shadow-[4px_4px_0_var(--foreground)] disabled:opacity-50"
-                  />
-                  <input
-                    type="email"
-                    value={email}
-                    onChange={(event) => {
-                      setEmail(event.target.value);
-                      if (emailError) setEmailError(null);
-                    }}
-                    placeholder="you@email.com (optional)"
-                    autoComplete="email"
-                    disabled={feedbackState === "saved"}
-                    className="w-full rounded-2xl brutal-border bg-background px-4 py-3 text-sm outline-none focus:ring-0 focus:shadow-[4px_4px_0_var(--foreground)] disabled:opacity-50"
-                  />
-                </div>
-                {emailError && <p className="text-sm text-destructive font-medium">{emailError}</p>}
-              </>
-            )}
-          </div>
-          {feedbackState === "saved" ? (
-            <div className="rounded-2xl bg-accent/10 brutal-border p-3 font-mono text-[10px] uppercase tracking-widest text-accent font-bold">
-              ✓ Feedback received — thanks
-            </div>
-          ) : (
-            <div className="flex flex-wrap gap-3">
-              <button
-                type="button"
-                onClick={() => {
-                  trackClick("done_feedback_useful");
-                  leaveFeedback(true);
-                }}
-                disabled={feedbackState === "saving"}
-                className="min-h-[44px] rounded-2xl bg-accent text-accent-foreground brutal-border px-5 py-3 font-display font-bold brutal-shadow-sm hover:-translate-y-0.5 hover:-translate-x-0.5 active:translate-x-0 active:translate-y-0.5 transition disabled:opacity-50 disabled:hover:translate-x-0 disabled:hover:translate-y-0"
-              >
-                Useful
-              </button>
-              <button
-                type="button"
-                onClick={() => {
-                  trackClick("done_feedback_not_useful");
-                  leaveFeedback(false);
-                }}
-                disabled={feedbackState === "saving"}
-                className="min-h-[44px] rounded-2xl bg-card brutal-border px-5 py-3 font-bold brutal-shadow-sm hover:-translate-y-0.5 hover:-translate-x-0.5 hover:bg-foreground hover:text-background active:translate-x-0 active:translate-y-0.5 transition disabled:opacity-50 disabled:hover:translate-x-0 disabled:hover:translate-y-0"
-              >
-                Not useful
-              </button>
-              {feedbackState === "error" && (
-                <span className="self-center font-mono text-[10px] uppercase tracking-widest text-destructive font-bold">
-                  Could not save
-                </span>
-              )}
-            </div>
-          )}
         </div>
 
         <div className="flex flex-wrap justify-center gap-3 pt-2">
