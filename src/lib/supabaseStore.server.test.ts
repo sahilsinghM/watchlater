@@ -402,14 +402,14 @@ describe("saveLead", () => {
     const { client } = makeClientSpy(leadRow);
     const store = createSupabaseStore(() => client);
 
-    const result = await store.saveLead({
+    const { lead } = await store.saveLead({
       sessionId: "sess-1",
       email: "reader@example.com",
       source: "hero",
       lessonVideoId: "vid-1",
     });
 
-    expect(result).toEqual({
+    expect(lead).toEqual({
       id: "lead-uuid-1",
       sessionId: "sess-1",
       email: "reader@example.com",

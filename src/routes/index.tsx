@@ -107,6 +107,7 @@ function Index() {
               }}
               placeholder="https://www.youtube.com/watch?v=…"
               className="flex-1 px-5 py-3 bg-transparent border-none outline-none font-medium text-base sm:text-lg placeholder:text-muted-foreground"
+              suppressHydrationWarning
             />
             <button
               type="submit"

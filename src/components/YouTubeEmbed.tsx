@@ -68,10 +68,18 @@ export const YouTubeEmbed = forwardRef<YouTubePlayerHandle, Props>(function YouT
     let cancelled = false;
     loadYouTubeAPI().then(() => {
       if (cancelled || !containerRef.current || !window.YT?.Player) return;
-      playerRef.current = new window.YT.Player(containerRef.current, {
-        videoId,
-        playerVars: { start: Math.floor(startSeconds), modestbranding: 1, rel: 0 },
-      });
+      // Pre-create the iframe with an explicit allow list that omits `web-share`.
+      // The YouTube IFrame API injects `web-share` when it creates the iframe itself,
+      // which causes "Unrecognized feature: 'web-share'" in browsers that don't
+      // recognise it in Permissions-Policy. Passing a pre-built iframe to YT.Player
+      // keeps our allow list and suppresses the warning.
+      const iframe = document.createElement("iframe");
+      iframe.src = `https://www.youtube.com/embed/${videoId}?enablejsapi=1&start=${Math.floor(startSeconds)}&modestbranding=1&rel=0`;
+      iframe.allow =
+        "accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture";
+      iframe.style.cssText = "position:absolute;inset:0;width:100%;height:100%;border:0";
+      containerRef.current.appendChild(iframe);
+      playerRef.current = new window.YT.Player(iframe as unknown as HTMLElement, {});
     });
     return () => {
       cancelled = true;

@@ -215,7 +215,7 @@ describe("MVP flow", () => {
     const store = createMemoryMvpStore();
     const session = await ensureAnonymousSession(store, "browser-session");
 
-    const lead = await recordLead(store, {
+    const { lead } = await recordLead(store, {
       sessionId: session.id,
       email: "  Reader@Example.COM ",
       source: "hero",
@@ -231,12 +231,12 @@ describe("MVP flow", () => {
     const store = createMemoryMvpStore();
     const session = await ensureAnonymousSession(store, "browser-session");
 
-    const first = await recordLead(store, {
+    const { lead: first } = await recordLead(store, {
       sessionId: session.id,
       email: "reader@example.com",
       source: "hero",
     });
-    const second = await recordLead(store, {
+    const { lead: second } = await recordLead(store, {
       sessionId: session.id,
       email: "  Reader@Example.com ",
       source: "done",

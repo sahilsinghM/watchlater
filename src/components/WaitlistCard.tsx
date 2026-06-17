@@ -75,6 +75,7 @@ export function WaitlistCard({ lessonVideoId }: Props) {
                 className={`w-full rounded-2xl border-[3px] bg-background px-4 py-3 text-sm outline-none transition-colors ${
                   invalid ? "border-destructive" : "border-foreground/15 focus:border-foreground"
                 }`}
+                suppressHydrationWarning
               />
               {invalid && (
                 <p className="mt-1.5 font-mono text-[10px] uppercase tracking-widest text-destructive font-bold">
