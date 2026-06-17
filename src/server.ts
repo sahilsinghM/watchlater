@@ -47,11 +47,17 @@ async function posthogProxy(request: Request): Promise<Response> {
   const target = isAsset
     ? `https://us-assets.i.posthog.com${path}`
     : `https://us.i.posthog.com${path}`;
-  const headers = new Headers(request.headers);
-  headers.set("host", new URL(target).host);
+  // Whitelist only headers PostHog needs — never forward Cookie/Authorization/
+  // app-internal auth headers to a third-party origin.
+  const safe = new Headers();
+  for (const k of ["content-type", "content-length", "user-agent", "accept", "accept-encoding"]) {
+    const v = request.headers.get(k);
+    if (v) safe.set(k, v);
+  }
+  safe.set("host", new URL(target).host);
   return fetch(target, {
     method: request.method,
-    headers,
+    headers: safe,
     body: request.body,
     // @ts-expect-error duplex is required for streaming bodies in some runtimes
     duplex: "half",
