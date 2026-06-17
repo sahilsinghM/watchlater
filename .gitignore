@@ -43,3 +43,4 @@ supabase/.temp/
 .vercel
 .gstack/
 .playwright-mcp/
+.vite/
