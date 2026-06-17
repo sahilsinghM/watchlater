@@ -18,8 +18,6 @@ const nonEmpty = z
 const EnvSchema = z.object({
   NODE_ENV: nonEmpty,
   VERCEL_ENV: nonEmpty,
-  ANTHROPIC_API_KEY: nonEmpty,
-  ANTHROPIC_MODEL: nonEmpty,
   OPENROUTER_API_KEY: nonEmpty,
   OPENAI_API_KEY: nonEmpty,
   OPENAI_MODEL: nonEmpty,
@@ -27,19 +25,21 @@ const EnvSchema = z.object({
   SUPABASE_URL: nonEmpty,
   SUPABASE_SECRET_KEY: nonEmpty,
   RESEND_API_KEY: nonEmpty,
+  VITE_POSTHOG_KEY: nonEmpty,
+  VITE_POSTHOG_HOST: nonEmpty,
 });
 
 export type ServerConfig = {
   nodeEnv: string | undefined;
   isProduction: boolean;
-  anthropicApiKey: string | undefined;
-  anthropicModel: string | undefined;
   openaiApiKey: string | undefined;
   openaiModel: string | undefined;
   allowPrototypeGeneration: boolean;
   supabaseUrl: string | undefined;
   supabaseSecretKey: string | undefined;
   resendApiKey: string | undefined;
+  posthogKey: string | undefined;
+  posthogHost: string | undefined;
 };
 
 export function parseServerEnv(env: Record<string, string | undefined>): ServerConfig {
@@ -66,13 +66,13 @@ export function parseServerEnv(env: Record<string, string | undefined>): ServerC
   return {
     nodeEnv: parsed.NODE_ENV,
     isProduction,
-    anthropicApiKey: parsed.ANTHROPIC_API_KEY,
-    anthropicModel: parsed.ANTHROPIC_MODEL,
     openaiApiKey: parsed.OPENROUTER_API_KEY ?? parsed.OPENAI_API_KEY,
     openaiModel: parsed.OPENAI_MODEL,
     allowPrototypeGeneration: parsed.ALLOW_PROTOTYPE_GENERATION === "true",
     supabaseUrl: parsed.SUPABASE_URL,
     supabaseSecretKey: parsed.SUPABASE_SECRET_KEY,
     resendApiKey: parsed.RESEND_API_KEY,
+    posthogKey: parsed.VITE_POSTHOG_KEY,
+    posthogHost: parsed.VITE_POSTHOG_HOST,
   };
 }

@@ -8,13 +8,13 @@ import { parseServerEnv } from "./serverEnv";
 const FULL_ENV = {
   NODE_ENV: "production",
   VERCEL_ENV: "production",
-  ANTHROPIC_API_KEY: "sk-ant-test",
-  ANTHROPIC_MODEL: "claude-sonnet-4-6",
   OPENROUTER_API_KEY: "sk-or-test",
   OPENAI_MODEL: "gpt-4.1-mini",
   ALLOW_PROTOTYPE_GENERATION: "true",
   SUPABASE_URL: "https://example.supabase.co",
   SUPABASE_SECRET_KEY: "sb_secret_test",
+  VITE_POSTHOG_KEY: "phc_test",
+  VITE_POSTHOG_HOST: "https://us.i.posthog.com",
 };
 
 describe("parseServerEnv", () => {
@@ -22,8 +22,9 @@ describe("parseServerEnv", () => {
     const config = parseServerEnv(FULL_ENV);
     expect(config.supabaseUrl).toBe("https://example.supabase.co");
     expect(config.supabaseSecretKey).toBe("sb_secret_test");
-    expect(config.anthropicApiKey).toBe("sk-ant-test");
-    expect(config.anthropicModel).toBe("claude-sonnet-4-6");
+    expect(config.openaiApiKey).toBe("sk-or-test");
+    expect(config.posthogKey).toBe("phc_test");
+    expect(config.posthogHost).toBe("https://us.i.posthog.com");
     expect(config.allowPrototypeGeneration).toBe(true);
     expect(config.isProduction).toBe(true);
   });

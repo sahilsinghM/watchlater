@@ -2,7 +2,6 @@ import { describe, test, expect } from "bun:test";
 import { LESSON_TEMPLATE } from "./lessonTemplate";
 import { buildLesson } from "./buildLesson";
 import type { Cue, Meta } from "./buildLesson";
-import { CORE_REQUIRED_SHAPE } from "./anthropicLesson.server";
 
 const meta: Meta = {
   youtubeId: "dQw4w9WgXcQ",
@@ -34,12 +33,8 @@ describe("LESSON_TEMPLATE", () => {
     expect(lesson.segments.length).toBe(LESSON_TEMPLATE.segmentCount);
   });
 
-  test("CORE_REQUIRED_SHAPE.cards is driven by LESSON_TEMPLATE (same kind count)", () => {
-    // CORE_REQUIRED_SHAPE.cards is the example array sent to the LLM.
-    // It should have exactly one entry (the shape spec), but the prompt
-    // must request cardCount cards. Verify the numeric instruction matches.
-    const cardKindCount = LESSON_TEMPLATE.cardKinds.length;
-    expect(cardKindCount).toBe(6); // guard: if template changes, this surfaces
-    expect(LESSON_TEMPLATE.cardCount).toBe(cardKindCount);
+  test("cardCount is 6", () => {
+    expect(LESSON_TEMPLATE.cardCount).toBe(6);
+    expect(LESSON_TEMPLATE.cardKinds.length).toBe(6);
   });
 });

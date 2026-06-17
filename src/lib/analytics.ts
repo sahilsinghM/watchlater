@@ -6,8 +6,7 @@ export type PageName =
   | "lesson_hero"
   | "lesson_player"
   | "lesson_quiz"
-  | "lesson_done"
-  | "admin";
+  | "lesson_done";
 
 export type SectionName =
   | "landing_hero"
@@ -86,7 +85,6 @@ export function trackSectionVisible(section: SectionName, props?: Record<string,
 
 export function mapPathToPage(pathname: string): PageName {
   if (pathname === "/") return "landing";
-  if (pathname === "/admin") return "admin";
   if (pathname.startsWith("/processing/")) return "processing";
   if (pathname.endsWith("/player")) return "lesson_player";
   if (pathname.endsWith("/quiz")) return "lesson_quiz";

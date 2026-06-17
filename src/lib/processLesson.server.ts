@@ -4,16 +4,16 @@ import { getMvpStore } from "./mvpRuntime.server";
 import { getServerConfig } from "./config.server";
 import { fetchOEmbed, fetchTranscript, IngestError } from "./transcript.server";
 import type { Meta } from "./buildLesson";
-import { generateCore, generateSecondary } from "./anthropicLesson.server";
 import { generateOpenAILesson } from "./openaiLesson.server";
 import { buildLesson } from "./buildLesson";
 import type { Cue } from "./buildLesson";
 import { detectVisualDependency } from "./visualContext";
+import { shutdownPostHogServer } from "./posthogServer.server";
 
-// In-process lesson pipeline. Parallelised in two phases:
-//   Phase 1 (fetchAndValidate): fetchOEmbed + fetchTranscript run concurrently
-//   Phase 2a (runAnthropicCore): generateCore → partial save → partial_ready
-//   Phase 2b (runAnthropicSecondary): generateSecondary → patch → ready
+// In-process lesson pipeline.
+//   Phase 1: fetchOEmbed + fetchTranscript run concurrently
+//   Phase 2: generateOpenAILesson (OpenRouter) → save → ready
+//            Falls back to buildLesson when no API key is configured.
 //
 // IMPORTANT: this MUST be awaited by the request that triggers it (see
 // requestLesson in ingest.functions.ts). Fire-and-forget via `waitUntil` does
@@ -46,8 +46,6 @@ type MetadataPhaseResult = {
   duration: number;
 };
 
-// Phase 1: fetch + validate. Runs fetchOEmbed and fetchTranscript in parallel,
-// then checks duration and transcript quality gates.
 async function fetchAndValidate(youtubeId: string): Promise<MetadataPhaseResult> {
   const [meta, transcriptResult] = await Promise.all([
     fetchOEmbed(youtubeId),
@@ -69,8 +67,6 @@ async function fetchAndValidate(youtubeId: string): Promise<MetadataPhaseResult>
   return { meta, cues, languageCode, duration };
 }
 
-// Heartbeat helper: fires touchJob every HEARTBEAT_MS while fn() runs, then
-// clears the interval regardless of outcome.
 async function withHeartbeat<T>(
   store: ReturnType<typeof getMvpStore>,
   jobId: string,
@@ -84,220 +80,6 @@ async function withHeartbeat<T>(
   } finally {
     clearInterval(interval);
   }
-}
-
-type AnthropicPhaseInput = {
-  apiKey: string;
-  model?: string;
-  meta: Meta;
-  cues: Cue[];
-  duration: number;
-  languageCode: string;
-  youtubeId: string;
-  jobId: string;
-  startedAt: number;
-};
-
-type AnthropicCoreResult = {
-  lesson: Record<string, unknown>;
-  openRouterFallback: boolean;
-};
-
-// Phase 2a: run generateCore in parallel with generateSecondary (Anthropic path).
-// Returns the assembled lesson after saving it at partial_ready.
-async function runAnthropicCore(
-  store: ReturnType<typeof getMvpStore>,
-  input: AnthropicPhaseInput,
-): Promise<AnthropicCoreResult> {
-  const { apiKey, model, meta, cues, duration, languageCode, youtubeId, jobId, startedAt } = input;
-
-  const videoIdPromise = store.upsertVideo({
-    youtubeId,
-    url: `https://www.youtube.com/watch?v=${youtubeId}`,
-    title: meta.title,
-    channel: meta.channel,
-    thumbnailUrl: meta.thumbnail,
-    durationSeconds: duration,
-    language: languageCode,
-  });
-
-  const genInput = { apiKey, model, meta, cues, durationSeconds: duration, languageCode };
-  const config = getServerConfig();
-
-  const corePromise = generateCore(genInput).then(async (core) => {
-    const lesson = {
-      ...core,
-      video: {
-        ...core.video,
-        youtubeId,
-        url: `https://www.youtube.com/watch?v=${youtubeId}`,
-        title: meta.title,
-        channel: meta.channel,
-        thumbnail: meta.thumbnail,
-        duration,
-        language: languageCode,
-      },
-    };
-    await store.saveLesson({ youtubeId, lesson });
-    await store.updateProcessingJob(jobId, {
-      status: "partial_ready",
-      currentStep: "partial_ready",
-    });
-    logIngest({ event: "partial_ready", jobId, youtubeId, durationMs: Date.now() - startedAt });
-    return lesson;
-  });
-
-  const secondaryPromise = generateSecondary({
-    apiKey,
-    meta,
-    cues,
-    durationSeconds: duration,
-    languageCode,
-  }).then(async ({ quiz, keyMoments }) => {
-    const [coreLesson, videoId] = await Promise.all([corePromise, videoIdPromise]);
-    const { isVisuallyDependent } = detectVisualDependency(coreLesson.segments);
-    const frameResult = await persistKeyFrames(store, {
-      videoId,
-      youtubeId,
-      moments: keyMoments,
-      captureAvailable: false,
-      visualsEssential: isVisuallyDependent,
-    });
-    const visualContextStatus: "captured" | "degraded" | "unavailable" =
-      frameResult.status === "failed" ? "unavailable" : frameResult.status;
-    await store.patchLesson(youtubeId, { quiz, keyMoments, visualContextStatus });
-    await store.updateProcessingJob(jobId, { status: "ready", currentStep: "ready" });
-  });
-
-  const [coreResult, secondaryResult] = await Promise.allSettled([corePromise, secondaryPromise]);
-
-  if (coreResult.status === "rejected") {
-    const e = coreResult.reason;
-    const msg = e instanceof Error ? e.message : String(e);
-    if (config.openaiApiKey && /credit balance|insufficient_credit|balance is too low/i.test(msg)) {
-      logIngest({
-        event: "anthropic_credit_exhausted_fallback",
-        jobId,
-        youtubeId,
-        durationMs: Date.now() - startedAt,
-      });
-      return { lesson: {}, openRouterFallback: true };
-    }
-    const schemaInvalid = !!e && typeof e === "object" && "issues" in e;
-    throw new IngestError(
-      schemaInvalid ? "GENERATION_SCHEMA_INVALID" : "GENERATION_FAILURE",
-      schemaInvalid
-        ? "Generated lesson did not match the required schema."
-        : `Lesson generation failed: ${msg}`,
-    );
-  }
-
-  if (secondaryResult.status === "rejected") {
-    logIngest({
-      event: "secondary_failed",
-      jobId,
-      youtubeId,
-      error: String(secondaryResult.reason),
-      durationMs: Date.now() - startedAt,
-      model: model ?? "claude-sonnet-4-6",
-    });
-    return { lesson: coreResult.value as Record<string, unknown>, openRouterFallback: false };
-  }
-
-  return { lesson: coreResult.value as Record<string, unknown>, openRouterFallback: false };
-}
-
-type OpenAIPhaseInput = {
-  apiKey: string;
-  model?: string;
-  meta: Meta;
-  cues: Cue[];
-  duration: number;
-  languageCode: string;
-  youtubeId: string;
-  jobId: string;
-  startedAt: number;
-};
-
-// Phase 2b: single-call OpenAI/OpenRouter path — no parallel split.
-async function runOpenAIPhase(
-  store: ReturnType<typeof getMvpStore>,
-  input: OpenAIPhaseInput,
-): Promise<void> {
-  const { apiKey, model, meta, cues, duration, languageCode, youtubeId, jobId, startedAt } = input;
-
-  let lesson: Record<string, unknown>;
-  try {
-    lesson = (await generateOpenAILesson({ apiKey, model, meta, cues, languageCode })) as Record<
-      string,
-      unknown
-    >;
-  } catch (e: unknown) {
-    const schemaInvalid = !!e && typeof e === "object" && "issues" in e;
-    let detail: string;
-    if (schemaInvalid) {
-      const zErr = e as { issues: Array<{ path: (string | number)[]; message: string }> };
-      const paths = zErr.issues
-        .slice(0, 5)
-        .map((i) => `${i.path.join(".")}: ${i.message}`)
-        .join("; ");
-      detail = `Schema invalid — ${paths}`;
-    } else {
-      detail = `Lesson generation failed: ${e instanceof Error ? e.message : String(e)}`;
-    }
-    throw new IngestError(
-      schemaInvalid ? "GENERATION_SCHEMA_INVALID" : "GENERATION_FAILURE",
-      detail,
-    );
-  }
-
-  lesson = {
-    ...lesson,
-    video: {
-      ...(lesson.video as Record<string, unknown>),
-      youtubeId,
-      url: `https://www.youtube.com/watch?v=${youtubeId}`,
-      title: meta.title,
-      channel: meta.channel,
-      thumbnail: meta.thumbnail,
-      duration,
-      language: languageCode,
-    },
-  };
-
-  const videoId = await store.upsertVideo({
-    youtubeId,
-    url: `https://www.youtube.com/watch?v=${youtubeId}`,
-    title: meta.title,
-    channel: meta.channel,
-    thumbnailUrl: meta.thumbnail,
-    durationSeconds: duration,
-    language: languageCode,
-  });
-
-  const { isVisuallyDependent } = detectVisualDependency(lesson.segments as never[]);
-  const frameResult = await persistKeyFrames(store, {
-    videoId,
-    youtubeId,
-    moments: (lesson.keyMoments as never[]) ?? [],
-    captureAvailable: false,
-    visualsEssential: isVisuallyDependent,
-  });
-  const visualContextStatus: "captured" | "degraded" | "unavailable" =
-    frameResult.status === "failed" ? "unavailable" : frameResult.status;
-  lesson = { ...lesson, visualContextStatus };
-
-  await store.saveLesson({ youtubeId, lesson });
-  await store.updateProcessingJob(jobId, { status: "ready", currentStep: "ready" });
-  logIngest({
-    event: "done",
-    jobId,
-    youtubeId,
-    outcome: "ready",
-    durationMs: Date.now() - startedAt,
-    transcriptChars: (cues as Cue[]).reduce((n, c) => n + c.text.length, 0),
-    model: model ?? "openrouter-default",
-  });
 }
 
 // ─── Orchestrator ────────────────────────────────────────────────────────────
@@ -323,70 +105,95 @@ export async function processLesson(youtubeId: string, jobId: string): Promise<I
     });
 
     const config = getServerConfig();
-    let openRouterFallback = false;
 
-    if (config.anthropicApiKey) {
-      model = config.anthropicModel ?? "claude-sonnet-4-6";
-      const result = await withHeartbeat(store, jobId, () =>
-        runAnthropicCore(store, {
-          apiKey: config.anthropicApiKey!,
-          model: config.anthropicModel,
-          meta,
-          cues,
-          duration,
-          languageCode,
-          youtubeId,
-          jobId,
-          startedAt,
-        }),
-      );
-      openRouterFallback = result.openRouterFallback;
+    if (config.openaiApiKey) {
+      model = config.openaiModel ?? "openrouter-default";
 
-      if (!openRouterFallback) {
-        logIngest({
-          event: "done",
-          jobId,
-          youtubeId,
-          outcome: "ready",
-          durationMs: Date.now() - startedAt,
-          transcriptChars,
-          model,
-        });
-      }
-    }
-
-    if (openRouterFallback || !config.anthropicApiKey) {
-      if (config.openaiApiKey) {
-        model = config.openaiModel ?? "openrouter-default";
-        await withHeartbeat(store, jobId, () =>
-          runOpenAIPhase(store, {
+      let lesson: Record<string, unknown>;
+      try {
+        lesson = (await withHeartbeat(store, jobId, () =>
+          generateOpenAILesson({
             apiKey: config.openaiApiKey!,
             model: config.openaiModel,
             meta,
             cues,
-            duration,
             languageCode,
             youtubeId,
-            jobId,
-            startedAt,
           }),
+        )) as Record<string, unknown>;
+      } catch (e: unknown) {
+        const schemaInvalid = !!e && typeof e === "object" && "issues" in e;
+        let detail: string;
+        if (schemaInvalid) {
+          const zErr = e as { issues: Array<{ path: (string | number)[]; message: string }> };
+          const paths = zErr.issues
+            .slice(0, 5)
+            .map((i) => `${i.path.join(".")}: ${i.message}`)
+            .join("; ");
+          detail = `Schema invalid — ${paths}`;
+        } else {
+          detail = `Lesson generation failed: ${e instanceof Error ? e.message : String(e)}`;
+        }
+        throw new IngestError(
+          schemaInvalid ? "GENERATION_SCHEMA_INVALID" : "GENERATION_FAILURE",
+          detail,
         );
-      } else {
-        const lesson = buildLesson(meta, cues);
-        await store.saveLesson({ youtubeId, lesson });
-        await store.updateProcessingJob(jobId, { status: "ready", currentStep: "ready" });
-        logIngest({
-          event: "done",
-          jobId,
-          youtubeId,
-          outcome: "ready",
-          durationMs: Date.now() - startedAt,
-          transcriptChars,
-          model,
-        });
       }
+
+      lesson = {
+        ...lesson,
+        video: {
+          ...(lesson.video as Record<string, unknown>),
+          youtubeId,
+          url: `https://www.youtube.com/watch?v=${youtubeId}`,
+          title: meta.title,
+          channel: meta.channel,
+          thumbnail: meta.thumbnail,
+          duration,
+          language: languageCode,
+        },
+      };
+
+      const videoId = await store.upsertVideo({
+        youtubeId,
+        url: `https://www.youtube.com/watch?v=${youtubeId}`,
+        title: meta.title,
+        channel: meta.channel,
+        thumbnailUrl: meta.thumbnail,
+        durationSeconds: duration,
+        language: languageCode,
+      });
+
+      const { isVisuallyDependent } = detectVisualDependency(lesson.segments as never[]);
+      const frameResult = await persistKeyFrames(store, {
+        videoId,
+        youtubeId,
+        moments: (lesson.keyMoments as never[]) ?? [],
+        captureAvailable: false,
+        visualsEssential: isVisuallyDependent,
+      });
+      const visualContextStatus: "captured" | "degraded" | "unavailable" =
+        frameResult.status === "failed" ? "unavailable" : frameResult.status;
+      lesson = { ...lesson, visualContextStatus };
+
+      await store.saveLesson({ youtubeId, lesson });
+      await store.updateProcessingJob(jobId, { status: "ready", currentStep: "ready" });
+    } else {
+      // No API key configured — use the template-based fallback (dev / demo environments).
+      const lesson = buildLesson(meta, cues);
+      await store.saveLesson({ youtubeId, lesson });
+      await store.updateProcessingJob(jobId, { status: "ready", currentStep: "ready" });
     }
 
+    logIngest({
+      event: "done",
+      jobId,
+      youtubeId,
+      outcome: "ready",
+      durationMs: Date.now() - startedAt,
+      transcriptChars,
+      model,
+    });
     return { ok: true };
   } catch (e: unknown) {
     const code = e instanceof IngestError ? e.code : "UNKNOWN";
@@ -411,5 +218,7 @@ export async function processLesson(youtubeId: string, jobId: string): Promise<I
       model,
     });
     return { ok: false, code, detail };
+  } finally {
+    await shutdownPostHogServer();
   }
 }

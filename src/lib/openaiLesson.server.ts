@@ -1,6 +1,9 @@
+import OpenAIBase from "openai";
+import { PostHogOpenAI } from "@posthog/ai/openai";
 import { Lesson as LessonSchema, type Lesson } from "./lessonSchema";
 import { languageDirective } from "./lessonPrompt";
 import type { Cue, Meta } from "./buildLesson";
+import { getPostHogServer } from "./posthogServer.server";
 
 function transcriptExcerpt(cues: Cue[]): string {
   const maxChars = 150_000;
@@ -79,82 +82,107 @@ function normalizeModelOutput(obj: unknown): void {
   }
 }
 
+const OPENROUTER_HEADERS = {
+  "http-referer": "https://watchlater-sigma.vercel.app",
+  "x-title": "WatchLater",
+};
+
 export async function generateOpenAILesson(input: {
   apiKey: string;
   model?: string;
   meta: Meta;
   cues: Cue[];
   languageCode: string;
+  youtubeId: string;
 }): Promise<Lesson> {
   const model = input.model ?? "meta-llama/llama-3.3-70b-instruct";
-  const response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
-    method: "POST",
-    headers: {
-      authorization: `Bearer ${input.apiKey}`,
-      "content-type": "application/json",
-      "http-referer": "https://watchlater-sigma.vercel.app",
-      "x-title": "WatchLater",
+  const phClient = getPostHogServer();
+
+  const messages: OpenAIBase.Chat.ChatCompletionMessageParam[] = [
+    {
+      role: "system",
+      content:
+        "You generate trustworthy WatchLater lessons. Return only valid JSON. Do not wrap it in markdown. Ground major claims in transcript timestamps. Be blunt but not snarky about low-value videos. " +
+        languageDirective(input.languageCode),
     },
-    body: JSON.stringify({
+    {
+      role: "user",
+      content: JSON.stringify({
+        task: "Create a six-card interactive lesson for this YouTube video.",
+        requiredShape: {
+          video: {
+            id: "use the youtubeId value here",
+            youtubeId: "string",
+            url: "string",
+            title: "string",
+            channel: "string",
+            duration: "seconds number",
+            thumbnail: "string",
+          },
+          watchScore: "0-10 number; low scores are allowed",
+          scoreReason: "grounded reason",
+          difficulty: "Beginner | Intermediate | Advanced",
+          reallyAbout: "short explanation",
+          bestPart: "{ start, end, why }",
+          skipPart: "{ start, end, why }",
+          recommendation: "explicit verdict and reason",
+          watchVerdict:
+            '"skip" | "lesson_only" | "watch_core" | "watch_full" (use exactly one of these strings)',
+          visualContextStatus: "unavailable",
+          segments:
+            'array of objects: { start: number (seconds), end: number (seconds), kind: "skip"|"watch"|"core"|"demo", title: string, blurb: string }',
+          cards:
+            'exactly six objects: { id: string, kind: "concept"|"analogy"|"quote"|"insight"|"recap", title: string, body: string }. Cover thesis → concept, key concept → concept, mechanism → insight, example/analogy → analogy, nuance → insight, recap → recap.',
+          keyMoments: "3-5 objects: { timestamp: number (seconds), caption: string }",
+          quiz: "3 objects: { id: string, prompt: string, options: string[] (exactly 4 strings), correctIndex: number (0-3), explanation: string }",
+          tutorSeed: '2-4 objects: { "q": "question string", "a": "answer string" }',
+        },
+        meta: input.meta,
+        transcriptLanguage: input.languageCode,
+        transcript: transcriptExcerpt(input.cues),
+      }),
+    },
+  ];
+
+  let raw: string;
+
+  if (phClient) {
+    const client = new PostHogOpenAI({
+      apiKey: input.apiKey,
+      baseURL: "https://openrouter.ai/api/v1",
+      defaultHeaders: OPENROUTER_HEADERS,
+      // .server.ts never runs in a browser; this flag silences the SDK's
+      // environment check which false-positives in Bun's test runner.
+      dangerouslyAllowBrowser: true,
+      posthog: phClient,
+    });
+    const response = await client.chat.completions.create({
       model,
-      messages: [
-        {
-          role: "system",
-          content:
-            "You generate trustworthy WatchLater lessons. Return only valid JSON. Do not wrap it in markdown. Ground major claims in transcript timestamps. Be blunt but not snarky about low-value videos. " +
-            languageDirective(input.languageCode),
-        },
-        {
-          role: "user",
-          content: JSON.stringify({
-            task: "Create a six-card interactive lesson for this YouTube video.",
-            requiredShape: {
-              video: {
-                id: "use the youtubeId value here",
-                youtubeId: "string",
-                url: "string",
-                title: "string",
-                channel: "string",
-                duration: "seconds number",
-                thumbnail: "string",
-              },
-              watchScore: "0-10 number; low scores are allowed",
-              scoreReason: "grounded reason",
-              difficulty: "Beginner | Intermediate | Advanced",
-              reallyAbout: "short explanation",
-              bestPart: "{ start, end, why }",
-              skipPart: "{ start, end, why }",
-              recommendation: "explicit verdict and reason",
-              watchVerdict:
-                '"skip" | "lesson_only" | "watch_core" | "watch_full" (use exactly one of these strings)',
-              visualContextStatus: "unavailable",
-              segments:
-                'array of objects: { start: number (seconds), end: number (seconds), kind: "skip"|"watch"|"core"|"demo", title: string, blurb: string }',
-              cards:
-                'exactly six objects: { id: string, kind: "concept"|"analogy"|"quote"|"insight"|"recap", title: string, body: string }. Cover thesis → concept, key concept → concept, mechanism → insight, example/analogy → analogy, nuance → insight, recap → recap.',
-              keyMoments: "3-5 objects: { timestamp: number (seconds), caption: string }",
-              quiz: "3 objects: { id: string, prompt: string, options: string[] (exactly 4 strings), correctIndex: number (0-3), explanation: string }",
-              tutorSeed: '2-4 objects: { "q": "question string", "a": "answer string" }',
-            },
-            meta: input.meta,
-            transcriptLanguage: input.languageCode,
-            transcript: transcriptExcerpt(input.cues),
-          }),
-        },
-      ],
+      messages,
       max_tokens: 6000,
       response_format: { type: "json_object" },
-    }),
-  });
-
-  if (!response.ok) {
-    const body = await response.text().catch(() => "");
-    throw new Error(`OpenAI generation failed: ${response.status} ${body}`);
+      posthogDistinctId: input.youtubeId,
+      posthogPrivacyMode: true,
+    });
+    raw = response.choices[0]?.message?.content ?? "";
+  } else {
+    const client = new OpenAIBase({
+      apiKey: input.apiKey,
+      baseURL: "https://openrouter.ai/api/v1",
+      defaultHeaders: OPENROUTER_HEADERS,
+      // Same rationale as above — .server.ts + Bun test runner.
+      dangerouslyAllowBrowser: true,
+    });
+    const response = await client.chat.completions.create({
+      model,
+      messages,
+      max_tokens: 6000,
+      response_format: { type: "json_object" },
+    });
+    raw = response.choices[0]?.message?.content ?? "";
   }
 
-  const payload = await response.json();
-  const raw = payload.choices?.[0]?.message?.content ?? "";
-  if (!raw) throw new Error("OpenAI returned empty response");
+  if (!raw) throw new Error("OpenRouter returned empty response");
   // Some OpenRouter providers wrap JSON in markdown code fences despite json_object mode.
   const text = raw
     .replace(/^```(?:json)?\s*\n?/i, "")
