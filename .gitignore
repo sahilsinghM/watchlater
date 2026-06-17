@@ -44,3 +44,4 @@ supabase/.temp/
 .gstack/
 .playwright-mcp/
 .vite/
+.scratch/
