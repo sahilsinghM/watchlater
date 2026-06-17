@@ -1,4 +1,4 @@
-import { createFileRoute, Link, useNavigate, useRouter } from "@tanstack/react-router";
+import { createFileRoute, Link, redirect, useNavigate, useRouter } from "@tanstack/react-router";
 import { useEffect, useRef, useState } from "react";
 import { trackClick } from "@/lib/analytics";
 import { useTrackVisible } from "@/hooks/useTrackVisible";
@@ -27,8 +27,13 @@ const VERDICT_SHORT: Record<string, string> = {
 };
 
 export const Route = createFileRoute("/lesson/$videoId")({
-  loader: ({ context, params }) =>
-    context.queryClient.ensureQueryData(lessonQueryOptions(params.videoId)),
+  loader: async ({ context, params }) => {
+    try {
+      return await context.queryClient.ensureQueryData(lessonQueryOptions(params.videoId));
+    } catch {
+      throw redirect({ to: "/processing/$videoId", params: { videoId: params.videoId } });
+    }
+  },
   head: ({ loaderData: lesson }) => {
     const title = lesson ? `${lesson.video.title} — WatchLater` : "Lesson · WatchLater";
     const verdict = lesson
