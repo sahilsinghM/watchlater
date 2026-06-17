@@ -87,8 +87,13 @@ export function MasteryCelebration({ score, total, videoTitle, sharePath }: Prop
             }}
           />
         </svg>
-        <div className="absolute inset-0 grid place-items-center">
-          <div className="font-display text-4xl font-extrabold">{shown}%</div>
+        <div
+          className="absolute inset-0 grid place-items-center"
+          aria-label={`${mastery.pct}% mastery`}
+        >
+          <div className="font-display text-4xl font-extrabold" aria-hidden>
+            {shown}%
+          </div>
         </div>
       </div>
 

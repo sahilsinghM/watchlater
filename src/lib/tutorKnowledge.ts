@@ -29,6 +29,15 @@ const STOP_WORDS = new Set([
   "could",
   "should",
   "tell",
+  "this",
+  "that",
+  "from",
+  "have",
+  "will",
+  "your",
+  "more",
+  "just",
+  "mean",
 ]);
 
 function qualifyingWords(question: string): string[] {
