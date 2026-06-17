@@ -21,7 +21,6 @@ const EnvSchema = z.object({
   OPENROUTER_API_KEY: nonEmpty,
   OPENAI_API_KEY: nonEmpty,
   OPENAI_MODEL: nonEmpty,
-  ALLOW_PROTOTYPE_GENERATION: nonEmpty,
   SUPABASE_URL: nonEmpty,
   SUPABASE_SECRET_KEY: nonEmpty,
   RESEND_API_KEY: nonEmpty,
@@ -34,7 +33,6 @@ export type ServerConfig = {
   isProduction: boolean;
   openaiApiKey: string | undefined;
   openaiModel: string | undefined;
-  allowPrototypeGeneration: boolean;
   supabaseUrl: string | undefined;
   supabaseSecretKey: string | undefined;
   resendApiKey: string | undefined;
@@ -68,7 +66,6 @@ export function parseServerEnv(env: Record<string, string | undefined>): ServerC
     isProduction,
     openaiApiKey: parsed.OPENROUTER_API_KEY ?? parsed.OPENAI_API_KEY,
     openaiModel: parsed.OPENAI_MODEL,
-    allowPrototypeGeneration: parsed.ALLOW_PROTOTYPE_GENERATION === "true",
     supabaseUrl: parsed.SUPABASE_URL,
     supabaseSecretKey: parsed.SUPABASE_SECRET_KEY,
     resendApiKey: parsed.RESEND_API_KEY,

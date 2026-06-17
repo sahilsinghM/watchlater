@@ -1,8 +1,8 @@
 import { Resend } from "resend";
-import { parseServerEnv } from "./serverEnv";
+import { getServerConfig } from "./config.server";
 
 function getResend(): Resend | null {
-  const { resendApiKey } = parseServerEnv(process.env as Record<string, string | undefined>);
+  const { resendApiKey } = getServerConfig();
   if (!resendApiKey) return null;
   return new Resend(resendApiKey);
 }

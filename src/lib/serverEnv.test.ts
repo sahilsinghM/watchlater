@@ -10,7 +10,6 @@ const FULL_ENV = {
   VERCEL_ENV: "production",
   OPENROUTER_API_KEY: "sk-or-test",
   OPENAI_MODEL: "gpt-4.1-mini",
-  ALLOW_PROTOTYPE_GENERATION: "true",
   SUPABASE_URL: "https://example.supabase.co",
   SUPABASE_SECRET_KEY: "sb_secret_test",
   VITE_POSTHOG_KEY: "phc_test",
@@ -25,7 +24,6 @@ describe("parseServerEnv", () => {
     expect(config.openaiApiKey).toBe("sk-or-test");
     expect(config.posthogKey).toBe("phc_test");
     expect(config.posthogHost).toBe("https://us.i.posthog.com");
-    expect(config.allowPrototypeGeneration).toBe(true);
     expect(config.isProduction).toBe(true);
   });
 });
@@ -53,7 +51,6 @@ describe("development behavior", () => {
     expect(config.isProduction).toBe(false);
     expect(config.supabaseUrl).toBeUndefined();
     expect(config.supabaseSecretKey).toBeUndefined();
-    expect(config.allowPrototypeGeneration).toBe(false);
   });
 
   test("a malformed SUPABASE_URL throws naming the variable", () => {
