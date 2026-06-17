@@ -1,6 +1,6 @@
 import { useState } from "react";
 import type { Lesson } from "@/lib/lessonSchema";
-import { buildTutorKnowledge, answerQuestion } from "@/lib/tutorKnowledge";
+import { askTutor } from "@/lib/tutor.functions";
 import { trackClick } from "@/lib/analytics";
 
 type Msg = { role: "user" | "tutor"; text: string };
@@ -14,14 +14,23 @@ export function TutorPanel({ lesson }: { lesson: Lesson }) {
     },
   ]);
   const [input, setInput] = useState("");
+  const [loading, setLoading] = useState(false);
 
   if (!lesson.tutorSeed) return null;
 
-  function ask(q: string) {
-    if (!q.trim()) return;
-    const answer = answerQuestion(buildTutorKnowledge(lesson), q);
-    setMessages((m) => [...m, { role: "user", text: q }, { role: "tutor", text: answer }]);
+  async function ask(q: string) {
+    if (!q.trim() || loading) return;
+    setMessages((m) => [...m, { role: "user", text: q }]);
     setInput("");
+    setLoading(true);
+    try {
+      const { answer } = await askTutor({ data: { youtubeId: lesson.video.youtubeId, question: q } });
+      setMessages((m) => [...m, { role: "tutor", text: answer }]);
+    } catch {
+      setMessages((m) => [...m, { role: "tutor", text: "Something went wrong. Try again." }]);
+    } finally {
+      setLoading(false);
+    }
   }
 
   return (
@@ -72,6 +81,11 @@ export function TutorPanel({ lesson }: { lesson: Lesson }) {
                   {m.text}
                 </div>
               ))}
+              {loading && (
+                <div className="max-w-[85%] rounded-2xl bg-background border-2 border-foreground/10 px-4 py-2.5 text-sm text-muted-foreground animate-pulse">
+                  Thinking…
+                </div>
+              )}
             </div>
             <div className="border-t-2 border-foreground/10 p-3 space-y-2">
               <div className="flex flex-wrap gap-1.5">
@@ -79,7 +93,8 @@ export function TutorPanel({ lesson }: { lesson: Lesson }) {
                   <button
                     key={i}
                     onClick={() => ask(s.q)}
-                    className="rounded-full border border-foreground/20 px-2.5 py-1 text-[11px] font-medium text-muted-foreground hover:bg-foreground hover:text-background transition"
+                    disabled={loading}
+                    className="rounded-full border border-foreground/20 px-2.5 py-1 text-[11px] font-medium text-muted-foreground hover:bg-foreground hover:text-background transition disabled:opacity-40"
                   >
                     {s.q}
                   </button>
@@ -96,11 +111,13 @@ export function TutorPanel({ lesson }: { lesson: Lesson }) {
                   value={input}
                   onChange={(e) => setInput(e.target.value)}
                   placeholder="Ask a question…"
-                  className="flex-1 bg-transparent px-3 py-2 text-sm outline-none"
+                  disabled={loading}
+                  className="flex-1 bg-transparent px-3 py-2 text-sm outline-none disabled:opacity-50"
                 />
                 <button
                   type="submit"
-                  className="rounded-xl bg-primary text-primary-foreground px-4 py-2 text-sm font-bold"
+                  disabled={loading || !input.trim()}
+                  className="rounded-xl bg-primary text-primary-foreground px-4 py-2 text-sm font-bold disabled:opacity-40"
                 >
                   Ask
                 </button>
