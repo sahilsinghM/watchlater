@@ -16,6 +16,8 @@ import { LessonHeroSkeleton } from "@/components/LessonSkeleton";
 import { lessonQueryOptions } from "@/lib/lessonQuery";
 import { getIngestStatus } from "@/lib/ingest.functions";
 import { fmtRange, fmtTime, type Lesson, type Tone } from "@/lib/lessonSchema";
+import { AuthModal } from "@/components/AuthModal";
+import { getSupabaseBrowser } from "@/lib/supabase-browser";
 
 const SITE = "https://watchlater-sigma.vercel.app";
 
@@ -292,24 +294,46 @@ function QuizSection({
   lesson: Lesson;
   quizUnavailable: boolean;
 }) {
+  const [showModal, setShowModal] = useState(false);
+  const navigate = useNavigate();
+
+  async function handleQuizCta() {
+    trackClick("hero_quiz_cta");
+    try {
+      const {
+        data: { session },
+      } = await getSupabaseBrowser().auth.getSession();
+      if (session) {
+        navigate({ to: "/lesson/$videoId/quiz", params: { videoId } });
+      } else {
+        setShowModal(true);
+      }
+    } catch {
+      // Supabase not configured (dev without env vars) — allow direct navigation
+      navigate({ to: "/lesson/$videoId/quiz", params: { videoId } });
+    }
+  }
+
   if (lesson.quiz !== null) {
     return (
-      <section className="rounded-3xl brutal-border bg-card p-5 sm:p-6 brutal-shadow-sm">
-        <div className="font-mono text-[10px] uppercase tracking-widest text-secondary font-bold mb-3">
-          Quiz
-        </div>
-        <p className="text-base text-muted-foreground mb-4">
-          Test what you actually learned — 3 questions, no tricks.
-        </p>
-        <Link
-          to="/lesson/$videoId/quiz"
-          params={{ videoId }}
-          onClick={() => trackClick("hero_quiz_cta")}
-          className="inline-flex items-center rounded-2xl bg-secondary text-secondary-foreground brutal-border px-5 py-3 font-display font-bold brutal-shadow-sm hover:-translate-y-0.5 hover:-translate-x-0.5 transition"
-        >
-          Take the quiz →
-        </Link>
-      </section>
+      <>
+        {showModal && <AuthModal videoId={videoId} onBack={() => setShowModal(false)} />}
+        <section className="rounded-3xl brutal-border bg-card p-5 sm:p-6 brutal-shadow-sm">
+          <div className="font-mono text-[10px] uppercase tracking-widest text-secondary font-bold mb-3">
+            Quiz
+          </div>
+          <p className="text-base text-muted-foreground mb-4">
+            Test what you actually learned — 3 questions, no tricks.
+          </p>
+          <button
+            type="button"
+            onClick={handleQuizCta}
+            className="inline-flex items-center rounded-2xl bg-secondary text-secondary-foreground brutal-border px-5 py-3 font-display font-bold brutal-shadow-sm hover:-translate-y-0.5 hover:-translate-x-0.5 transition"
+          >
+            Take the quiz →
+          </button>
+        </section>
+      </>
     );
   }
 

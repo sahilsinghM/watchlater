@@ -3,6 +3,7 @@ import { z } from "zod";
 import { ensureAnonymousSession, recordFeedback, recordLead, recordQuizResult } from "./mvpFlow";
 import { getMvpStore } from "./mvpRuntime.server";
 import { sendWelcomeEmail } from "./email.server";
+import { getSupabaseAdmin } from "./supabase-admin.server";
 
 export const submitQuizResult = createServerFn({ method: "POST" })
   .inputValidator((input: unknown) =>
@@ -10,6 +11,8 @@ export const submitQuizResult = createServerFn({ method: "POST" })
       .object({
         lessonId: z.string().min(1),
         sessionKey: z.string().min(1),
+        // Access token verified server-side; userId is never trusted from client.
+        accessToken: z.string().optional(),
         answers: z.array(z.number().int().min(0)),
         score: z.number().int().min(0),
         total: z.number().int().min(1),
@@ -19,9 +22,16 @@ export const submitQuizResult = createServerFn({ method: "POST" })
   .handler(async ({ data }) => {
     const store = getMvpStore();
     const session = await ensureAnonymousSession(store, data.sessionKey);
+    // Verify access token server-side; derive userId from the verified token only.
+    let verifiedUserId: string | undefined;
+    if (data.accessToken) {
+      const { data: authData } = await getSupabaseAdmin().auth.getUser(data.accessToken);
+      verifiedUserId = authData.user?.id ?? undefined;
+    }
     return recordQuizResult(store, {
       lessonId: data.lessonId,
       sessionId: session.id,
+      userId: verifiedUserId,
       answers: data.answers,
       score: data.score,
       total: data.total,
@@ -54,6 +64,26 @@ export const submitFeedback = createServerFn({ method: "POST" })
       email: data.email,
       source: data.source,
     });
+  });
+
+// Called at OAuth callback time for brand-new Google sign-ups.
+// Email and new-user status are derived server-side from the verified access token;
+// the client sends no PII and cannot target arbitrary email addresses.
+export const onOAuthSignIn = createServerFn({ method: "POST" })
+  .inputValidator((input: unknown) => z.object({ accessToken: z.string().min(1) }).parse(input))
+  .handler(async ({ data }) => {
+    const { data: authData } = await getSupabaseAdmin().auth.getUser(data.accessToken);
+    const user = authData.user;
+    if (!user?.email) return;
+    // Server-side new-user guard: only send within 10 s of account creation.
+    // Prevents repeat sends if the callback is somehow called twice.
+    const ageSecs = (Date.now() - new Date(user.created_at).getTime()) / 1000;
+    if (ageSecs > 10) return;
+    try {
+      await sendWelcomeEmail(user.email);
+    } catch (err) {
+      console.warn("[email] welcome email failed for new OAuth user", err);
+    }
   });
 
 export const submitLead = createServerFn({ method: "POST" })

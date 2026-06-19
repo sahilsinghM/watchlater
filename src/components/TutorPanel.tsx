@@ -24,7 +24,9 @@ export function TutorPanel({ lesson }: { lesson: Lesson }) {
     setInput("");
     setLoading(true);
     try {
-      const { answer } = await askTutor({ data: { youtubeId: lesson.video.youtubeId, question: q } });
+      const { answer } = await askTutor({
+        data: { youtubeId: lesson.video.youtubeId, question: q },
+      });
       setMessages((m) => [...m, { role: "tutor", text: answer }]);
     } catch {
       setMessages((m) => [...m, { role: "tutor", text: "Something went wrong. Try again." }]);

@@ -51,7 +51,13 @@ function makeCues(count: number, charsEach = 60): Cue[] {
 describe("generateOpenAILesson — model selection", () => {
   test("uses meta-llama/llama-3.3-70b-instruct when no model is specified", async () => {
     const { generateOpenAILesson } = await import("./openaiLesson.server");
-    await generateOpenAILesson({ apiKey: "k", meta: META, cues: makeCues(5), languageCode: "en", youtubeId: "test123" });
+    await generateOpenAILesson({
+      apiKey: "k",
+      meta: META,
+      cues: makeCues(5),
+      languageCode: "en",
+      youtubeId: "test123",
+    });
     expect(capturedBody.model).toBe("meta-llama/llama-3.3-70b-instruct");
   });
 
@@ -73,7 +79,13 @@ describe("generateOpenAILesson — transcript budget", () => {
   test("sends the full transcript when cues are well under 150k chars", async () => {
     const { generateOpenAILesson } = await import("./openaiLesson.server");
     const cues = makeCues(10, 60); // ~660 chars total
-    await generateOpenAILesson({ apiKey: "k", meta: META, cues, languageCode: "en", youtubeId: "test123" });
+    await generateOpenAILesson({
+      apiKey: "k",
+      meta: META,
+      cues,
+      languageCode: "en",
+      youtubeId: "test123",
+    });
     const messages = capturedBody.messages as Array<{ role: string; content: string }>;
     const userContent = JSON.parse(messages[1].content) as { transcript: string };
     expect(userContent.transcript.length).toBeGreaterThan(0);
@@ -84,7 +96,13 @@ describe("generateOpenAILesson — transcript budget", () => {
     const { generateOpenAILesson } = await import("./openaiLesson.server");
     // ~4000 cues × ~67 chars each ≈ 268k chars — well over both the old 45k and new 150k limit
     const cues = makeCues(4000, 60);
-    await generateOpenAILesson({ apiKey: "k", meta: META, cues, languageCode: "en", youtubeId: "test123" });
+    await generateOpenAILesson({
+      apiKey: "k",
+      meta: META,
+      cues,
+      languageCode: "en",
+      youtubeId: "test123",
+    });
     const messages = capturedBody.messages as Array<{ role: string; content: string }>;
     const userContent = JSON.parse(messages[1].content) as { transcript: string };
     expect(userContent.transcript.length).toBeLessThanOrEqual(150_000);

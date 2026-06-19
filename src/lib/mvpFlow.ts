@@ -90,6 +90,7 @@ export type QuizResult = {
   id: string;
   lessonId: string;
   sessionId: string;
+  userId?: string;
   answers: number[];
   score: number;
   total: number;

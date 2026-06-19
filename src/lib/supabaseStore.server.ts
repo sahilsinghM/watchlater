@@ -243,23 +243,22 @@ export function createSupabaseStore(
 
     async saveQuizResult(input) {
       const supabase = getClient();
-      const { data, error } = await supabase
-        .from("quiz_results")
-        .insert({
-          lesson_id: null, // UUID FK — we don't expose the DB UUID; lesson_video_id is the lookup key
-          lesson_video_id: input.lessonId,
-          session_id: input.sessionId,
-          answers: input.answers,
-          score: input.score,
-          total: input.total,
-        })
-        .select("*")
-        .single();
+      const row: Tables["quiz_results"]["Insert"] = {
+        lesson_id: null,
+        lesson_video_id: input.lessonId,
+        session_id: input.sessionId,
+        user_id: input.userId ?? null,
+        answers: input.answers,
+        score: input.score,
+        total: input.total,
+      };
+      const { data, error } = await supabase.from("quiz_results").insert(row).select("*").single();
       if (error || !data) throw new Error("saveQuizResult failed");
       return {
         id: data.id,
         lessonId: data.lesson_video_id ?? input.lessonId,
         sessionId: data.session_id ?? "",
+        userId: data.user_id ?? undefined,
         answers: (data.answers as number[] | null) ?? [],
         score: data.score,
         total: data.total,

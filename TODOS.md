@@ -44,6 +44,7 @@ Deferred scope from /autoplan review (2026-06-05, commit fed6eeb).
 - [x] Add `assessTranscriptQuality` test with non-English language code **Completed: 2026-06-05**
 
 ## Design audit deferrals (2026-06-11, /design-review)
+
 - [x] MED: Tone toggle floats unlabeled on the lesson page mobile layout — anchor it or label it **Fixed: #55 (TONE mono eyebrow in header)**
 - [x] LOW: Attention-map bar sliver segments are sub-44px touch targets on phones **Fixed: #57 (min-width enforcement)**
 - [x] LOW: FAB grazes the 3rd reaction button corner on the player at 430px — pad the reaction row **Fixed: #55 (pb-32 on player main)**

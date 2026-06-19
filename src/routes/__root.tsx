@@ -12,7 +12,13 @@ import { useEffect, useRef, type ReactNode } from "react";
 
 import appCss from "../styles.css?url";
 import { reportLovableError } from "../lib/lovable-error-reporting";
-import { initAnalytics, trackPageView, trackPageLeave, identifySession, mapPathToPage } from "../lib/analytics";
+import {
+  initAnalytics,
+  trackPageView,
+  trackPageLeave,
+  identifySession,
+  mapPathToPage,
+} from "../lib/analytics";
 import { getBrowserSessionKey } from "../lib/anonymousSession";
 
 function NotFoundComponent() {

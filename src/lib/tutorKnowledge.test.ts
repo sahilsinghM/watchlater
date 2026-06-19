@@ -11,7 +11,10 @@ const base: TutorKnowledge = {
     "Learning rate controls the size of each update step",
   ],
   qaBank: [
-    { q: "What is gradient descent?", a: "An optimisation algorithm that adjusts weights by following the gradient of the loss function." },
+    {
+      q: "What is gradient descent?",
+      a: "An optimisation algorithm that adjusts weights by following the gradient of the loss function.",
+    },
     { q: "Who is the speaker?", a: "Andrej Karpathy, a researcher who helped build GPT-4." },
   ],
   recommendation: "Skip the first 5 minutes of intro; the core argument starts at 6:00.",

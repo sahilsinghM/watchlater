@@ -126,7 +126,10 @@ export async function processLesson(youtubeId: string, jobId: string): Promise<I
         // customers still get something rather than a hard failure. The loud
         // console.error surfaces in Vercel logs / PostHog for alerting.
         const creditsExhausted =
-          !!e && typeof e === "object" && "status" in e && (e as { status: unknown }).status === 402;
+          !!e &&
+          typeof e === "object" &&
+          "status" in e &&
+          (e as { status: unknown }).status === 402;
         if (creditsExhausted) {
           console.error(
             "[ingest] OpenRouter credits exhausted — falling back to template lesson. Top up at openrouter.ai/credits",

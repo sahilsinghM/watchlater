@@ -12,6 +12,7 @@ import { MasteryCelebration } from "@/components/MasteryCelebration";
 import { getBrowserSessionKey } from "@/lib/anonymousSession";
 import { submitFeedback } from "@/lib/feedback.functions";
 import { captureLead, hasCapturedLead, isLikelyEmail } from "@/lib/lead";
+import { getSupabaseBrowser } from "@/lib/supabase-browser";
 import { FeedbackForm } from "@/components/FeedbackForm";
 
 const search = z.object({
@@ -40,8 +41,26 @@ function Done() {
   const [leadCaptured, setLeadCaptured] = useState(false);
 
   // Reflect the shared dedup flag after mount (SSR always renders the input).
+  // Also treat authenticated OAuth users as already captured — their email came
+  // in via Google sign-up, so the feedback form should not ask again.
   useEffect(() => {
-    if (hasCapturedLead()) setLeadCaptured(true);
+    if (hasCapturedLead()) {
+      setLeadCaptured(true);
+      return;
+    }
+    getSupabaseBrowser()
+      .auth.getSession()
+      .then(({ data: { session } }) => {
+        if (session) {
+          setLeadCaptured(true);
+          // Pre-fill name from Google profile if available
+          const fullName = session.user.user_metadata?.full_name as string | undefined;
+          if (fullName) setName(fullName);
+        }
+      })
+      .catch(() => {
+        // Supabase not configured — fall back to localStorage-only dedup
+      });
   }, []);
 
   async function leaveFeedback(useful: boolean) {

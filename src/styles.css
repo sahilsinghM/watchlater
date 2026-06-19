@@ -76,13 +76,13 @@
   --ring: oklch(0.62 0.19 256);
 
   /* ---- Brand convenience aliases (fg/bg scale) ------------------------- */
-  --fg1: var(--foreground);                /* primary ink */
-  --fg2: var(--muted-foreground);          /* secondary / caption ink */
-  --fg3: oklch(0.21 0.025 260 / 0.45);     /* tertiary / disabled ink */
-  --bg1: var(--background);                /* page paper */
-  --bg2: var(--card);                      /* raised surface */
-  --bg3: var(--muted);                     /* inset / track fill */
-  --line: var(--foreground);               /* the heavy structural border color */
+  --fg1: var(--foreground); /* primary ink */
+  --fg2: var(--muted-foreground); /* secondary / caption ink */
+  --fg3: oklch(0.21 0.025 260 / 0.45); /* tertiary / disabled ink */
+  --bg1: var(--background); /* page paper */
+  --bg2: var(--card); /* raised surface */
+  --bg3: var(--muted); /* inset / track fill */
+  --line: var(--foreground); /* the heavy structural border color */
   --line-soft: oklch(0.21 0.025 260 / 0.12); /* hairline dividers */
 
   /* ---- The brutal border + hard-offset shadow system ------------------- */
@@ -91,18 +91,38 @@
 
   /* ---- Motion ---------------------------------------------------------- */
   --ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1); /* overshoot — the brand feel */
-  --ease-out: cubic-bezier(0.16, 1, 0.3, 1);        /* settle without overshoot */
+  --ease-out: cubic-bezier(0.16, 1, 0.3, 1); /* settle without overshoot */
 
   /* ---- Radius scale ---------------------------------------------------- */
   --radius-pill: 9999px;
 
   /* ---- Semantic type scale (font / size / weight / spacing) ------------ */
-  --h1-font: var(--font-display); --h1-size: clamp(2.75rem, 6vw, 4.5rem);  --h1-weight: 800; --h1-tracking: -0.02em; --h1-leading: 1.05;
-  --h2-font: var(--font-display); --h2-size: clamp(1.75rem, 3vw, 2.25rem); --h2-weight: 800; --h2-tracking: -0.02em; --h2-leading: 1.1;
-  --h3-font: var(--font-display); --h3-size: 1.25rem;  --h3-weight: 800; --h3-tracking: -0.01em; --h3-leading: 1.2;
-  --body-font: var(--font-body);  --body-size: 1.125rem; --body-weight: 400; --body-leading: 1.6;
-  --small-font: var(--font-body); --small-size: 0.875rem; --small-weight: 500;
-  --label-font: var(--font-mono); --label-size: 0.625rem; --label-weight: 700; --label-tracking: 0.15em; /* uppercase eyebrow */
+  --h1-font: var(--font-display);
+  --h1-size: clamp(2.75rem, 6vw, 4.5rem);
+  --h1-weight: 800;
+  --h1-tracking: -0.02em;
+  --h1-leading: 1.05;
+  --h2-font: var(--font-display);
+  --h2-size: clamp(1.75rem, 3vw, 2.25rem);
+  --h2-weight: 800;
+  --h2-tracking: -0.02em;
+  --h2-leading: 1.1;
+  --h3-font: var(--font-display);
+  --h3-size: 1.25rem;
+  --h3-weight: 800;
+  --h3-tracking: -0.01em;
+  --h3-leading: 1.2;
+  --body-font: var(--font-body);
+  --body-size: 1.125rem;
+  --body-weight: 400;
+  --body-leading: 1.6;
+  --small-font: var(--font-body);
+  --small-size: 0.875rem;
+  --small-weight: 500;
+  --label-font: var(--font-mono);
+  --label-size: 0.625rem;
+  --label-weight: 700;
+  --label-tracking: 0.15em; /* uppercase eyebrow */
 }
 
 /*
@@ -151,7 +171,10 @@
        overflow-x: clip keeps vertical scrolling and sticky/fixed intact. */
     overflow-x: clip;
   }
-  h1, h2, h3, h4 {
+  h1,
+  h2,
+  h3,
+  h4 {
     font-family: var(--font-display);
     letter-spacing: -0.02em;
   }
@@ -172,22 +195,47 @@ h3 {
 }
 
 @keyframes float {
-  0%, 100% { transform: translateY(0px) rotate(-1deg); }
-  50% { transform: translateY(-10px) rotate(1deg); }
+  0%,
+  100% {
+    transform: translateY(0px) rotate(-1deg);
+  }
+  50% {
+    transform: translateY(-10px) rotate(1deg);
+  }
 }
 @keyframes card-in {
   /* No rotation: cards must REST level (owner decision 2026-06-11 — no static tilt). */
-  from { transform: translateY(40px); opacity: 0; }
-  to { transform: translateY(0); opacity: 1; }
+  from {
+    transform: translateY(40px);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
 }
 @keyframes pop-in {
-  0% { transform: scale(0.6); opacity: 0; }
-  60% { transform: scale(1.08); opacity: 1; }
-  100% { transform: scale(1); }
+  0% {
+    transform: scale(0.6);
+    opacity: 0;
+  }
+  60% {
+    transform: scale(1.08);
+    opacity: 1;
+  }
+  100% {
+    transform: scale(1);
+  }
 }
-.animate-float { animation: float 6s ease-in-out infinite; }
-.animate-card-in { animation: card-in 0.55s var(--ease-spring) both; }
-.animate-pop-in { animation: pop-in 0.5s var(--ease-spring) both; }
+.animate-float {
+  animation: float 6s ease-in-out infinite;
+}
+.animate-card-in {
+  animation: card-in 0.55s var(--ease-spring) both;
+}
+.animate-pop-in {
+  animation: pop-in 0.5s var(--ease-spring) both;
+}
 
 /* Honour reduced-motion globally: entrances settle instantly, no float. */
 @media (prefers-reduced-motion: reduce) {
@@ -198,10 +246,18 @@ h3 {
   }
 }
 
-.brutal-border { border: var(--border-brutal); }
-.brutal-shadow { box-shadow: var(--shadow-brutal); }
-.brutal-shadow-sm { box-shadow: var(--shadow-brutal-sm); }
-.brutal-shadow-lg { box-shadow: var(--shadow-brutal-lg); }
+.brutal-border {
+  border: var(--border-brutal);
+}
+.brutal-shadow {
+  box-shadow: var(--shadow-brutal);
+}
+.brutal-shadow-sm {
+  box-shadow: var(--shadow-brutal-sm);
+}
+.brutal-shadow-lg {
+  box-shadow: var(--shadow-brutal-lg);
+}
 
 /* ============================================================================
    Semantic type scale — the canonical heading / body / eyebrow styles.
@@ -210,24 +266,51 @@ h3 {
    signature of the brand — use it for all eyebrows, timecodes, and statuses.
    ============================================================================ */
 .vs-h1 {
-  font-family: var(--h1-font); font-size: var(--h1-size); font-weight: var(--h1-weight);
-  letter-spacing: var(--h1-tracking); line-height: var(--h1-leading); color: var(--fg1);
+  font-family: var(--h1-font);
+  font-size: var(--h1-size);
+  font-weight: var(--h1-weight);
+  letter-spacing: var(--h1-tracking);
+  line-height: var(--h1-leading);
+  color: var(--fg1);
 }
 .vs-h2 {
-  font-family: var(--h2-font); font-size: var(--h2-size); font-weight: var(--h2-weight);
-  letter-spacing: var(--h2-tracking); line-height: var(--h2-leading); color: var(--fg1);
+  font-family: var(--h2-font);
+  font-size: var(--h2-size);
+  font-weight: var(--h2-weight);
+  letter-spacing: var(--h2-tracking);
+  line-height: var(--h2-leading);
+  color: var(--fg1);
 }
 .vs-h3 {
-  font-family: var(--h3-font); font-size: var(--h3-size); font-weight: var(--h3-weight);
-  letter-spacing: var(--h3-tracking); line-height: var(--h3-leading); color: var(--fg1);
+  font-family: var(--h3-font);
+  font-size: var(--h3-size);
+  font-weight: var(--h3-weight);
+  letter-spacing: var(--h3-tracking);
+  line-height: var(--h3-leading);
+  color: var(--fg1);
 }
 .vs-body {
-  font-family: var(--body-font); font-size: var(--body-size); font-weight: var(--body-weight);
-  line-height: var(--body-leading); color: var(--fg1);
+  font-family: var(--body-font);
+  font-size: var(--body-size);
+  font-weight: var(--body-weight);
+  line-height: var(--body-leading);
+  color: var(--fg1);
 }
-.vs-small { font-family: var(--small-font); font-size: var(--small-size); font-weight: var(--small-weight); color: var(--fg2); }
+.vs-small {
+  font-family: var(--small-font);
+  font-size: var(--small-size);
+  font-weight: var(--small-weight);
+  color: var(--fg2);
+}
 .vs-label {
-  font-family: var(--label-font); font-size: var(--label-size); font-weight: var(--label-weight);
-  letter-spacing: var(--label-tracking); text-transform: uppercase; color: var(--fg2);
+  font-family: var(--label-font);
+  font-size: var(--label-size);
+  font-weight: var(--label-weight);
+  letter-spacing: var(--label-tracking);
+  text-transform: uppercase;
+  color: var(--fg2);
 }
-.vs-code { font-family: var(--font-mono); font-weight: 500; }
+.vs-code {
+  font-family: var(--font-mono);
+  font-weight: 500;
+}

@@ -1,11 +1,12 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { trackClick } from "@/lib/analytics";
 import { useSuspenseQuery } from "@tanstack/react-query";
 import { Brand } from "@/components/Brand";
 import { lessonQueryOptions } from "@/lib/lessonQuery";
 import { getBrowserSessionKey } from "@/lib/anonymousSession";
 import { submitQuizResult } from "@/lib/feedback.functions";
+import { getSupabaseBrowser } from "@/lib/supabase-browser";
 
 export const Route = createFileRoute("/lesson/$videoId_/quiz")({
   loader: ({ context, params }) =>
@@ -21,6 +22,30 @@ function Quiz() {
   const [idx, setIdx] = useState(0);
   const [answers, setAnswers] = useState<number[]>([]);
   const [picked, setPicked] = useState<number | null>(null);
+  const [checking, setChecking] = useState(true);
+  const [accessToken, setAccessToken] = useState<string | undefined>(undefined);
+
+  // Auth defense: redirect to lesson if not signed in.
+  // Must run client-side (useEffect) because beforeLoad runs on the server
+  // where the browser Supabase client is not available.
+  useEffect(() => {
+    getSupabaseBrowser()
+      .auth.getSession()
+      .then(({ data: { session } }) => {
+        if (!session) {
+          navigate({ to: "/lesson/$videoId", params: { videoId } });
+        } else {
+          setAccessToken(session.access_token);
+          setChecking(false);
+        }
+      })
+      .catch(() => {
+        // Supabase not configured (dev without env vars) — allow through
+        setChecking(false);
+      });
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  if (checking) return null;
 
   if (!lesson.quiz) {
     navigate({ to: "/lesson/$videoId", params: { videoId } });
@@ -42,6 +67,7 @@ function Quiz() {
           data: {
             lessonId: lesson.video.id,
             sessionKey: getBrowserSessionKey(),
+            accessToken,
             answers: next,
             score,
             total,
