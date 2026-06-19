@@ -16,6 +16,7 @@ import { LessonHeroSkeleton } from "@/components/LessonSkeleton";
 import { lessonQueryOptions } from "@/lib/lessonQuery";
 import { getIngestStatus } from "@/lib/ingest.functions";
 import { fmtRange, fmtTime, type Lesson, type Tone } from "@/lib/lessonSchema";
+import { useAuth } from "@/contexts/AuthContext";
 
 const SITE = "https://watchlater-sigma.vercel.app";
 
@@ -292,6 +293,9 @@ function QuizSection({
   lesson: Lesson;
   quizUnavailable: boolean;
 }) {
+  const { requireAuth } = useAuth();
+  const quizPath = `/lesson/${videoId}/quiz`;
+
   if (lesson.quiz !== null) {
     return (
       <section className="rounded-3xl brutal-border bg-card p-5 sm:p-6 brutal-shadow-sm">
@@ -301,14 +305,16 @@ function QuizSection({
         <p className="text-base text-muted-foreground mb-4">
           Test what you actually learned — 3 questions, no tricks.
         </p>
-        <Link
-          to="/lesson/$videoId/quiz"
-          params={{ videoId }}
-          onClick={() => trackClick("hero_quiz_cta")}
+        <button
+          type="button"
+          onClick={() => {
+            trackClick("hero_quiz_cta");
+            requireAuth(quizPath);
+          }}
           className="inline-flex items-center rounded-2xl bg-secondary text-secondary-foreground brutal-border px-5 py-3 font-display font-bold brutal-shadow-sm hover:-translate-y-0.5 hover:-translate-x-0.5 transition"
         >
           Take the quiz →
-        </Link>
+        </button>
       </section>
     );
   }

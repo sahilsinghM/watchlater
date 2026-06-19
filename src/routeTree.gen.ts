@@ -12,6 +12,7 @@ import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as ProcessingVideoIdRouteImport } from './routes/processing.$videoId'
 import { Route as LessonVideoIdRouteImport } from './routes/lesson.$videoId'
+import { Route as AuthCallbackRouteImport } from './routes/auth.callback'
 import { Route as LessonVideoIdQuizRouteImport } from './routes/lesson.$videoId_.quiz'
 import { Route as LessonVideoIdPlayerRouteImport } from './routes/lesson.$videoId_.player'
 import { Route as LessonVideoIdDoneRouteImport } from './routes/lesson.$videoId_.done'
@@ -30,6 +31,11 @@ const ProcessingVideoIdRoute = ProcessingVideoIdRouteImport.update({
 const LessonVideoIdRoute = LessonVideoIdRouteImport.update({
   id: '/lesson/$videoId',
   path: '/lesson/$videoId',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AuthCallbackRoute = AuthCallbackRouteImport.update({
+  id: '/auth/callback',
+  path: '/auth/callback',
   getParentRoute: () => rootRouteImport,
 } as any)
 const LessonVideoIdQuizRoute = LessonVideoIdQuizRouteImport.update({
@@ -55,6 +61,7 @@ const ApiOgVideoIdRoute = ApiOgVideoIdRouteImport.update({
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/auth/callback': typeof AuthCallbackRoute
   '/lesson/$videoId': typeof LessonVideoIdRoute
   '/processing/$videoId': typeof ProcessingVideoIdRoute
   '/api/og/$videoId': typeof ApiOgVideoIdRoute
@@ -64,6 +71,7 @@ export interface FileRoutesByFullPath {
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/auth/callback': typeof AuthCallbackRoute
   '/lesson/$videoId': typeof LessonVideoIdRoute
   '/processing/$videoId': typeof ProcessingVideoIdRoute
   '/api/og/$videoId': typeof ApiOgVideoIdRoute
@@ -74,6 +82,7 @@ export interface FileRoutesByTo {
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/auth/callback': typeof AuthCallbackRoute
   '/lesson/$videoId': typeof LessonVideoIdRoute
   '/processing/$videoId': typeof ProcessingVideoIdRoute
   '/api/og/$videoId': typeof ApiOgVideoIdRoute
@@ -85,6 +94,7 @@ export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
     | '/'
+    | '/auth/callback'
     | '/lesson/$videoId'
     | '/processing/$videoId'
     | '/api/og/$videoId'
@@ -94,6 +104,7 @@ export interface FileRouteTypes {
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
+    | '/auth/callback'
     | '/lesson/$videoId'
     | '/processing/$videoId'
     | '/api/og/$videoId'
@@ -103,6 +114,7 @@ export interface FileRouteTypes {
   id:
     | '__root__'
     | '/'
+    | '/auth/callback'
     | '/lesson/$videoId'
     | '/processing/$videoId'
     | '/api/og/$videoId'
@@ -113,6 +125,7 @@ export interface FileRouteTypes {
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  AuthCallbackRoute: typeof AuthCallbackRoute
   LessonVideoIdRoute: typeof LessonVideoIdRoute
   ProcessingVideoIdRoute: typeof ProcessingVideoIdRoute
   ApiOgVideoIdRoute: typeof ApiOgVideoIdRoute
@@ -142,6 +155,13 @@ declare module '@tanstack/react-router' {
       path: '/lesson/$videoId'
       fullPath: '/lesson/$videoId'
       preLoaderRoute: typeof LessonVideoIdRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/auth/callback': {
+      id: '/auth/callback'
+      path: '/auth/callback'
+      fullPath: '/auth/callback'
+      preLoaderRoute: typeof AuthCallbackRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/lesson/$videoId_/quiz': {
@@ -177,6 +197,7 @@ declare module '@tanstack/react-router' {
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  AuthCallbackRoute: AuthCallbackRoute,
   LessonVideoIdRoute: LessonVideoIdRoute,
   ProcessingVideoIdRoute: ProcessingVideoIdRoute,
   ApiOgVideoIdRoute: ApiOgVideoIdRoute,

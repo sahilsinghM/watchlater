@@ -2,6 +2,7 @@ import { createFileRoute, useNavigate, Link } from "@tanstack/react-router";
 import { z } from "zod";
 import { useEffect, useRef, useState } from "react";
 import { trackClick, trackSectionVisible } from "@/lib/analytics";
+import { useAuth } from "@/contexts/AuthContext";
 import { useSuspenseQuery } from "@tanstack/react-query";
 import { Brand } from "@/components/Brand";
 import { LessonCardView } from "@/components/LessonCard";
@@ -33,6 +34,7 @@ function Player() {
   const [idx, setIdx] = useState(0);
   const [dir, setDir] = useState<1 | -1>(1);
   const [tone, setTone] = useState<Tone>("clear");
+  const { requireAuth } = useAuth();
 
   const card = lesson.cards[idx];
   const total = lesson.cards.length;
@@ -45,7 +47,7 @@ function Player() {
 
   function next() {
     if (idx + 1 >= total) {
-      navigate({ to: "/lesson/$videoId/quiz", params: { videoId } });
+      requireAuth(`/lesson/${videoId}/quiz`);
       return;
     }
     trackClick("player_next_card", { card_index: idx + 1, card_type: lesson.cards[idx + 1]?.kind });

@@ -14,6 +14,7 @@ import appCss from "../styles.css?url";
 import { reportLovableError } from "../lib/lovable-error-reporting";
 import { initAnalytics, trackPageView, trackPageLeave, identifySession, mapPathToPage } from "../lib/analytics";
 import { getBrowserSessionKey } from "../lib/anonymousSession";
+import { AuthProvider } from "../contexts/AuthContext";
 
 function NotFoundComponent() {
   return (
@@ -151,8 +152,10 @@ function RootComponent() {
 
   return (
     <QueryClientProvider client={queryClient}>
-      {/* Required: nested routes render here. Removing <Outlet /> breaks all child routes. */}
-      <Outlet />
+      <AuthProvider>
+        {/* Required: nested routes render here. Removing <Outlet /> breaks all child routes. */}
+        <Outlet />
+      </AuthProvider>
     </QueryClientProvider>
   );
 }
