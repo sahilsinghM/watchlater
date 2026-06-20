@@ -9,7 +9,9 @@ export function getSupabaseBrowser(): SupabaseClient {
   const key = import.meta.env.VITE_SUPABASE_ANON_KEY as string | undefined;
   if (!url || !key) throw new Error("VITE_SUPABASE_URL / VITE_SUPABASE_ANON_KEY not set");
   _client = createClient(url, key, {
-    auth: { flowType: "pkce", storage: window.localStorage },
+    // detectSessionInUrl off: the /auth/callback route exchanges the code
+    // manually, so auto-detection would race it on the single-use PKCE code.
+    auth: { flowType: "pkce", storage: window.localStorage, detectSessionInUrl: false },
   });
   return _client;
 }

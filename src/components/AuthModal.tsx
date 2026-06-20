@@ -7,11 +7,13 @@ interface AuthModalProps {
 
 export function AuthModal({ videoId, onBack }: AuthModalProps) {
   function signIn() {
-    const next = `/lesson/${videoId}/quiz`;
+    // Stash destination in sessionStorage: survives the OAuth round-trip
+    // reliably, unlike query params on redirectTo which Supabase can drop.
+    sessionStorage.setItem("wl_next", `/lesson/${videoId}/quiz`);
     getSupabaseBrowser().auth.signInWithOAuth({
       provider: "google",
       options: {
-        redirectTo: `${window.location.origin}/auth/callback?next=${encodeURIComponent(next)}`,
+        redirectTo: `${window.location.origin}/auth/callback`,
       },
     });
   }

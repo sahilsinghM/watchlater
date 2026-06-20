@@ -51,7 +51,10 @@ function OAuthCallback() {
             console.warn("[auth] welcome email failed", err);
           }
         }
-        navigate({ to: validateNext(next) });
+        // sessionStorage is the primary source; query param is a legacy fallback.
+        const stored = sessionStorage.getItem("wl_next");
+        sessionStorage.removeItem("wl_next");
+        navigate({ to: validateNext(stored ?? next) });
       })
       .catch(() => setError("Sign-in failed. Go back and try again."));
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
