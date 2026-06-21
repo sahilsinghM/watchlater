@@ -48,20 +48,32 @@ async function posthogProxy(request: Request): Promise<Response> {
     ? `https://us-assets.i.posthog.com${path}`
     : `https://us.i.posthog.com${path}`;
   // Whitelist only headers PostHog needs — never forward Cookie/Authorization/
-  // app-internal auth headers to a third-party origin.
+  // app-internal auth headers to a third-party origin. Deliberately drop
+  // accept-encoding: forwarding it made PostHog reply gzip while the body
+  // reached the browser decompressed but still labeled content-encoding: gzip
+  // → ERR_CONTENT_DECODING_FAILED. Letting fetch negotiate lets us read a
+  // decoded body and return plain bytes; the platform compresses once.
   const safe = new Headers();
-  for (const k of ["content-type", "content-length", "user-agent", "accept", "accept-encoding"]) {
+  for (const k of ["content-type", "content-length", "user-agent", "accept"]) {
     const v = request.headers.get(k);
     if (v) safe.set(k, v);
   }
   safe.set("host", new URL(target).host);
-  return fetch(target, {
+  const hasBody = request.method !== "GET" && request.method !== "HEAD";
+  const upstream = await fetch(target, {
     method: request.method,
     headers: safe,
-    body: request.body,
+    body: hasBody ? request.body : undefined,
     // @ts-expect-error duplex is required for streaming bodies in some runtimes
     duplex: "half",
   });
+  const body = await upstream.arrayBuffer(); // decoded by fetch
+  const headers = new Headers();
+  for (const k of ["content-type", "cache-control"]) {
+    const v = upstream.headers.get(k);
+    if (v) headers.set(k, v);
+  }
+  return new Response(body, { status: upstream.status, headers });
 }
 
 export default {
